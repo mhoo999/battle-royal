@@ -1,0 +1,280 @@
+/*
+ * ASCII-inspired, not ASCII-implemented: the board is a CSS Grid of individual cells
+ * rather than one <pre>, so tiles can be styled and hit-tested independently.
+ */
+
+:root {
+  --bg:        #0b0e0f;
+  --panel:     #14191b;
+  --line:      #222b2e;
+  --ink:       #c8d6d8;
+  --dim:       #5d6f73;
+  --floor:     #101617;
+  --wall:      #2b3639;
+  --door:      #d8a657;
+  --cabinet:   #7c6f5a;
+  --bush:      #3f6b46;
+  --self:      #7fd4c1;
+  --enemy:     #e06c75;
+  --item:      #e5c07b;
+  --hp:        #7fd4c1;
+  --hp-low:    #e06c75;
+
+  --cell: min(6.2vw, 2rem);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+/* --- Overlays ---------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--bg);
+  text-align: center;
+}
+
+.overlay[hidden] { display: none; }
+
+.logo {
+  margin: 0;
+  font-size: clamp(2rem, 12vw, 3.5rem);
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
+  color: var(--self);
+}
+
+.tagline {
+  margin: 0 0 1rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  max-width: 22rem;
+}
+
+#lobby-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 18rem);
+}
+
+input, button {
+  font: inherit;
+  color: inherit;
+}
+
+#nickname {
+  padding: 0.85rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  text-align: center;
+  letter-spacing: 0.2em;
+}
+
+#nickname:focus-visible {
+  outline: 1px solid var(--self);
+  outline-offset: 1px;
+}
+
+#start, #restart {
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: 1px solid var(--self);
+  border-radius: 2px;
+  color: var(--self);
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  cursor: pointer;
+}
+
+#start:active, #restart:active { background: rgba(127, 212, 193, 0.12); }
+
+.error {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--enemy);
+  font-size: 0.8rem;
+}
+
+.result {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.35rem 1.5rem;
+  margin: 0.5rem 0 1rem;
+  font-size: 1.1rem;
+}
+
+.result dt { color: var(--dim); text-align: right; }
+.result dd { margin: 0; text-align: left; }
+
+/* --- Game frame -------------------------------------------------------- */
+
+#game {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(100%, 26rem);
+}
+
+#game[hidden] { display: none; }
+
+.hud-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+}
+
+.hud-status .spacer { flex: 1; }
+.hud-status .label { color: var(--dim); }
+
+#hp-bar {
+  display: block;
+  width: 5.5rem;
+  height: 0.55rem;
+  background: var(--line);
+  overflow: hidden;
+}
+
+#hp-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--hp);
+  transition: width 120ms linear;
+}
+
+#hp-fill.low { background: var(--hp-low); }
+
+#item { color: var(--item); }
+
+.state {
+  min-height: 1.1em;
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  text-align: center;
+}
+
+.state.hidden-bush { color: var(--bush); }
+.state.hidden-cabinet { color: var(--cabinet); }
+
+/* --- Board ------------------------------------------------------------- */
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(15, var(--cell));
+  grid-template-rows: repeat(15, var(--cell));
+  justify-content: center;
+  background: var(--floor);
+  border: 1px solid var(--line);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cell) * 0.72);
+  line-height: 1;
+  user-select: none;
+}
+
+.t-wall    { background: var(--wall); }
+.t-floor   { background: var(--floor); }
+.t-door    { color: var(--door); }
+.t-cabinet { color: var(--cabinet); }
+.t-bush    { color: var(--bush); background: rgba(63, 107, 70, 0.14); }
+
+.cell.has-item  { color: var(--item); }
+.cell.has-enemy { color: var(--enemy); }
+.cell.has-self  { color: var(--self); }
+
+/* --- Controls ---------------------------------------------------------- */
+
+#controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+#dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 3rem);
+  grid-template-rows: repeat(3, 2.6rem);
+  gap: 0.25rem;
+}
+
+.pad, .action {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pad:active, .action:active { background: #1d2426; border-color: var(--self); }
+
+.pad.up    { grid-area: 1 / 2; }
+.pad.left  { grid-area: 2 / 1; }
+.pad.down  { grid-area: 3 / 2; }
+.pad.right { grid-area: 2 / 3; }
+
+#actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 50%;
+}
+
+.action b { font-size: 1rem; }
+.action small { font-size: 0.6rem; color: var(--dim); }
+.action:disabled { opacity: 0.35; cursor: default; }
+.action:not(:disabled) { border-color: var(--self); }
+.action:not(:disabled) small { color: var(--self); }
+
+@media (min-width: 480px) {
+  :root { --cell: 1.6rem; }
+}

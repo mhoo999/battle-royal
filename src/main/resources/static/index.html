@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SURVIVE</title>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+
+<div id="lobby" class="overlay">
+  <h1 class="logo">SURVIVE</h1>
+  <p class="tagline">한 칸씩 움직이고, 보이는 것만으로 판단한다</p>
+  <form id="lobby-form" autocomplete="off">
+    <input id="nickname" name="nickname" maxlength="12" placeholder="ID" aria-label="아이디" required>
+    <button id="start" type="submit">START</button>
+  </form>
+  <p id="lobby-error" class="error" role="alert"></p>
+</div>
+
+<main id="game" hidden>
+  <header class="hud-bar">
+    <span id="score">SCORE 0</span>
+  </header>
+
+  <div id="board" role="img" aria-label="게임 화면"></div>
+
+  <section class="hud-bar hud-status">
+    <span class="label">HP</span>
+    <span id="hp-bar"><i id="hp-fill"></i></span>
+    <span id="hp-text">100</span>
+    <span class="spacer"></span>
+    <span class="label">ITEM</span>
+    <span id="item">-</span>
+  </section>
+
+  <p id="state" class="state"></p>
+
+  <section id="controls">
+    <div id="dpad">
+      <button class="pad up"    data-dir="UP"    aria-label="위">▲</button>
+      <button class="pad left"  data-dir="LEFT"  aria-label="왼쪽">◀</button>
+      <button class="pad down"  data-dir="DOWN"  aria-label="아래">▼</button>
+      <button class="pad right" data-dir="RIGHT" aria-label="오른쪽">▶</button>
+    </div>
+    <div id="actions">
+      <button id="btn-a" class="action" disabled><b>A</b><small>-</small></button>
+      <button id="btn-b" class="action" disabled><b>B</b><small>-</small></button>
+    </div>
+  </section>
+</main>
+
+<div id="dead" class="overlay" hidden>
+  <h2>GAME OVER</h2>
+  <dl class="result">
+    <dt>SCORE</dt><dd id="dead-score">0</dd>
+    <dt>KILLS</dt><dd id="dead-kills">0</dd>
+    <dt>TIME</dt><dd id="dead-time">0s</dd>
+  </dl>
+  <button id="restart" type="button">다시 시작</button>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
