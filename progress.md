@@ -31,9 +31,11 @@ None of it is written yet.
 - [x] Bush and cabinet visibility filtering
 - [x] `e2e/smoke-two-sockets.mjs` — dependency-free two-socket checks
 
-Verified: `./gradlew test` 78 passing; `node e2e/smoke-two-sockets.mjs` 8 consecutive
-clean runs with players meeting after 1–4 door transits. Two browser tabs confirmed
+Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
+clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
 movement replication and one-way bush concealment.
+
+Committed as `feat: V1 world, movement and real-time sync`.
 
 ## In Progress
 
@@ -77,6 +79,11 @@ Nothing. The tree is green.
 - **The world is always one connected component.** Restored once per tick rather than
   patched wherever a link is chosen — a fresh login opens an unlinked room, and
   discarding rooms can cut a chain in half.
+- **A saturated world opens a one-way passage instead of growing.** Four rooms of four
+  doors saturate at eight links, after which every new door was creating a room and the
+  cap stopped meaning anything. One-way links are only allowed to a room that already
+  aims a door back here; chaining them otherwise strands the player with no way home and
+  no doorway to arrive beside. `everyDoorHasAWayBack` guards it.
 - **Newly opened doors lean 30% toward occupied rooms.** The cap alone guarantees a
   meeting but averaged six transits; 30% brings it to about three. See
   `GameConstants.ENCOUNTER_BIAS_PERCENT` for the measurements.
@@ -102,6 +109,17 @@ Nothing. The tree is green.
   three read as the same pair repeating.
 - **Spring Boot 4.1.1 and Jackson 3** (`tools.jackson.*`). start.spring.io no longer
   serves 3.x and the starter names changed.
+
+## Testing Notes
+
+- Tests must be deterministic. `Room` has no `hashCode`, so iterating a `HashSet<Room>`
+  used identity-hash order and the encounter measurements swung between 10 and 16 door
+  transits for identical code. Room iteration is now insertion-ordered throughout; if a
+  number moves without a code change, suspect ordering first.
+- The socket suite asserts contracts, not preferences. Arrival is *beside a doorway*
+  (invariant); *which* wall is a preference the server may miss when the facing door is
+  taken. It also treats B walking into a bush as a correct outcome rather than a missing
+  update, because concealment removes B from A's view entirely.
 
 ## Tuning Candidates
 
