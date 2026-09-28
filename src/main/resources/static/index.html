@@ -24,10 +24,8 @@
 ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝</pre></h1>
   <p class="logo-rule" aria-hidden="true">━━━━━━━━  生 き 残 れ  ━━━━━━━━</p>
   <p class="tagline">
-    수학여행 버스에서 깜빡 잠이 들었다.<br>
-    눈을 떠 보니 기억은 흐릿하고, 여기는 지도에도 없는 외딴 섬.<br>
-    발밑엔 낯선 가방 하나. 안에 든 게 총일지 숟가락일지는 열어 봐야 안다.<br>
-    섬을 뒤져 살아남아라. <em>반 친구들도 같은 생각이다.</em>
+    낯선 곳에서 눈을 뜬 당신. 마지막 기억은 수학여행을 가던 버스였다.<br>
+    섬을 돌아다니며 필요한 물자를 확보하고, <em>생존하라</em>
   </p>
   <form id="lobby-form" autocomplete="off">
     <input id="nickname" name="nickname" maxlength="12" placeholder="이름" aria-label="이름" required>
@@ -70,8 +68,9 @@
 </main>
 
 <div id="dead" class="overlay" hidden>
-  <h2>탈락</h2>
-  <p class="tagline">섬에는 아직 누군가 살아 있다</p>
+  <h2>GAME OVER</h2>
+  <p id="dead-cause" class="cause"></p>
+  <p class="tagline">의 생존기록</p>
   <dl class="result">
     <dt>SCORE</dt><dd id="dead-score">0</dd>
     <dt>KILLS</dt><dd id="dead-kills">0</dd>

@@ -261,6 +261,8 @@ class CombatSimulationTest {
                 .findFirst().orElseThrow();
         assertEquals("t", died.playerId());
         assertEquals(killTick - 40, died.survivedTicks());
+        assertEquals("s", died.killerNickname(), "the victim learns who");
+        assertEquals(ItemKind.PISTOL, died.weapon(), "and with what");
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.example.battleroyal.ws;
 
 import com.example.battleroyal.game.core.GameEvent;
+import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.rule.GameConstants;
 import org.junit.jupiter.api.Test;
@@ -44,10 +45,11 @@ class OutboundTest {
     @Test
     void theResultReportsSurvivalInSeconds() {
         GameEvent.Died died = new GameEvent.Died("p1", 420, 2,
-                95L * GameConstants.TICKS_PER_SECOND + 7);
+                95L * GameConstants.TICKS_PER_SECOND + 7, "kang", ItemKind.PISTOL);
 
         assertEquals(
-                "{\"type\":\"YOU_DIED\",\"score\":420,\"kills\":2,\"survivedSeconds\":95}",
+                "{\"type\":\"YOU_DIED\",\"score\":420,\"kills\":2,\"survivedSeconds\":95,"
+                        + "\"killer\":\"kang\",\"weapon\":\"PISTOL\"}",
                 mapper.writeValueAsString(Outbound.youDied(died)));
     }
 

@@ -38,8 +38,15 @@ public sealed interface GameEvent {
     record Hit(String attackerId) implements GameEvent {
     }
 
-    /** To the player who died: the numbers for their result screen. */
-    record Died(String playerId, int score, int kills, long survivedTicks)
-            implements GameEvent {
+    /**
+     * To the player who died: the numbers for their result screen, and who killed them
+     * with what. The killer's identity and weapon are hidden state while you live;
+     * they are shown once you no longer can act on them in that life.
+     *
+     * @param killerNickname null when nobody killed them (a future disconnect timeout)
+     * @param weapon         null likewise
+     */
+    record Died(String playerId, int score, int kills, long survivedTicks,
+                String killerNickname, ItemKind weapon) implements GameEvent {
     }
 }

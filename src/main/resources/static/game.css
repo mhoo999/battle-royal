@@ -21,6 +21,8 @@
   --hp-low:    #e06c75;
   --shot:      #f0f0e0;
   --button:    #8b1e3f;   /* Game Boy A/B magenta */
+  --dpad:      #2a2d2f;   /* Game Boy cross, near black */
+  --dpad-hi:   #3a3f42;
   --button-hi: #b02a55;
 
   --cell: min(6.2vw, 2rem);
@@ -146,6 +148,15 @@ input, button {
   margin: 0;
   color: var(--enemy);
   font-size: 0.8rem;
+}
+
+.cause {
+  margin: 0;
+  max-width: 24rem;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  word-break: keep-all;
 }
 
 .result {
@@ -282,11 +293,23 @@ input, button {
   padding-top: 0.25rem;
 }
 
+/*
+ * Game Boy cross: one dark plus-shaped piece with no gaps between the arms, a dimpled
+ * centre, and small dim arrows. The centre is a pseudo-element occupying the middle
+ * grid cell, so the four arms read as a single part.
+ */
 #dpad {
   display: grid;
-  grid-template-columns: repeat(3, 3rem);
-  grid-template-rows: repeat(3, 2.6rem);
-  gap: 0.25rem;
+  grid-template-columns: repeat(3, 2.8rem);
+  grid-template-rows: repeat(3, 2.8rem);
+  gap: 0;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.5));
+}
+
+#dpad::before {
+  content: '';
+  grid-area: 2 / 2;
+  background: radial-gradient(circle, #1b1d1e 0 30%, var(--dpad) 32%);
 }
 
 .pad, .action {
@@ -298,12 +321,21 @@ input, button {
   touch-action: manipulation;
 }
 
-.pad:active { background: #1d2426; border-color: var(--self); }
+.pad:active { background: var(--dpad-hi); color: var(--ink); }
 
-.pad.up    { grid-area: 1 / 2; }
-.pad.left  { grid-area: 2 / 1; }
-.pad.down  { grid-area: 3 / 2; }
-.pad.right { grid-area: 2 / 3; }
+.pad {
+  background: var(--dpad);
+  border: none;
+  color: #5b6164;
+  font-size: 0.8rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pad.up    { grid-area: 1 / 2; border-radius: 0.3rem 0.3rem 0 0; }
+.pad.left  { grid-area: 2 / 1; border-radius: 0.3rem 0 0 0.3rem; }
+.pad.down  { grid-area: 3 / 2; border-radius: 0 0 0.3rem 0.3rem; }
+.pad.right { grid-area: 2 / 3; border-radius: 0 0.3rem 0.3rem 0; }
 
 /*
  * Game Boy layout: B low on the left, A high on the right, on a tilted pill. The

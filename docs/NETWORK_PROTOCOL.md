@@ -149,8 +149,13 @@ actionB   PICKUP | SWAP | DOOR | HIDE | UNHIDE | null
 ### `YOU_DIED`
 
 ```json
-{ "type": "YOU_DIED", "score": 1270, "kills": 3, "survivedSeconds": 412 }
+{ "type": "YOU_DIED", "score": 1270, "kills": 3, "survivedSeconds": 412,
+  "killer": "kang", "weapon": "PISTOL" }
 ```
+
+`killer`/`weapon`은 **사망자에게만** 간다. 살아 있는 동안 숨겨지는 정보(상대 무기)지만
+이 시점에 받는 사람은 이미 탈락했다. 처치자가 없는 사망(향후 끊김 타임아웃)이면 둘 다
+`null`. 문장은 클라가 만든다 — 서버는 무기 코드만 보낸다.
 
 ---
 

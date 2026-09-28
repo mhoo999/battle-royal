@@ -1,6 +1,7 @@
 package com.example.battleroyal.ws;
 
 import com.example.battleroyal.game.core.GameEvent;
+import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.rule.GameConstants;
 
@@ -29,8 +30,12 @@ public final class Outbound {
     public record Hit(String type, String event) {
     }
 
-    /** {@code {"type":"YOU_DIED","score":..,"kills":..,"survivedSeconds":..}} */
-    public record YouDied(String type, int score, int kills, long survivedSeconds) {
+    /**
+     * {@code {"type":"YOU_DIED","score":..,"kills":..,"survivedSeconds":..,
+     * "killer":"kang","weapon":"PISTOL"}}. Only ever sent to the player who died.
+     */
+    public record YouDied(String type, int score, int kills, long survivedSeconds,
+                          String killer, ItemKind weapon) {
     }
 
     public static Shot shot(GameEvent.Shot shot) {
@@ -50,7 +55,8 @@ public final class Outbound {
 
     public static YouDied youDied(GameEvent.Died died) {
         return new YouDied("YOU_DIED", died.score(), died.kills(),
-                died.survivedTicks() / GameConstants.TICKS_PER_SECOND);
+                died.survivedTicks() / GameConstants.TICKS_PER_SECOND,
+                died.killerNickname(), died.weapon());
     }
 
     private static int[] coords(Pos pos) {

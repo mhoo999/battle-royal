@@ -47,6 +47,10 @@ toggle cooldown. Not started.
       dropping now abandons the reload and its A lock
 - [x] Melee `SWING` event (room-wide, from/to) drawn as an arc for 150ms
 - [x] Hold-B looting: `RELEASE_B` cancels; `self.lootMsLeft` drives a gauge
+- [x] Death screen names the killer and weapon ("'kang'의 권총에 맞고 당신은
+      사망했다."); `YOU_DIED` carries `killer`/`weapon`, victim only; per-weapon verb
+      table with a default so new weapons need only a label
+- [x] Game Boy cross D-pad: one dark plus, dimpled centre, dim arrows
 - [x] Lobby: block-letter ASCII title in `--self` with a red offset shadow, 生き残れ
       rule, school-trip story copy; scales with viewport (287px wide at 375px)
 - [x] BATTLE ROYALE title and film theme copy, "탈락" overlay, "처음으로" returns to
@@ -105,6 +109,12 @@ Nothing. The tree is green.
   needs a restart.
 
 ## Recent Decisions
+
+- **The victim learns who killed them and with what.** Hidden while alive; told only
+  to the dead player. Accepted that a restart then knows that name carries that
+  weapon. Words stay on the client (`DEATH_VERB`, default `에 당해`).
+- **A/B stay as they are.** Checked against the original Game Boy: A upper right, B
+  lower left.
 
 - **Looting lasts only while B is held.** User's call. `RELEASE_B` is a new inbound
   intent, not state. Doors and cabinets act on press and ignore release.

@@ -200,7 +200,7 @@ public final class RoomSimulator {
         if (victim.takeDamage(damage)) {
             attacker.addScore(GameConstants.SCORE_KILL);
             attacker.addKill();
-            die(room, victim, nowTick);
+            die(room, victim, attacker, nowTick);
         }
     }
 
@@ -208,7 +208,7 @@ public final class RoomSimulator {
      * The body stays in the room, marked dead, until the registry reaps it after the
      * tick's broadcast; that way the victim's last snapshot shows them at zero.
      */
-    private static void die(Room room, Player victim, long nowTick) {
+    private static void die(Room room, Player victim, Player killer, long nowTick) {
         victim.setInCabinet(false);
         victim.cancelLoot();
         victim.clearBufferedMove();
@@ -220,7 +220,8 @@ public final class RoomSimulator {
             }
         }
         room.emit(new GameEvent.Died(victim.id(), victim.score(), victim.kills(),
-                nowTick - victim.joinedTick()));
+                nowTick - victim.joinedTick(),
+                killer.nickname(), killer.heldItem() == null ? null : killer.heldItem().kind()));
     }
 
     /**
