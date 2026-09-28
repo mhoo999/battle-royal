@@ -63,21 +63,43 @@ body {
 
 .overlay[hidden] { display: none; }
 
+/*
+ * The title is block-letter art, so it scales with the viewport rather than wrapping:
+ * 50 columns must fit a phone. The red offset shadow reads as a blood stain.
+ */
 .logo {
   margin: 0;
-  font-size: clamp(1.8rem, 10vw, 3rem);
-  line-height: 1.15;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
+}
+
+.logo pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: min(2.8vw, 11px);
+  line-height: 1.05;
+  color: var(--self);
+  text-shadow: 0.15em 0.15em 0 rgba(224, 108, 117, 0.55), 0 0 0.8em rgba(127, 212, 193, 0.35);
+}
+
+.logo-rule {
+  margin: -0.25rem 0 0;
   color: var(--enemy);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
 }
 
 .tagline {
   margin: 0 0 1rem;
   color: var(--dim);
   font-size: 0.8rem;
-  line-height: 1.6;
-  max-width: 22rem;
+  line-height: 1.7;
+  max-width: 34rem;
+  word-break: keep-all;
+}
+
+.tagline em {
+  font-style: normal;
+  color: var(--enemy);
 }
 
 #lobby-form {

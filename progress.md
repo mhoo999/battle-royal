@@ -47,6 +47,8 @@ toggle cooldown. Not started.
       dropping now abandons the reload and its A lock
 - [x] Melee `SWING` event (room-wide, from/to) drawn as an arc for 150ms
 - [x] Hold-B looting: `RELEASE_B` cancels; `self.lootMsLeft` drives a gauge
+- [x] Lobby: block-letter ASCII title in `--self` with a red offset shadow, 生き残れ
+      rule, school-trip story copy; scales with viewport (287px wide at 375px)
 - [x] BATTLE ROYALE title and film theme copy, "탈락" overlay, "처음으로" returns to
       the lobby with the last name prefilled, Game Boy A/B layout
 
