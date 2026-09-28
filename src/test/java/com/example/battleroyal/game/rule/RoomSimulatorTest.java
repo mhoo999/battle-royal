@@ -91,18 +91,6 @@ class RoomSimulatorTest {
                 "an input the player has long since abandoned must not move them");
     }
 
-    @Test
-    void aPlayerInACabinetDoesNotMove() {
-        Room room = room();
-        Player player = join(room, OPEN);
-        player.setInCabinet(true);
-
-        RoomSimulator.apply(room, new Command.Move("p1", Direction.RIGHT), 0);
-        RoomSimulator.tick(room, GameConstants.MOVE_COOLDOWN_TICKS);
-
-        assertEquals(OPEN, player.pos());
-    }
-
     // --- Doors ------------------------------------------------------------
 
     @Test

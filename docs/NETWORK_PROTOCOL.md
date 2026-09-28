@@ -82,7 +82,7 @@ GET /ws/game?token=<uuid>
     "hp": 80, "item": "MEDKIT", "ammo": null,
     "concealment": "CABINET", "lootMsLeft": null, "invulnerable": false,
     "score": 420, "kills": 1,
-    "actionA": "HEAL", "actionB": "UNHIDE"
+    "actionA": "HEAL", "actionB": null
   },
   "players": [
     { "id": "p2", "x": 15, "y": 5, "direction": "LEFT", "alive": true }
@@ -106,8 +106,10 @@ GET /ws/game?token=<uuid>
 
 ```
 actionA   ATTACK | FIRE | RELOAD | HEAL | null
-actionB   PICKUP | SWAP | DOOR | HIDE | UNHIDE | null
+actionB   PICKUP | SWAP | DOOR | null
 ```
+
+캐비닛은 `MOVE`로 들어가고 나온다. B 토큰이 없다.
 
 서버는 의미를 정하고 클라는 단어를 정한다. 클라가 자체적으로 상황을 판단해 어떤
 행동이 가능한지 계산하지 않는다 — 그러면 버튼 라벨과 실제 동작이 갈릴 수 있다.
@@ -120,8 +122,6 @@ actionB   PICKUP | SWAP | DOOR | HIDE | UNHIDE | null
 { "type": "EVENT", "event": "DEAD",        "playerId": "p2" }
 { "type": "EVENT", "event": "PICKUP",      "itemId": "i-31" }
 { "type": "EVENT", "event": "ROOM_CHANGE", "roomId": "room-08" }
-{ "type": "EVENT", "event": "HIDE" }
-{ "type": "EVENT", "event": "UNHIDE" }
 ```
 
 `SHOT`의 `path`는 **발사자 타일부터** 시작한다. 부시 안에서 쏘면 이 때문에 위치가
@@ -140,7 +140,7 @@ actionB   PICKUP | SWAP | DOOR | HIDE | UNHIDE | null
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
 
-이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE`·`HIDE`·`UNHIDE` 이벤트는
+이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE` 이벤트는
 아직 보내지 않는다 — 스냅샷 변화로 충분해서 필요해질 때 추가한다. `DEAD` 이벤트는 아직 없다 —
 다른 플레이어는 다음 스냅샷에서 시체가 사라지는 것으로 안다.
 
@@ -179,6 +179,5 @@ T가 부시 안 AND 그 외             -> 완전 제외
 타인의 `hp`, `item`, `ammo`, `cooldown`은 **어떤 경우에도 전송하지 않는다.**
 
 캐비닛 점유 여부를 노출하지 않는다 — 캐비닛 타일은 비어 있을 때와 동일하게 보낸다.
-
 스냅샷에 새 필드를 추가할 때마다 이 문서로 돌아와 규칙을 확인한다. 정보 누출은
 가장 테스트하기 쉬우면서 가장 치명적인 버그다.

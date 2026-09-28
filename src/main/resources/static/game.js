@@ -28,7 +28,7 @@ const ITEM_LABEL = { KNIFE: '칼', PISTOL: '권총', MEDKIT: '메디킷', PAN: '
 const DEATH_VERB = { PISTOL: '에 맞고', KNIFE: '에 찔려', PAN: '에 얻어맞고' };
 const DEATH_VERB_DEFAULT = '에 당해';
 
-const B_LABEL = { PICKUP: '줍기', SWAP: '교체', DOOR: '이동', HIDE: '숨기', UNHIDE: '나오기' };
+const B_LABEL = { PICKUP: '줍기', SWAP: '교체', DOOR: '이동' };
 
 const KEY_DIR = {
   ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
@@ -57,7 +57,7 @@ const el = (id) => document.getElementById(id);
 const ui = {
   lobby: el('lobby'), lobbyForm: el('lobby-form'), nickname: el('nickname'),
   lobbyError: el('lobby-error'),
-  game: el('game'), score: el('score'), board: el('board'),
+  game: el('game'), hudName: el('hud-name'), score: el('score'), board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
   btnA: el('btn-a'), btnB: el('btn-b'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
@@ -116,10 +116,13 @@ function paint(snapshot) {
   }
 
   const self = snapshot.self;
-  if (self.concealment !== 'CABINET') {
-    const cell = cells[self.y * GRID + self.x];
-    cell.classList.add('has-self');
-    cell.textContent = SELF_GLYPH[self.direction] || '△';
+  const selfCell = cells[self.y * GRID + self.x];
+  if (self.concealment === 'CABINET') {
+    // Keep the ■ so the board reads the same as everyone else's; just mark it yours.
+    selfCell.classList.add('self-cabinet');
+  } else {
+    selfCell.classList.add('has-self');
+    selfCell.textContent = SELF_GLYPH[self.direction] || '△';
   }
 
   paintFlourishes();
@@ -191,7 +194,7 @@ function paintHud(snapshot) {
 
   ui.state.className = 'state';
   if (self.concealment === 'CABINET') {
-    ui.state.textContent = '캐비닛에 숨어 있음 — 이동·공격 불가';
+    ui.state.textContent = '캐비닛에 숨어 있음 — 옆이나 뒤로 움직이면 나감';
     ui.state.classList.add('hidden-cabinet');
   } else if (self.lootMsLeft !== null) {
     ui.state.textContent = '줍는 중 — B를 떼거나 움직이면 취소';
@@ -294,6 +297,7 @@ async function beginSession(typed) {
     }
     const session = await response.json();
     nickname = session.nickname;
+    ui.hudName.textContent = nickname;
     startedAt = Date.now();
     lastSnapshot = null;
     lastHp = null;
@@ -364,8 +368,8 @@ function wireInput() {
     holdToRepeat(pad, () => move(pad.dataset.dir));
   }
   ui.btnA.addEventListener('click', actionA);
-  // B is held, not clicked: a loot lasts only while it stays down. Doors and cabinets
-  // act on the press and ignore the release.
+  // B is held, not clicked: a loot lasts only while it stays down. Doors act on the
+  // press and ignore the release.
   let bDown = false;
   const pressB = () => { if (!bDown) { bDown = true; actionB(); } };
   const letGoB = () => { if (bDown) { bDown = false; releaseB(); } };

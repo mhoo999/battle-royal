@@ -12,7 +12,8 @@
   --floor:     #101617;
   --wall:      #2b3639;
   --door:      #d8a657;
-  --cabinet:   #7c6f5a;
+  --cabinet:   #d4a86a;
+  --cabinet-bg: #4a3522;   /* wood, so a cabinet never reads as floor or wall */
   --bush:      #3f6b46;
   --self:      #7fd4c1;
   --enemy:     #e06c75;
@@ -203,6 +204,7 @@ input, button {
 .hud-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0.65rem;
   background: var(--panel);
@@ -246,6 +248,15 @@ input, button {
 .state.hidden-bush { color: var(--bush); }
 .state.hidden-cabinet { color: var(--cabinet); }
 
+#hud-name {
+  color: var(--self);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#score { flex-shrink: 0; }
+
 /* --- Board ------------------------------------------------------------- */
 
 #board {
@@ -269,12 +280,14 @@ input, button {
 .t-wall    { background: var(--wall); }
 .t-floor   { background: var(--floor); }
 .t-door    { color: var(--door); }
-.t-cabinet { color: var(--cabinet); }
+.t-cabinet { color: var(--cabinet); background: var(--cabinet-bg); }
 .t-bush    { color: var(--bush); background: rgba(63, 107, 70, 0.14); }
 
 .cell.has-item  { color: var(--item); }
 .cell.has-enemy { color: var(--enemy); }
 .cell.has-self  { color: var(--self); }
+/* Your own cabinet, on your screen only; others see a cabinet like any other. */
+.cell.self-cabinet { color: var(--self); outline: 1px solid var(--self); outline-offset: -2px; }
 
 /* A shot is a 100ms flourish over the tiles it crossed, not a moving entity. */
 .cell.shot  { color: var(--shot); }

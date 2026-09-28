@@ -45,13 +45,13 @@ public final class ActionResolver {
     /**
      * B follows the surroundings, most specific first.
      *
-     * <p>Cabinets arrive with Step 6. Bushes never appear here, because you walk into a
-     * bush rather than pressing anything. An item is picked up from the tile you stand
-     * on, not beside it.
+     * <p>Cabinets and bushes never appear here: you walk into them and out again rather
+     * than pressing anything, and a cabinet occupant has nothing to press B for. An item
+     * is picked up from the tile you stand on, not beside it.
      */
     public static ActionB actionB(Room room, Player player) {
         if (player.inCabinet()) {
-            return ActionB.UNHIDE;
+            return null;
         }
         if (doorSideFor(room, player) != null) {
             return ActionB.DOOR;

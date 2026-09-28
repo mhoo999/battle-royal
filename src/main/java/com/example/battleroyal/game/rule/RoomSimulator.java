@@ -75,9 +75,6 @@ public final class RoomSimulator {
             }
             finishReload(room, player, nowTick);
             finishLoot(room, player, nowTick);
-            if (player.inCabinet()) {
-                continue;
-            }
             if (!MovementRules.ready(nowTick, player.nextMoveTick())) {
                 continue;
             }
@@ -89,9 +86,6 @@ public final class RoomSimulator {
     }
 
     private static void move(Room room, Player player, Direction dir, long nowTick) {
-        if (player.inCabinet()) {
-            return;
-        }
         if (!MovementRules.ready(nowTick, player.nextMoveTick())) {
             // Hold it rather than discard it. Dropping mid-cooldown input is what made
             // a held direction stutter whenever the client drifted out of phase.
@@ -102,6 +96,19 @@ public final class RoomSimulator {
     }
 
     private static void step(Room room, Player player, Direction dir, long nowTick) {
+        if (player.inCabinet()) {
+            player.setNextMoveTick(
+                    MovementRules.nextReadyTick(nowTick, GameConstants.MOVE_COOLDOWN_TICKS));
+            leaveCabinet(room, player, dir, nowTick);
+            return;
+        }
+        Pos target = player.pos().step(dir);
+        if (room.map().cabinets().contains(target)) {
+            player.setNextMoveTick(
+                    MovementRules.nextReadyTick(nowTick, GameConstants.MOVE_COOLDOWN_TICKS));
+            enterCabinet(room, player, dir, target, nowTick);
+            return;
+        }
         MovementRules.Outcome outcome =
                 MovementRules.resolve(room.map(), player.pos(), dir, room::occupied);
 
@@ -120,6 +127,54 @@ public final class RoomSimulator {
         if (outcome.moved() || turned) {
             room.markDirty();
         }
+    }
+
+    // --- Cabinets --------------------------------------------------------
+
+    /**
+     * Walking into an empty cabinet hides you in it. The occupant stands on the cabinet
+     * tile, which is what {@link CombatRules} relies on, and keeps facing the way they
+     * walked in. An occupied cabinet blocks like any other player: walking into it is
+     * how you find out someone is there.
+     */
+    private static void enterCabinet(Room room, Player player, Direction dir, Pos cabinet,
+                                     long nowTick) {
+        boolean turned = player.facing() != dir;
+        player.face(dir);
+        if (MovementRules.ready(nowTick, player.nextCabinetToggleTick())
+                && !room.occupied(cabinet)) {
+            player.moveTo(cabinet);
+            player.setInCabinet(true);
+            player.cancelLoot();
+            player.setNextCabinetToggleTick(
+                    nowTick + GameConstants.CABINET_TOGGLE_COOLDOWN_TICKS);
+            room.markDirty();
+        } else if (turned) {
+            room.markDirty();
+        }
+    }
+
+    /**
+     * Any direction but straight on walks back out, onto a free tile. Straight on is the
+     * way you came in, so refusing it means a cabinet cannot be walked through, and a
+     * direction key still held from walking in keeps you inside rather than carrying you
+     * out the far side. Facing is left alone while inside so that rule has something to
+     * go by; nobody sees an occupant's facing anyway.
+     */
+    private static void leaveCabinet(Room room, Player player, Direction dir, long nowTick) {
+        if (dir == player.facing()
+                || !MovementRules.ready(nowTick, player.nextCabinetToggleTick())) {
+            return;
+        }
+        Pos target = player.pos().step(dir);
+        if (!room.map().walkable(target) || room.occupied(target)) {
+            return;
+        }
+        player.face(dir);
+        player.moveTo(target);
+        player.setInCabinet(false);
+        player.setNextCabinetToggleTick(nowTick + GameConstants.CABINET_TOGGLE_COOLDOWN_TICKS);
+        room.markDirty();
     }
 
     // --- A: the held item ------------------------------------------------
@@ -265,9 +320,6 @@ public final class RoomSimulator {
                 return side == null ? null : new DoorTransit(player.id(), side);
             }
             case PICKUP, SWAP -> startLoot(room, player, nowTick);
-            // Cabinets arrive in Step 6.
-            case HIDE, UNHIDE -> {
-            }
         }
         return null;
     }

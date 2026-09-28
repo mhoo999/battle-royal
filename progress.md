@@ -6,8 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Step 6 — cabinets: B `HIDE` when beside an empty cabinet, `UNHIDE` inside, 8-tick
-toggle cooldown. Not started.
+Step 6 — cabinets, walked into and out of (no B), 8-tick toggle cooldown.
+Implemented, tests written; see In Progress for verification state.
 
 ## Completed
 
@@ -81,13 +81,18 @@ errors.
 
 ## In Progress
 
-Nothing. The tree is green.
+Step 6 cabinets, code complete: `RoomSimulator.enterCabinet`/`leaveCabinet` hooked
+into `step`, `ActionB` reduced to PICKUP/SWAP/DOOR, client outlines your own cabinet,
+cabinets drawn on a wood background, player name in the HUD bar. `CabinetRulesTest`
+(9) added; `RoomSimulatorTest.aPlayerInACabinetDoesNotMove` removed because the
+occupant may now walk out.
+Not yet verified: `./gradlew test`, smoke script, browser walk, commit.
 
 ## Next
 
-1. Step 6: cabinets (HIDE/UNHIDE, 8-tick toggle). `CombatRules` already assumes the
-   occupant's `pos` is the cabinet tile — keep that convention. A cabinet occupant
-   who dies drops beside it (already handled).
+1. Finish Step 6 verification: `./gradlew test`, `node e2e/smoke-two-sockets.mjs`,
+   two-tab browser walk (hide → vanishes for the other; knife the cabinet hits; exit),
+   then commit.
 2. Step 7: 15s disconnect grace, survival score, room-entry score (+10, first visit,
    30s cap), result persistence, ranking.
 3. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
@@ -109,6 +114,14 @@ Nothing. The tree is green.
   needs a restart.
 
 ## Recent Decisions
+
+- **Cabinets are walked into, not pressed.** User's call, replacing B HIDE/UNHIDE.
+  One occupant; an occupied cabinet blocks like a player, so bumping into it is how
+  you learn someone is inside. Accepted: you only learn by trying.
+- **Leave by moving any way but straight on; no walking through.** User chose
+  direction-key exits. Refusing the entry direction is what stops a held key from
+  carrying you out the far side 400ms later, since the server cannot tell held from
+  pressed. Facing is frozen inside so the rule has something to go by.
 
 - **The victim learns who killed them and with what.** Hidden while alive; told only
   to the dead player. Accepted that a restart then knows that name carries that

@@ -97,8 +97,9 @@ stays on the floor for anyone else to take. **Never destroy the previous item.**
 
 ### Concealment
 
-Cabinets stop bullets, hide the occupant, and freeze them — no moving, no attacking,
-Medkit only. They can be attacked blind.
+Cabinets stop bullets, hide the occupant, and freeze them — no attacking, Medkit only,
+and the only move is out, never straight through. Walk into an empty one to hide; an
+occupied one blocks like a player. They can be attacked blind.
 
 Bushes conceal but do not stop bullets. You can move and attack from inside one.
 
@@ -109,8 +110,8 @@ Bushes conceal but do not stop bullets. You can move and attack from inside one.
 **A** performs the equipped item's primary action: Knife attacks, Pistol fires or
 reloads when empty, Medkit heals.
 
-**B** performs the contextual interaction: pick up, swap, take a door, hide in a
-cabinet, leave one. Bushes are walked into, never pressed.
+**B** performs the contextual interaction: pick up, swap, take a door. Bushes and
+cabinets are walked into and out of, never pressed.
 
 The server resolves both and sends the answer in the snapshot as a token
 (`ATTACK`, `FIRE`, `PICKUP`, …). The client maps tokens to words. The client never
