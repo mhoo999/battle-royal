@@ -40,6 +40,9 @@ public final class Player {
     private long reloadDoneTick;
 
     private final Set<String> pickedItemIds = new HashSet<>();
+    private final Set<String> visitedRoomIds = new HashSet<>();
+    private long nextRoomScoreTick;
+    private int survivalTicks;
 
     private final long joinedTick;
     private int score;
@@ -265,6 +268,32 @@ public final class Player {
      */
     public boolean firstPickup(String itemId) {
         return pickedItemIds.add(itemId);
+    }
+
+    /**
+     * Records that this player has been in this room.
+     *
+     * @return true the first time only
+     */
+    public boolean visitRoom(String roomId) {
+        return visitedRoomIds.add(roomId);
+    }
+
+    public long nextRoomScoreTick() {
+        return nextRoomScoreTick;
+    }
+
+    public void setNextRoomScoreTick(long tick) {
+        this.nextRoomScoreTick = tick;
+    }
+
+    /** Ticks counted towards the next survival point. */
+    public int survivalTicks() {
+        return survivalTicks;
+    }
+
+    public void setSurvivalTicks(int ticks) {
+        this.survivalTicks = ticks;
     }
 
     public long joinedTick() {

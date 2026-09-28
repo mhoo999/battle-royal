@@ -6,8 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Step 6 — cabinets, walked into and out of (no B), 8-tick toggle cooldown.
-Implemented, tests written; see In Progress for verification state.
+Step 7 — disconnect grace, survival and room-entry score, result persistence,
+ranking.
 
 ## Completed
 
@@ -55,6 +55,12 @@ Implemented, tests written; see In Progress for verification state.
       rule, school-trip story copy; scales with viewport (287px wide at 375px)
 - [x] BATTLE ROYALE title and film theme copy, "탈락" overlay, "처음으로" returns to
       the lobby with the last name prefilled, Game Boy A/B layout
+- [x] Step 6 cabinets: walked into (empty only) and out of (any way but straight on),
+      8-tick toggle, no B; wood-background tile, own cabinet outlined
+- [x] HUD bar: name | survival clock (client-side, centred) | score
+
+Step 6 and HUD: `./gradlew test` green, smoke all passed, user verified cabinets, name
+and clock in the browser.
 
 Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
 clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
@@ -81,21 +87,13 @@ errors.
 
 ## In Progress
 
-Step 6 cabinets, code complete: `RoomSimulator.enterCabinet`/`leaveCabinet` hooked
-into `step`, `ActionB` reduced to PICKUP/SWAP/DOOR, client outlines your own cabinet,
-cabinets drawn on a wood background, player name in the HUD bar. `CabinetRulesTest`
-(9) added; `RoomSimulatorTest.aPlayerInACabinetDoesNotMove` removed because the
-occupant may now walk out.
-Not yet verified: `./gradlew test`, smoke script, browser walk, commit.
+Step 7, not started.
 
 ## Next
 
-1. Finish Step 6 verification: `./gradlew test`, `node e2e/smoke-two-sockets.mjs`,
-   two-tab browser walk (hide → vanishes for the other; knife the cabinet hits; exit),
-   then commit.
-2. Step 7: 15s disconnect grace, survival score, room-entry score (+10, first visit,
+1. Step 7: 15s disconnect grace, survival score, room-entry score (+10, first visit,
    30s cap), result persistence, ranking.
-3. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
+2. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
    that do not exist. Either write them or change the skill to point at the smoke
    script plus the manual two-tab walk.
 

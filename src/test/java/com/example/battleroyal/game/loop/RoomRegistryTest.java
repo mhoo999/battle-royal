@@ -100,6 +100,39 @@ class RoomRegistryTest {
         }
     }
 
+    // --- Room-entry score ------------------------------------------------
+
+    @Test
+    void theStartingRoomPaysNothingButTheFirstDoorPaysTen() {
+        RoomRegistry registry = withPlayers("a");
+        Room start = registry.roomOf("a");
+        assertEquals(0, registry.player("a").score());
+
+        takeDoor(registry, "a", Direction.RIGHT, 0);
+        assertNotSame(start, registry.roomOf("a"));
+        assertEquals(GameConstants.SCORE_ROOM_ENTER, registry.player("a").score());
+    }
+
+    @Test
+    void walkingBackToTheStartingRoomPaysNothing() {
+        RoomRegistry registry = withPlayers("a");
+        Room start = registry.roomOf("a");
+        takeDoor(registry, "a", Direction.RIGHT, 0);
+        settle(registry);
+
+        Room here = registry.roomOf("a");
+        Direction back = null;
+        for (Direction side : Direction.values()) {
+            if (here.linkedRoom(side) == start) {
+                back = side;
+            }
+        }
+        takeDoor(registry, "a", back, 10L * GameConstants.ROOM_SCORE_RATE_CAP_TICKS);
+
+        assertSame(start, registry.roomOf("a"));
+        assertEquals(GameConstants.SCORE_ROOM_ENTER, registry.player("a").score());
+    }
+
     // --- The room cap -----------------------------------------------------
 
     @Test

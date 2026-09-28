@@ -75,6 +75,9 @@ public final class RoomSimulator {
             }
             finishReload(room, player, nowTick);
             finishLoot(room, player, nowTick);
+            if (ScoreRules.accrueSurvival(player)) {
+                room.markDirty();
+            }
             if (!MovementRules.ready(nowTick, player.nextMoveTick())) {
                 continue;
             }

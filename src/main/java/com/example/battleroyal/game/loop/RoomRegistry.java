@@ -11,6 +11,7 @@ import com.example.battleroyal.game.map.MapTemplates;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemSpawns;
 import com.example.battleroyal.game.rule.RoomSimulator;
+import com.example.battleroyal.game.rule.ScoreRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -332,6 +333,8 @@ public class RoomRegistry {
 
         Player player = new Player(request.playerId(), request.nickname(),
                 spawn, GameConstants.MAX_HP, nowTick);
+        // Where you start is not somewhere you travelled to.
+        player.visitRoom(room.id());
         place(player, room);
         log.info("{} joined {} ({} rooms, cap {})",
                 request.playerId(), room.id(), rooms.size(), roomCap());
@@ -384,6 +387,7 @@ public class RoomRegistry {
         player.cancelLoot();
         player.setNextMoveTick(nowTick + GameConstants.MOVE_COOLDOWN_TICKS);
         place(player, target);
+        ScoreRules.enterRoom(player, target.id(), nowTick);
     }
 
     /**
