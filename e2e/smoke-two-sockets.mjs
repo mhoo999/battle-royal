@@ -1,7 +1,11 @@
 /*
  * Server-side checks for the world contract: separate arrival rooms, doors that lead
- * somewhere stable, replication between players who share a room, and a server that
- * ignores anything the client asserts about itself.
+ * somewhere stable, replication between players who share a room, item pickup, combat
+ * events and who receives them, and a server that ignores anything the client asserts
+ * about itself.
+ *
+ * Items spawn at random, so the pickup and combat checks run only when the room
+ * happens to offer something. They print SKIP rather than PASS when it does not.
  *
  * Uses Node's built-in WebSocket (Node 18+), so it runs with no dependencies. The
  * browser-level suite lives in two-player.spec.ts; this one isolates the server.
@@ -19,6 +23,12 @@ const WALKABLE = new Set(['.', '+', 'b']);
 const MOVE_COOLDOWN_MS = 200;
 
 let failures = 0;
+
+const WEAPONS = new Set(['KNIFE', 'PISTOL', 'PAN']);
+
+function skip(label, why) {
+  console.log(`SKIP  ${label}  ${why}`);
+}
 
 function check(ok, label, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  ' + detail : ''}`);
@@ -38,9 +48,11 @@ async function openSession(nickname) {
 
   const socket = new WebSocket(`${WS}?token=${encodeURIComponent(session.token)}`);
   let latest = null;
+  const events = [];
   socket.addEventListener('message', (event) => {
     const message = JSON.parse(event.data);
     if (message.type === 'SNAPSHOT') latest = message;
+    else events.push(message);
   });
   await new Promise((resolve, reject) => {
     socket.addEventListener('open', resolve, { once: true });
@@ -51,6 +63,7 @@ async function openSession(nickname) {
     session,
     socket,
     latest: () => latest,
+    events,
     send: (message) => socket.send(JSON.stringify(message)),
   };
   await until(player, (s) => s.self, 'first snapshot');
@@ -151,6 +164,32 @@ async function takeDoor(player, side) {
   }
 }
 
+/** Walks onto an item and presses B. Resolves to the snapshot once it is in hand. */
+async function pickUp(player, item) {
+  if (!(await walkTo(player, item))) return null;
+  player.send({ type: 'ACTION_B' });
+  try {
+    return await until(player, (s) => !s.items.some((i) => i.id === item.id), 'pickup', 1500);
+  } catch {
+    return null;
+  }
+}
+
+/** Stands beside a tile and turns to face it; stepping into an occupied tile only turns. */
+async function faceFromBeside(player, target) {
+  for (const [dir, dx, dy] of [['RIGHT', -1, 0], ['LEFT', 1, 0], ['DOWN', 0, -1], ['UP', 0, 1]]) {
+    const spot = { x: target.x + dx, y: target.y + dy };
+    const row = player.latest().terrain[spot.y];
+    if (!row || !WALKABLE.has(row[spot.x])) continue;
+    if (await walkTo(player, spot)) {
+      player.send({ type: 'MOVE', dir });
+      await sleep(MOVE_COOLDOWN_MS);
+      return player.latest().self.direction === dir;
+    }
+  }
+  return false;
+}
+
 // --- Checks --------------------------------------------------------------
 
 async function main() {
@@ -165,6 +204,21 @@ async function main() {
     `${aStart.roomId} vs ${bStart.roomId}`);
   check(aStart.players.length === 0 && bStart.players.length === 0,
     'a new arrival sees nobody');
+
+  // Items: B picks up whatever its starting room offers.
+  const offered = b.latest().items[0];
+  if (!offered) {
+    skip('B picks up an item', 'every spawn in the starting room rolled empty');
+  } else {
+    const scoreBefore = b.latest().self.score;
+    const after = await pickUp(b, offered);
+    check(after !== null && after.self.item === offered.kind,
+      'B picks up the item it stands on', `${offered.kind} ${offered.id}`);
+    if (after) {
+      check(after.self.score === scoreBefore + 5, 'a first pickup scores +5',
+        `${scoreBefore} -> ${after.self.score}`);
+    }
+  }
 
   // Doors lead somewhere, and back again.
   const origin = a.latest().roomId;
@@ -240,6 +294,11 @@ async function main() {
     }
   }
 
+  // Combat: A arms itself from whatever the shared room offers and strikes B.
+  if (met) {
+    await combat(a, b);
+  }
+
   // Server authority: forged frames must change nothing.
   const hpBefore = a.latest().self.hp;
   const posBefore = { x: a.latest().self.x, y: a.latest().self.y };
@@ -266,6 +325,66 @@ async function main() {
   b.socket.close();
   console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);
   process.exit(failures === 0 ? 0 : 1);
+}
+
+async function combat(a, b) {
+  const label = 'A strikes B';
+  let armed = WEAPONS.has(a.latest().self.item);
+  if (!armed) {
+    const weapon = a.latest().items.find((i) => WEAPONS.has(i.kind));
+    if (!weapon) {
+      skip(label, 'no weapon in the room they met in');
+      return;
+    }
+    armed = (await pickUp(a, weapon)) !== null && WEAPONS.has(a.latest().self.item);
+    if (!armed) {
+      const self = a.latest().self;
+      skip(label, `could not take the ${weapon.kind} at (${weapon.x},${weapon.y}); ` +
+        `A at (${self.x},${self.y}), B offers ${self.actionB}`);
+      return;
+    }
+  }
+
+  const bAt = { x: b.latest().self.x, y: b.latest().self.y };
+  if (!(await faceFromBeside(a, bAt))) {
+    skip(label, `could not get beside B at (${bAt.x},${bAt.y})`);
+    return;
+  }
+
+  const weapon = a.latest().self.item;
+  const hpBefore = b.latest().self.hp;
+  a.events.length = 0;
+  b.events.length = 0;
+  a.send({ type: 'ACTION_A' });
+  try {
+    await until(b, (s) => s.self.hp < hpBefore, 'B to lose hp', 1500);
+  } catch {
+    check(false, `${label} with ${weapon}`, `B hp stayed ${hpBefore}`);
+    return;
+  }
+  await sleep(100);
+  check(true, `${label} with ${weapon}`, `hp ${hpBefore} -> ${b.latest().self.hp}`);
+
+  const hit = a.events.find((e) => e.event === 'HIT');
+  check(hit !== undefined, 'the attacker is told it hit');
+  if (hit) {
+    check(JSON.stringify(Object.keys(hit).sort()) === JSON.stringify(['event', 'type']),
+      'HIT carries nothing but the fact', JSON.stringify(hit));
+  }
+  check(!b.events.some((e) => e.event === 'HIT'), 'the victim is not sent the HIT');
+
+  const aShot = a.events.some((e) => e.event === 'SHOT');
+  const bShot = b.events.find((e) => e.event === 'SHOT');
+  if (weapon === 'PISTOL') {
+    check(aShot && bShot !== undefined, 'a pistol shot is shown to the whole room');
+    if (bShot) {
+      const [sx, sy] = bShot.path[0];
+      const self = a.latest().self;
+      check(sx === self.x && sy === self.y, 'the shot path starts at the shooter');
+    }
+  } else {
+    check(!aShot && bShot === undefined, `a ${weapon} blow leaves no shot trail`);
+  }
 }
 
 main().catch((e) => {

@@ -9,6 +9,7 @@ import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.core.TileType;
 import com.example.battleroyal.game.map.MapTemplates;
 import com.example.battleroyal.game.rule.GameConstants;
+import com.example.battleroyal.game.rule.ItemSpawns;
 import com.example.battleroyal.game.rule.RoomSimulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,15 +62,30 @@ public class RoomRegistry {
     private final Queue<String> leaves = new ConcurrentLinkedQueue<>();
 
     private final AtomicLong roomSequence = new AtomicLong();
+    private final AtomicLong itemSequence = new AtomicLong();
     private final Random random;
+    private final Random itemRandom;
 
     public RoomRegistry() {
-        this(new Random());
+        this(new Random(), new Random());
     }
 
-    /** Seeded constructor so tests can pin room layout and destination choice. */
+    /**
+     * Seeded constructor so tests can pin room layout and destination choice. Items get
+     * a fixed seed of their own.
+     */
     public RoomRegistry(Random random) {
+        this(random, new Random(0));
+    }
+
+    /**
+     * Item rolls draw from their own source. Sharing one would shift every door choice
+     * whenever a spawn table changed, and the encounter measurements in
+     * {@link GameConstants#ENCOUNTER_BIAS_PERCENT} would move with it.
+     */
+    public RoomRegistry(Random random, Random itemRandom) {
         this.random = random;
+        this.itemRandom = itemRandom;
     }
 
     // --- Called from any thread -------------------------------------------
@@ -120,6 +136,7 @@ public class RoomRegistry {
     public void tickRooms(long nowTick) {
         for (Room room : rooms.values()) {
             RoomSimulator.tick(room, nowTick);
+            ItemSpawns.tick(room, nowTick, itemRandom, this::nextItemId);
         }
     }
 
@@ -465,8 +482,13 @@ public class RoomRegistry {
     private Room createRoom() {
         String id = "room-" + roomSequence.incrementAndGet();
         Room room = new Room(id, MapTemplates.random(random).map());
+        ItemSpawns.prime(room);
         rooms.put(id, room);
         return room;
+    }
+
+    private String nextItemId() {
+        return "i-" + itemSequence.incrementAndGet();
     }
 
     private void place(Player player, Room room) {

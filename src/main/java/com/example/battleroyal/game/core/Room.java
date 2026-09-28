@@ -31,6 +31,7 @@ public final class Room {
     private final Map<Pos, Item> floorItems = new HashMap<>();
     private final Map<Direction, Room> links = new EnumMap<>(Direction.class);
     private final List<GameEvent> events = new ArrayList<>();
+    private final Map<Pos, Long> spawnRolls = new LinkedHashMap<>();
 
     private boolean dirty = true;
 
@@ -176,6 +177,33 @@ public final class Room {
             dirty = true;
         }
         return taken;
+    }
+
+    // --- Item spawn points ----------------------------------------------
+
+    /** Schedules this spawn point to roll for a new item at the given tick. */
+    public void scheduleSpawnRoll(Pos spawn, long atTick) {
+        spawnRolls.put(spawn, atTick);
+    }
+
+    public boolean spawnRollPending(Pos spawn) {
+        return spawnRolls.containsKey(spawn);
+    }
+
+    /**
+     * Spawn points whose roll is due, in insertion order, removed from the schedule.
+     * Insertion order keeps seeded rolls reproducible.
+     */
+    public List<Pos> takeDueSpawnRolls(long nowTick) {
+        List<Pos> due = new ArrayList<>();
+        spawnRolls.entrySet().removeIf(entry -> {
+            if (entry.getValue() <= nowTick) {
+                due.add(entry.getKey());
+                return true;
+            }
+            return false;
+        });
+        return due;
     }
 
     // --- Events -----------------------------------------------------------

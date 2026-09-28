@@ -267,6 +267,25 @@ class CombatSimulationTest {
     }
 
     @Test
+    void anItemDroppedAtADoorLandsWhereBCanStillPickItUp() {
+        Room room = room();
+        // (0,7) is CROSSROADS' west door; (1,7) is the tile just inside it.
+        Player attacker = put(room, "a", new Pos(2, 7), Direction.LEFT, ItemKind.KNIFE);
+        Player target = put(room, "t", new Pos(1, 7), Direction.RIGHT, ItemKind.PISTOL);
+        Item carried = target.heldItem();
+        target.takeDamage(FULL - 1);
+
+        pressA(room, attacker, 0);
+
+        Pos landed = room.floorItems().entrySet().stream()
+                .filter(e -> e.getValue() == carried)
+                .map(java.util.Map.Entry::getKey)
+                .findFirst().orElseThrow();
+        assertNull(ActionResolver.doorSideAt(room, landed),
+                "B would take the door instead of the item at " + landed);
+    }
+
+    @Test
     void aCabinetOccupantKilledBlindDropsBesideTheCabinet() {
         Room room = room();
         Player attacker = put(room, "a", new Pos(9, 3), Direction.DOWN, ItemKind.KNIFE);

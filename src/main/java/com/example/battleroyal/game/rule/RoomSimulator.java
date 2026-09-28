@@ -6,9 +6,15 @@ import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Direction;
 import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
+import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Applies commands and per-tick timers to one room. Pure with respect to the outside
@@ -46,7 +52,7 @@ public final class RoomSimulator {
             case Command.Move move -> move(room, player, move.dir(), nowTick);
             case Command.ActionA ignored -> actionA(room, player, nowTick);
             case Command.ActionB ignored -> {
-                return actionB(room, player);
+                return actionB(room, player, nowTick);
             }
         }
         return null;
@@ -124,9 +130,15 @@ public final class RoomSimulator {
         }
         switch (action) {
             case ATTACK -> {
-                strike(room, player, GameConstants.KNIFE_RANGE, GameConstants.KNIFE_DAMAGE,
-                        false, nowTick);
-                player.setNextActionTick(nowTick + GameConstants.KNIFE_COOLDOWN_TICKS);
+                if (player.heldItem().kind() == ItemKind.PAN) {
+                    strike(room, player, GameConstants.PAN_RANGE, GameConstants.PAN_DAMAGE,
+                            false, nowTick);
+                    player.setNextActionTick(nowTick + GameConstants.PAN_COOLDOWN_TICKS);
+                } else {
+                    strike(room, player, GameConstants.KNIFE_RANGE,
+                            GameConstants.KNIFE_DAMAGE, false, nowTick);
+                    player.setNextActionTick(nowTick + GameConstants.KNIFE_COOLDOWN_TICKS);
+                }
             }
             case FIRE -> {
                 player.heldItem().spendAmmo();
@@ -158,7 +170,7 @@ public final class RoomSimulator {
 
     /**
      * Resolves one attack along the attacker's facing. Only a pistol leaves a visible
-     * trail; a knife thrust is silent apart from its effect.
+     * trail; a knife or pan blow is silent apart from its effect.
      */
     private static void strike(Room room, Player attacker, int range, int damage,
                                boolean shot, long nowTick) {
@@ -199,32 +211,69 @@ public final class RoomSimulator {
     }
 
     /**
-     * Where a dead player's item lands: their own tile, or the nearest free neighbour
-     * when an item is already lying there. Items are never destroyed on purpose; only
-     * a player boxed in by items on every side loses theirs.
+     * Where a dead player's item lands: the nearest tile, starting with their own, that
+     * is walkable, holds no item already, and is out of a door's reach. B resolves a
+     * door before an item, so an item beside a door could never be picked up again.
+     * A cabinet occupant's item spills onto the floor next to it.
      */
     private static Pos dropSpot(Room room, Pos at) {
-        if (room.map().walkable(at) && room.itemAt(at) == null) {
-            return at;
-        }
-        for (Direction dir : Direction.values()) {
-            Pos beside = at.step(dir);
-            if (room.map().walkable(beside) && room.itemAt(beside) == null) {
-                return beside;
+        Set<Pos> seen = new HashSet<>();
+        Deque<Pos> frontier = new ArrayDeque<>();
+        seen.add(at);
+        frontier.add(at);
+        while (!frontier.isEmpty()) {
+            Pos pos = frontier.removeFirst();
+            if (room.map().walkable(pos) && room.itemAt(pos) == null
+                    && ActionResolver.doorSideAt(room, pos) == null) {
+                return pos;
+            }
+            for (Direction dir : Direction.values()) {
+                Pos next = pos.step(dir);
+                if (room.map().walkable(next) && seen.add(next)) {
+                    frontier.addLast(next);
+                }
             }
         }
+        // Only a room with an item on every usable tile ends up here.
         return null;
     }
 
     // --- B: the surroundings --------------------------------------------
 
-    private static DoorTransit actionB(Room room, Player player) {
+    private static DoorTransit actionB(Room room, Player player, long nowTick) {
         ActionB action = ActionResolver.actionB(room, player);
-        if (action != ActionB.DOOR) {
-            // Pickups, swaps and cabinets arrive in Steps 5 and 6.
+        if (action == null) {
             return null;
         }
-        Direction side = ActionResolver.doorSideFor(room, player);
-        return side == null ? null : new DoorTransit(player.id(), side);
+        switch (action) {
+            case DOOR -> {
+                Direction side = ActionResolver.doorSideFor(room, player);
+                return side == null ? null : new DoorTransit(player.id(), side);
+            }
+            case PICKUP, SWAP -> takeItem(room, player, nowTick);
+            // Cabinets arrive in Step 6.
+            case HIDE, UNHIDE -> {
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Picks up the item underfoot. When already holding one, the two trade places: the
+     * outgoing item stays on this tile for anyone to take. Never destroyed.
+     */
+    private static void takeItem(Room room, Player player, long nowTick) {
+        Pos here = player.pos();
+        Item taken = room.takeItem(here);
+        Item outgoing = player.releaseItem();
+        if (outgoing != null) {
+            room.placeItem(here, outgoing);
+        }
+        player.hold(taken);
+        if (player.firstPickup(taken.id())) {
+            player.addScore(GameConstants.SCORE_ITEM_PICKUP);
+        }
+        ItemSpawns.onTaken(room, here, nowTick);
+        room.markDirty();
     }
 }

@@ -154,6 +154,13 @@ class MapTemplateTest {
     }
 
     @Test
+    void rejectsAnItemSpawnWithinReachOfADoor() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> MapTemplate.parse("DOORSTEP", mutate(7, "+*....###*....+")));
+        assertTrue(e.getMessage().contains("within reach of the door"), e.getMessage());
+    }
+
+    @Test
     void rejectsWrongRowCount() {
         String[] shortMap = Arrays.copyOf(VALID, 14);
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,

@@ -27,7 +27,9 @@ public final class ActionResolver {
             return null;
         }
         return switch (player.heldItem().kind()) {
-            case KNIFE -> player.inCabinet() ? null : ActionA.ATTACK;
+            case KNIFE, PAN -> player.inCabinet() ? null : ActionA.ATTACK;
+            // A spoon fills the slot and does nothing else.
+            case SPOON -> null;
             case PISTOL -> {
                 if (player.inCabinet()) {
                     // A cabinet is for surviving, not shooting.
@@ -43,8 +45,9 @@ public final class ActionResolver {
     /**
      * B follows the surroundings, most specific first.
      *
-     * <p>Pickups and swaps arrive with Step 5; cabinets with Step 6. Bushes never
-     * appear here, because you walk into a bush rather than pressing anything.
+     * <p>Cabinets arrive with Step 6. Bushes never appear here, because you walk into a
+     * bush rather than pressing anything. An item is picked up from the tile you stand
+     * on, not beside it.
      */
     public static ActionB actionB(Room room, Player player) {
         if (player.inCabinet()) {
@@ -52,6 +55,9 @@ public final class ActionResolver {
         }
         if (doorSideFor(room, player) != null) {
             return ActionB.DOOR;
+        }
+        if (room.itemAt(player.pos()) != null) {
+            return player.hasItem() ? ActionB.SWAP : ActionB.PICKUP;
         }
         return null;
     }
@@ -64,7 +70,11 @@ public final class ActionResolver {
      * room change.
      */
     public static Direction doorSideFor(Room room, Player player) {
-        Pos pos = player.pos();
+        return doorSideAt(room, player.pos());
+    }
+
+    /** Which wall's door is in reach from this tile, or null if none is. */
+    public static Direction doorSideAt(Room room, Pos pos) {
         for (Map.Entry<Direction, Pos> door : room.map().doors().entrySet()) {
             if (adjacentOrSame(pos, door.getValue())) {
                 return door.getKey();

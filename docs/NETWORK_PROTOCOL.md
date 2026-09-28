@@ -94,6 +94,10 @@ GET /ws/game?token=<uuid>
 `self`만 `hp`/`item`/`ammo`/`cooldown`/`hidden`/`invulnerable`을 가진다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
+아이템 `kind`와 `self.item`: `KNIFE | PISTOL | MEDKIT | PAN | SPOON`.
+바닥 아이템의 종류는 방 안 모두에게 보인다(가시성 규칙: 아이템은 공개). 들고 있는
+아이템은 본인만 안다.
+
 `actionA`/`actionB`는 서버가 계산한 현재 유효 행동 **토큰**이다. 표시 문구가 아니다.
 
 ```
@@ -131,7 +135,8 @@ actionB   PICKUP | SWAP | DOOR | HIDE | UNHIDE | null
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
 
-이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `DEAD` 이벤트는 아직 없다 —
+이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE`·`HIDE`·`UNHIDE` 이벤트는
+아직 보내지 않는다 — 스냅샷 변화로 충분해서 필요해질 때 추가한다. `DEAD` 이벤트는 아직 없다 —
 다른 플레이어는 다음 스냅샷에서 시체가 사라지는 것으로 안다.
 
 `CHAT` 이벤트는 V1에 없다.

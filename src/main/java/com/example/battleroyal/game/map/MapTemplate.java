@@ -80,6 +80,7 @@ public final class MapTemplate {
 
         validateCounts(name, map);
         validateCabinets(name, map);
+        validateSpawns(name, map);
         validateReachability(name, map);
 
         return new MapTemplate(name, map);
@@ -131,6 +132,22 @@ public final class MapTemplate {
             }
             require(enterable,
                     name + ": cabinet at " + cabinet + " has no walkable neighbour");
+        }
+    }
+
+    /**
+     * No item spawn within reach of a door. B resolves a door before an item, so an
+     * item there could never be picked up: pressing B would always leave the room.
+     * ARENA and GALLERY both shipped with one directly inside their south door.
+     */
+    private static void validateSpawns(String name, GridMap map) {
+        for (Pos spawn : map.itemSpawns()) {
+            for (Pos door : map.doors().values()) {
+                int distance = Math.abs(spawn.x() - door.x()) + Math.abs(spawn.y() - door.y());
+                require(distance > 1,
+                        name + ": item spawn at " + spawn + " is within reach of the door at "
+                                + door);
+            }
         }
     }
 

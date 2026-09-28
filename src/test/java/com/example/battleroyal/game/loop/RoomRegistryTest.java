@@ -419,4 +419,36 @@ class RoomRegistryTest {
 
         assertEquals(42, registry.player("a").joinedTick());
     }
+
+    @Test
+    void aNewRoomIsStockedBeforeItsFirstBroadcast() {
+        RoomRegistry registry = registry(1);
+        registry.requestJoin("a", "a");
+        registry.processPending(0);
+
+        registry.tickRooms(0);
+
+        Room room = registry.roomOf("a");
+        for (var spawn : room.map().itemSpawns()) {
+            assertTrue(room.itemAt(spawn) != null || room.spawnRollPending(spawn),
+                    "rolled on the first tick: " + spawn);
+        }
+    }
+
+    @Test
+    void itemRollsAreReproducibleForAGivenSeed() {
+        assertEquals(stockOf(new RoomRegistry(new Random(3), new Random(9))),
+                stockOf(new RoomRegistry(new Random(3), new Random(9))));
+    }
+
+    private static String stockOf(RoomRegistry registry) {
+        registry.requestJoin("a", "a");
+        registry.processPending(0);
+        registry.tickRooms(0);
+        return registry.roomOf("a").floorItems().entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue().id() + ":" + e.getValue().kind())
+                .sorted()
+                .toList()
+                .toString();
+    }
 }

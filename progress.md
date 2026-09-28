@@ -6,9 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Step 5 — items: spawn points filled at room creation, B pickup and swap, 20s respawn,
-+5 pickup score. Once weapons can be picked up, verify Step 4 combat in two browser
-tabs (still owed).
+Step 6 — cabinets: B `HIDE` when beside an empty cabinet, `UNHIDE` inside, 8-tick
+toggle cooldown. Not started.
 
 ## Completed
 
@@ -36,14 +35,22 @@ tabs (still owed).
       `GameEvent` (Shot/Hit/Died) queued on `Room` and routed by audience,
       `ws/Outbound` wire records, dead reaped after broadcast, client draws `•` path
       for 100ms and blinks on HIT / HP loss
+- [x] Step 5 items: `ItemSpawns` (roll on room creation, 20s re-roll after emptied or
+      after an empty roll), B `PICKUP`/`SWAP` (old item stays on the tile), +5 once per
+      item id, Pan (weak melee) and Spoon (junk), Korean item names in the client,
+      spawn-in-door-reach validation, death drops kept out of door reach
 
 Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
 clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
 movement replication and one-way bush concealment.
 
-Step 4: `./gradlew test` 112 passing; smoke suite 3/3 clean against the running
-server with no loop errors. **Not browser-verified** — nobody can hold a weapon until
-Step 5 spawns items.
+Steps 4–5: `./gradlew test` 128 passing. Smoke suite 8/8 clean, now also checking
+pickup, HIT audience and payload, and SHOT path start; the combat check SKIPs when the
+meeting room has no weapon (about a third of runs). Browser, two tabs: pickup, swap
+leaving the pistol on the floor, no re-pickup score, `•` trail drawn and cleared,
+four pistol shots killing a player hidden in a bush (190 = 10 + 4×20 + 100), GAME OVER
+overlay, body gone from the killer's view, restart with the same nickname. No console
+errors.
 
 ## In Progress
 
@@ -51,21 +58,22 @@ Nothing. The tree is green.
 
 ## Next
 
-1. Step 5: fill `itemSpawns` on room creation (weighted KNIFE/PISTOL/MEDKIT), B
-   `PICKUP`/`SWAP` in `ActionResolver` + `RoomSimulator` (swap leaves the old item on
-   the floor), 20s respawn per spawn point, +5 once per item id.
-2. Browser: two tabs, pick up a pistol, shoot across a room and through a bush, knife
-   into a cabinet, die and restart. Extend `e2e/smoke-two-sockets.mjs` with a
-   shot/HIT/YOU_DIED check.
-3. Step 6: cabinets (HIDE/UNHIDE, 8-tick toggle). `CombatRules` already assumes the
-   occupant's `pos` is the cabinet tile — keep that convention.
-4. Step 7: 15s disconnect grace, survival score, result persistence, ranking.
+1. Step 6: cabinets (HIDE/UNHIDE, 8-tick toggle). `CombatRules` already assumes the
+   occupant's `pos` is the cabinet tile — keep that convention. A cabinet occupant
+   who dies drops beside it (already handled).
+2. Step 7: 15s disconnect grace, survival score, room-entry score (+10, first visit,
+   30s cap), result persistence, ranking.
+3. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
+   that do not exist. Either write them or change the skill to point at the smoke
+   script plus the manual two-tab walk.
 
 ## Known Issues
 
-- Items never spawn, so combat is unreachable in real play. `ActionResolver.actionB`
-  only handles doors and cabinets.
-- Combat not yet verified in a browser (see Next 2).
+- Swapping away a pistol mid-reload keeps A locked until the reload would have
+  finished, even with the new item.
+- Floor items all render as `$`; the kind shows only as a tooltip, so on mobile you
+  learn what it is by picking it up.
+- No room-entry score yet, so score comes only from pickups and combat.
 - No `DEAD` event; others learn of a death when the body leaves the next snapshot.
 - `YOU_DIED` is sent but the result is not persisted.
 - A Medkit at full HP is spent for nothing. An "only when hurt" rule was tried and
@@ -76,6 +84,20 @@ Nothing. The tree is green.
   needs a restart.
 
 ## Recent Decisions
+
+- **Spawns roll nothing 40%, Spoon 15, Pan 10, Medkit 15, Knife 12, Pistol 8.** User's
+  call: a real weapon should be a lucky find, as in *Battle Royale*. Pan and Spoon
+  expand the V1 item set; recorded as the fourth exception in `CLAUDE.md`. Pan is
+  range 1, 15 damage, 10-tick cooldown (starting values, not playtested).
+- **An empty roll re-rolls after 20s.** Otherwise a spawn that missed stays dead until
+  its room is rebuilt.
+- **Item rolls use their own `Random`.** Sharing the world's would shift every door
+  choice whenever the spawn table changed, moving the encounter measurements.
+- **New rooms are primed, not filled inline.** Every spawn is scheduled due-now and
+  rolled in `tickRooms`, before the first broadcast, so `createRoom` needs no tick.
+- **No item spawn or death drop within reach of a door.** B resolves DOOR before
+  PICKUP, so such an item could never be taken. Kept the documented priority and fixed
+  the placement instead; ARENA and GALLERY had one each.
 
 - **A SHOT path ends on the victim's tile, even one hidden in a bush.** It reveals the
   victim's tile to the room and the distance to the shooter. Chosen by the user over

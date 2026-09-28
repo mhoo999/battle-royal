@@ -1,5 +1,8 @@
 package com.example.battleroyal.game.core;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * A player in the world. Mutable, and mutated only by the game loop thread.
  *
@@ -31,6 +34,8 @@ public final class Player {
 
     private Item reloadingItem;
     private long reloadDoneTick;
+
+    private final Set<String> pickedItemIds = new HashSet<>();
 
     private final long joinedTick;
     private int score;
@@ -203,6 +208,16 @@ public final class Player {
         Item finished = reloadingItem == heldItem ? reloadingItem : null;
         reloadingItem = null;
         return finished;
+    }
+
+    /**
+     * Records that this player has held this item instance.
+     *
+     * @return true the first time only, which is when a pickup pays out; dropping and
+     *         re-taking the same item earns nothing
+     */
+    public boolean firstPickup(String itemId) {
+        return pickedItemIds.add(itemId);
     }
 
     public long joinedTick() {

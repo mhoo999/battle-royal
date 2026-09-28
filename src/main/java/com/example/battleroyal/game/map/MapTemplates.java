@@ -9,7 +9,8 @@ import java.util.Random;
  * <p>Symbols: {@code #} wall, {@code .} floor, {@code +} door, {@code C} cabinet,
  * {@code b} bush, {@code *} item spawn (on floor). Each room must have exactly 2
  * cabinets and 4 item spawns, at least one bush region, and doors only at wall
- * midpoints. {@link MapTemplate#parse} enforces all of that plus full reachability,
+ * midpoints, and no item spawn within reach of a door. {@link MapTemplate#parse}
+ * enforces all of that plus full reachability,
  * so editing a layout incorrectly fails at class-load time rather than in play.
  */
 public final class MapTemplates {
@@ -101,7 +102,7 @@ public final class MapTemplates {
             "#.....bbb.....#",
             "#.#C..bbb...#.#",
             "#.##..bbb..##.#",
-            "#..##..*..##..#",
+            "#..##*....##..#",
             "#######+#######");
 
     /** Two bushes side by side, one tile apart, so concealment does not bleed across. */
@@ -119,7 +120,7 @@ public final class MapTemplates {
             "#.###.....###.#",
             "#.............#",
             "#.....C.......#",
-            "#......*......#",
+            "#...*.........#",
             "#######+#######");
 
     /** An off-centre pocket you have to walk around, reachable only from the east. */

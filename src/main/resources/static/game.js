@@ -20,6 +20,7 @@ const SELF_GLYPH  = { UP: '△', DOWN: '▽', LEFT: '◁', RIGHT: '▷' };
 const ENEMY_GLYPH = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
 
 const A_LABEL = { ATTACK: '공격', FIRE: '발사', RELOAD: '재장전', HEAL: '치료' };
+const ITEM_LABEL = { KNIFE: '칼', PISTOL: '권총', MEDKIT: '메디킷', PAN: '프라이팬', SPOON: '숟가락' };
 const B_LABEL = { PICKUP: '줍기', SWAP: '교체', DOOR: '이동', HIDE: '숨기', UNHIDE: '나오기' };
 
 const KEY_DIR = {
@@ -83,6 +84,7 @@ function paint(snapshot) {
       const cell = cells[y * GRID + x];
       cell.className = 'cell ' + tile.cls;
       cell.textContent = tile.glyph;
+      cell.title = '';
     }
   }
 
@@ -90,7 +92,7 @@ function paint(snapshot) {
     const cell = cells[item.y * GRID + item.x];
     cell.classList.add('has-item');
     cell.textContent = '$';
-    cell.title = item.kind;
+    cell.title = ITEM_LABEL[item.kind] || item.kind;
   }
 
   for (const other of snapshot.players) {
@@ -153,7 +155,7 @@ function paintHud(snapshot) {
   ui.hpText.textContent = self.hp;
 
   ui.item.textContent = self.item
-    ? self.item + (self.ammo === null ? '' : ' ' + self.ammo)
+    ? (ITEM_LABEL[self.item] || self.item) + (self.ammo === null ? '' : ' ' + self.ammo)
     : '-';
 
   setAction(ui.btnA, 'A', A_LABEL[self.actionA]);

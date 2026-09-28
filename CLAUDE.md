@@ -35,7 +35,7 @@ V1 must include:
 - Item pickup
 - One-item inventory
 - Item swapping
-- Knife, Pistol, Medkit
+- Knife, Pistol, Medkit, plus junk: Pan (weak melee) and Spoon (useless)
 - Reload
 - Cabinets and bushes
 - Score
@@ -54,7 +54,7 @@ V1 must NOT include:
 
 Do not expand V1 scope without an explicit decision.
 
-### Three decided exceptions
+### Four decided exceptions
 
 These override the wording an earlier draft of this document used. Each was decided
 deliberately; do not reverse one without saying so first.
@@ -64,6 +64,7 @@ deliberately; do not reverse one without saying so first.
 | "No persistent world" | V1 **is** a persistent world: no rounds, no winner, no shrinking zone | What is forbidden is writing world state to the DB, not the persistent-world model |
 | "No FOV / fog of war" | Global visibility **except bushes**, which are one-way | Bushes are the only concealment that hides you while you can still act |
 | "Fast projectiles" with speed, travel and collision | Shots resolve **instantly** along a line; `•` is a 100ms flourish | A moving entity adds tunnelling and interpolation for no gameplay gain at this tile size |
+| "Knife, Pistol, Medkit" as the whole item set | Spawns also roll **nothing**, a **Pan** (weak melee) or a **Spoon** (does nothing) | A real weapon should be a lucky find, as in *Battle Royale*; junk still fills the one slot |
 
 ---
 

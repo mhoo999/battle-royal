@@ -46,7 +46,10 @@ public final class GameConstants {
     /** Ticks between cabinet enter/exit actions: 400ms. Blocks flicker abuse. */
     public static final int CABINET_TOGGLE_COOLDOWN_TICKS = 8;
 
-    /** Delay before an emptied item spawn refills: 20s. */
+    /**
+     * Delay before an emptied item spawn rolls again: 20s. A roll that comes up empty
+     * waits the same again, so a spawn point is never dead for good.
+     */
     public static final int ITEM_RESPAWN_TICKS = 400;
 
     /** Grace period after a socket drops before the player is killed: 15s. */
@@ -68,6 +71,25 @@ public final class GameConstants {
 
     public static final int MEDKIT_HEAL = 50;
     public static final int MEDKIT_COOLDOWN_TICKS = 20;
+
+    /** Junk that happens to hurt: seven blows to kill, against the knife's three. */
+    public static final int PAN_RANGE = 1;
+    public static final int PAN_DAMAGE = 15;
+    public static final int PAN_COOLDOWN_TICKS = 10;
+
+    // --- Item spawns --------------------------------------------------------
+
+    /**
+     * What a spawn point rolls, out of 100. Weapons are meant to be a lucky find: a
+     * room's four spawns hold a real weapon (knife or pistol) only about half the time
+     * and a pistol about a quarter of the time, and a roll can come up empty.
+     */
+    public static final int SPAWN_WEIGHT_NOTHING = 40;
+    public static final int SPAWN_WEIGHT_SPOON = 15;
+    public static final int SPAWN_WEIGHT_PAN = 10;
+    public static final int SPAWN_WEIGHT_MEDKIT = 15;
+    public static final int SPAWN_WEIGHT_KNIFE = 12;
+    public static final int SPAWN_WEIGHT_PISTOL = 8;
 
     // --- Score ------------------------------------------------------------
 
