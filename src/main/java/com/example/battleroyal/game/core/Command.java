@@ -22,4 +22,8 @@ public sealed interface Command {
     /** Context action: pick up, swap, take a door, hide, or leave a cabinet. */
     record ActionB(String playerId) implements Command {
     }
+
+    /** B let go. Abandons a loot in progress; looting lasts only while B is held. */
+    record ReleaseB(String playerId) implements Command {
+    }
 }

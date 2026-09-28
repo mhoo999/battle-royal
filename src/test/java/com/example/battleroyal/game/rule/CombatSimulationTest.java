@@ -136,6 +136,47 @@ class CombatSimulationTest {
     }
 
     @Test
+    void aSwingThatMissesIsStillSeen() {
+        Room room = room();
+        Player attacker = put(room, "a", new Pos(1, 1), Direction.UP, ItemKind.PAN);
+
+        pressA(room, attacker, 0);
+
+        // Swinging at the wall above: nothing hit, but the room sees the swing.
+        assertEquals(List.of(new GameEvent.Swing(new Pos(1, 1), new Pos(1, 0))),
+                room.drainEvents());
+    }
+
+    @Test
+    void anEmptyPistolSwappedAwayMidReloadAndTakenBackIsStillEmpty() {
+        // Reported: drop an empty pistol, pick it up again, and it had six rounds.
+        Room room = room();
+        Player player = put(room, "p", new Pos(2, 1), Direction.RIGHT, ItemKind.PISTOL);
+        Item pistol = player.heldItem();
+        for (int i = 0; i < GameConstants.PISTOL_MAGAZINE; i++) {
+            pistol.spendAmmo();
+        }
+        room.placeItem(new Pos(2, 1), new Item("i-spoon", ItemKind.SPOON, 0));
+
+        pressA(room, player, 0);                       // A at zero ammo: reload starts
+        RoomSimulator.apply(room, new Command.ActionB("p"), 1);   // swap for the spoon
+        RoomSimulator.tick(room, 1 + GameConstants.LOOT_TICKS);
+        assertSame(pistol, room.itemAt(new Pos(2, 1)));
+        RoomSimulator.apply(room, new Command.ActionB("p"), 12);  // and back again
+        RoomSimulator.tick(room, 12 + GameConstants.LOOT_TICKS);
+        assertSame(pistol, player.heldItem());
+        assertTrue(12 + GameConstants.LOOT_TICKS < GameConstants.PISTOL_RELOAD_TICKS,
+                "retaken while the abandoned reload would still have been running");
+
+        RoomSimulator.tick(room, GameConstants.PISTOL_RELOAD_TICKS + 10);
+
+        assertEquals(0, pistol.ammo(), "dropping it abandoned the reload");
+        assertEquals(ActionA.RELOAD, ActionResolver.actionA(player));
+        pressA(room, player, GameConstants.PISTOL_RELOAD_TICKS + 11);
+        assertTrue(player.reloading(), "and A is free to start a fresh one");
+    }
+
+    @Test
     void aPistolDroppedMidReloadIsNotRefilled() {
         Room room = room();
         Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.PISTOL);
@@ -155,7 +196,7 @@ class CombatSimulationTest {
     // --- Knife --------------------------------------------------------------
 
     @Test
-    void aKnifeStrikesTheAdjacentTileSilently() {
+    void aKnifeStrikesTheAdjacentTileWithASwingNotATrail() {
         Room room = room();
         Player attacker = put(room, "a", new Pos(1, 1), Direction.RIGHT, ItemKind.KNIFE);
         Player target = put(room, "t", new Pos(2, 1), Direction.LEFT, null);
@@ -163,8 +204,9 @@ class CombatSimulationTest {
         pressA(room, attacker, 0);
 
         assertEquals(FULL - GameConstants.KNIFE_DAMAGE, target.hp());
-        assertEquals(List.of(new GameEvent.Hit("a")), room.drainEvents(),
-                "a knife draws no trail");
+        assertEquals(List.of(new GameEvent.Swing(new Pos(1, 1), new Pos(2, 1)),
+                        new GameEvent.Hit("a")),
+                room.drainEvents(), "a swing at the tile in front, never a shot trail");
         assertEquals(GameConstants.KNIFE_COOLDOWN_TICKS, attacker.nextActionTick());
     }
 

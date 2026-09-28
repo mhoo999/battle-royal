@@ -2,7 +2,9 @@
 
 ## 1. Project Goal
 
-Build a mobile-first browser-based real-time 2D PvP survival game.
+Build a mobile-first browser-based real-time 2D PvP survival game, titled
+**BATTLE ROYALE** and themed on the Japanese film *Battle Royale*: stranded
+classmates, random weapons, a real gun is a lucky find.
 
 This project is also an AWS/cloud infrastructure portfolio project.
 

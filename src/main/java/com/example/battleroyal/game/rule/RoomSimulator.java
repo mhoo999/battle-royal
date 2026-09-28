@@ -54,6 +54,12 @@ public final class RoomSimulator {
             case Command.ActionB ignored -> {
                 return actionB(room, player, nowTick);
             }
+            case Command.ReleaseB ignored -> {
+                if (player.looting()) {
+                    player.cancelLoot();
+                    room.markDirty();
+                }
+            }
         }
         return null;
     }
@@ -172,8 +178,8 @@ public final class RoomSimulator {
     }
 
     /**
-     * Resolves one attack along the attacker's facing. Only a pistol leaves a visible
-     * trail; a knife or pan blow is silent apart from its effect.
+     * Resolves one attack along the attacker's facing. A pistol leaves a trail along
+     * the whole shot; a knife or pan leaves a swing on the tile in front.
      */
     private static void strike(Room room, Player attacker, int range, int damage,
                                boolean shot, long nowTick) {
@@ -181,6 +187,9 @@ public final class RoomSimulator {
                 CombatRules.trace(room, attacker.pos(), attacker.facing(), range);
         if (shot) {
             room.emit(new GameEvent.Shot(trace.path()));
+        } else {
+            room.emit(new GameEvent.Swing(attacker.pos(),
+                    attacker.pos().step(attacker.facing())));
         }
         if (!trace.hit()) {
             return;
@@ -294,6 +303,10 @@ public final class RoomSimulator {
     private static void takeItem(Room room, Player player, long nowTick) {
         Pos here = player.pos();
         Item taken = room.takeItem(here);
+        if (player.reloading()) {
+            // The reload leaves with the pistol, and so does the A lock it imposed.
+            player.setNextActionTick(nowTick);
+        }
         Item outgoing = player.releaseItem();
         if (outgoing != null) {
             room.placeItem(here, outgoing);

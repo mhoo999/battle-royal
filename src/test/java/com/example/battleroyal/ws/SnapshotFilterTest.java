@@ -1,6 +1,7 @@
 package com.example.battleroyal.ws;
 
 import com.example.battleroyal.game.core.ActionA;
+import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
@@ -8,6 +9,7 @@ import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.map.MapTemplates;
 import com.example.battleroyal.game.rule.GameConstants;
+import com.example.battleroyal.game.rule.RoomSimulator;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +38,23 @@ class SnapshotFilterTest {
 
     private static Player at(String id, Pos pos) {
         return new Player(id, id, pos, GameConstants.MAX_HP);
+    }
+
+    @Test
+    void aLooterIsToldHowLongIsLeftAndNobodyElseIs() {
+        Room room = room();
+        Player viewer = at("v", OPEN);
+        room.add(viewer);
+        room.placeItem(OPEN, new Item("i-1", ItemKind.KNIFE, 0));
+        assertNull(filter.forViewer(room, viewer, 100).self().lootMsLeft());
+
+        RoomSimulator.apply(room, new Command.ActionB("v"), 100);
+
+        assertEquals(GameConstants.LOOT_TICKS * GameConstants.TICK_MS,
+                filter.forViewer(room, viewer, 100).self().lootMsLeft());
+        assertEquals(GameConstants.TICK_MS,
+                filter.forViewer(room, viewer, 100 + GameConstants.LOOT_TICKS - 1)
+                        .self().lootMsLeft());
     }
 
     /**

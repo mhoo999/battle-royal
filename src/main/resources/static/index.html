@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>SURVIVE</title>
+  <title>BATTLE ROYALE</title>
   <link rel="stylesheet" href="game.css">
 </head>
 <body>
 
 <div id="lobby" class="overlay">
-  <h1 class="logo">SURVIVE</h1>
-  <p class="tagline">한 칸씩 움직이고, 보이는 것만으로 판단한다</p>
+  <h1 class="logo">BATTLE<br>ROYALE</h1>
+  <p class="tagline">외딴섬에 버려진 반 아이들. 가방에 든 건 권총일 수도, 숟가락일 수도 있다.<br>한 칸씩 움직이고, 보이는 것만 믿어라.</p>
   <form id="lobby-form" autocomplete="off">
-    <input id="nickname" name="nickname" maxlength="12" placeholder="ID" aria-label="아이디" required>
+    <input id="nickname" name="nickname" maxlength="12" placeholder="이름" aria-label="이름" required>
     <button id="start" type="submit">START</button>
   </form>
   <p id="lobby-error" class="error" role="alert"></p>
@@ -35,6 +35,7 @@
   </section>
 
   <p id="state" class="state"></p>
+  <div id="loot" hidden><i id="loot-fill"></i></div>
 
   <section id="controls">
     <div id="dpad">
@@ -44,20 +45,21 @@
       <button class="pad right" data-dir="RIGHT" aria-label="오른쪽">▶</button>
     </div>
     <div id="actions">
-      <button id="btn-a" class="action" disabled><b>A</b><small>-</small></button>
       <button id="btn-b" class="action" disabled><b>B</b><small>-</small></button>
+      <button id="btn-a" class="action" disabled><b>A</b><small>-</small></button>
     </div>
   </section>
 </main>
 
 <div id="dead" class="overlay" hidden>
-  <h2>GAME OVER</h2>
+  <h2>탈락</h2>
+  <p class="tagline">섬에는 아직 누군가 살아 있다</p>
   <dl class="result">
     <dt>SCORE</dt><dd id="dead-score">0</dd>
     <dt>KILLS</dt><dd id="dead-kills">0</dd>
     <dt>TIME</dt><dd id="dead-time">0s</dd>
   </dl>
-  <button id="restart" type="button">다시 시작</button>
+  <button id="restart" type="button">처음으로</button>
 </div>
 
 <script src="game.js"></script>

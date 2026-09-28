@@ -21,6 +21,10 @@ public final class Outbound {
     public record Shot(String type, String event, List<int[]> path) {
     }
 
+    /** {@code {"type":"EVENT","event":"SWING","from":[x,y],"to":[x,y]}} */
+    public record Swing(String type, String event, int[] from, int[] to) {
+    }
+
     /** {@code {"type":"EVENT","event":"HIT"}}. No target, no damage, no outcome. */
     public record Hit(String type, String event) {
     }
@@ -34,6 +38,10 @@ public final class Outbound {
                 .map(Outbound::coords)
                 .toList();
         return new Shot("EVENT", "SHOT", path);
+    }
+
+    public static Swing swing(GameEvent.Swing swing) {
+        return new Swing("EVENT", "SWING", coords(swing.from()), coords(swing.to()));
     }
 
     public static Hit hit() {

@@ -5,6 +5,7 @@ import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.rule.ActionResolver;
+import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.VisibilityRules;
 import org.springframework.stereotype.Component;
 
@@ -65,7 +66,9 @@ public class SnapshotFilter {
                 held == null ? null : held.kind(),
                 held != null && held.kind().usesAmmo() ? held.ammo() : null,
                 viewer.concealment(room.map()),
-                viewer.looting(),
+                viewer.looting()
+                        ? (int) (viewer.lootDoneTick() - tick) * GameConstants.TICK_MS
+                        : null,
                 viewer.score(),
                 viewer.kills(),
                 ActionResolver.actionA(viewer),

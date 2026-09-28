@@ -24,6 +24,14 @@ public sealed interface GameEvent {
     }
 
     /**
+     * A knife or pan swung at the tile in front, for everyone in the room to draw,
+     * hit or miss. Like a shot it starts on the attacker's own tile, so swinging from
+     * a bush gives you away too.
+     */
+    record Swing(Pos from, Pos to) implements GameEvent {
+    }
+
+    /**
      * To the attacker alone, and only the fact of it. Deliberately carries nothing
      * about the target: not who, not how badly, not whether they died.
      */

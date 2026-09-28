@@ -47,7 +47,8 @@ GET /ws/game?token=<uuid>
 ```json
 { "type": "MOVE", "dir": "UP" }        // UP | DOWN | LEFT | RIGHT
 { "type": "ACTION_A" }
-{ "type": "ACTION_B" }
+{ "type": "ACTION_B" }                 // B를 누름
+{ "type": "RELEASE_B" }                // B를 뗌 — 진행 중인 루팅 취소
 ```
 
 이것이 전부다. 좌표, HP, 데미지, 인벤토리를 담은 메시지는 **존재하지 않아야 한다.**
@@ -79,7 +80,7 @@ GET /ws/game?token=<uuid>
   "self": {
     "id": "p1", "x": 10, "y": 7, "direction": "UP",
     "hp": 80, "item": "MEDKIT", "ammo": null,
-    "concealment": "CABINET", "looting": false, "invulnerable": false,
+    "concealment": "CABINET", "lootMsLeft": null, "invulnerable": false,
     "score": 420, "kills": 1,
     "actionA": "HEAL", "actionB": "UNHIDE"
   },
@@ -91,7 +92,9 @@ GET /ws/game?token=<uuid>
 }
 ```
 
-`self`만 `hp`/`item`/`ammo`/`cooldown`/`hidden`/`looting`/`invulnerable`을 가진다.
+`self`만 `hp`/`item`/`ammo`/`cooldown`/`hidden`/`lootMsLeft`/`invulnerable`을 가진다.
+`lootMsLeft`는 루팅 중일 때 남은 ms, 아니면 `null`이다. 클라는 루팅이 새로 시작될
+때만 게이지를 0에서 이 시간에 걸쳐 채운다. 완료 판정은 서버가 한다.
 다른 플레이어가 루팅 중인지는 보내지 않는다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
@@ -133,6 +136,7 @@ actionB   PICKUP | SWAP | DOOR | HIDE | UNHIDE | null
 | 이벤트 | 받는 사람 |
 |---|---|
 | `SHOT` | 방 안의 모든 플레이어 (사수를 못 보는 사람 포함 — 그것이 노출이다) |
+| `SWING` | 방 안의 모든 플레이어 (`from` 공격자 타일, `to` 휘두른 타일) |
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
 

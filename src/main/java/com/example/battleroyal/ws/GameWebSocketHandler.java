@@ -19,7 +19,7 @@ import java.io.IOException;
 
 /**
  * Translates socket traffic into commands. Raw text frames with a small JSON envelope
- * rather than STOMP: there are three inbound message types and the outbound path needs
+ * rather than STOMP: there are four inbound message types and the outbound path needs
  * a different payload per recipient, which STOMP's broker model works against.
  *
  * <p>Identity comes from the token presented at handshake, never from the message body.
@@ -123,6 +123,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 }
                 case "ACTION_A" -> new Command.ActionA(playerId);
                 case "ACTION_B" -> new Command.ActionB(playerId);
+                case "RELEASE_B" -> new Command.ReleaseB(playerId);
                 default -> null;
             };
         } catch (Exception e) {

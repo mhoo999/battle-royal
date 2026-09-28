@@ -170,6 +170,22 @@ class ItemRulesTest {
     }
 
     @Test
+    void lettingGoOfBAbandonsTheLoot() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        Item knife = item("i-1", ItemKind.KNIFE);
+        room.placeItem(FLOOR, knife);
+
+        pressB(room, player, 0);
+        RoomSimulator.apply(room, new Command.ReleaseB("p"), 5);
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
+
+        assertFalse(player.hasItem());
+        assertFalse(player.looting());
+        assertSame(knife, room.itemAt(FLOOR));
+    }
+
+    @Test
     void pressingBAgainDoesNotRestartTheClock() {
         Room room = room();
         Player player = put(room, FLOOR);

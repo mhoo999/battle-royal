@@ -46,7 +46,7 @@ public record Snapshot(
             ItemKind item,
             Integer ammo,
             Concealment concealment,
-            boolean looting,
+            Integer lootMsLeft,
             int score,
             int kills,
             ActionA actionA,

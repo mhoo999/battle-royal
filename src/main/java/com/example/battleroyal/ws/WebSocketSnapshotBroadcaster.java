@@ -54,6 +54,12 @@ public class WebSocketSnapshotBroadcaster implements RoomBroadcaster {
                         send(viewer.id(), message);
                     }
                 }
+                case GameEvent.Swing swing -> {
+                    Object message = Outbound.swing(swing);
+                    for (Player viewer : room.players()) {
+                        send(viewer.id(), message);
+                    }
+                }
                 case GameEvent.Hit hit -> send(hit.attackerId(), Outbound.hit());
                 case GameEvent.Died died -> send(died.playerId(), Outbound.youDied(died));
             }

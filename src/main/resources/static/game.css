@@ -20,6 +20,8 @@
   --hp:        #7fd4c1;
   --hp-low:    #e06c75;
   --shot:      #f0f0e0;
+  --button:    #8b1e3f;   /* Game Boy A/B magenta */
+  --button-hi: #b02a55;
 
   --cell: min(6.2vw, 2rem);
 }
@@ -63,10 +65,11 @@ body {
 
 .logo {
   margin: 0;
-  font-size: clamp(2rem, 12vw, 3.5rem);
-  letter-spacing: 0.35em;
-  text-indent: 0.35em;
-  color: var(--self);
+  font-size: clamp(1.8rem, 10vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--enemy);
 }
 
 .tagline {
@@ -222,7 +225,21 @@ input, button {
 .cell.has-self  { color: var(--self); }
 
 /* A shot is a 100ms flourish over the tiles it crossed, not a moving entity. */
-.cell.shot { color: var(--shot); }
+.cell.shot  { color: var(--shot); }
+.cell.swing { color: var(--shot); font-weight: bold; }
+
+/* Loot gauge: fills while B is held; the server decides when the item lands. */
+#loot {
+  height: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+#loot-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--item);
+}
 
 /*
  * Red is being hurt: the victim's own board. The attacker's HIT is a neutral blink —
@@ -259,34 +276,55 @@ input, button {
   touch-action: manipulation;
 }
 
-.pad:active, .action:active { background: #1d2426; border-color: var(--self); }
+.pad:active { background: #1d2426; border-color: var(--self); }
 
 .pad.up    { grid-area: 1 / 2; }
 .pad.left  { grid-area: 2 / 1; }
 .pad.down  { grid-area: 3 / 2; }
 .pad.right { grid-area: 2 / 3; }
 
+/*
+ * Game Boy layout: B low on the left, A high on the right, on a tilted pill. The
+ * letters are counter-rotated so they stay upright.
+ */
 #actions {
   display: flex;
-  gap: 0.5rem;
+  align-items: flex-end;
+  gap: 0.9rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 3rem;
+  background: rgba(255, 255, 255, 0.04);
+  transform: rotate(-25deg);
 }
+
+#btn-a { margin-bottom: 1.1rem; }
 
 .action {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  width: 3.6rem;
-  height: 3.6rem;
+  gap: 0.1rem;
+  width: 3.4rem;
+  height: 3.4rem;
   border-radius: 50%;
+  background: var(--button);
+  border: none;
+  color: #f4e6ea;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.action b { font-size: 1rem; }
-.action small { font-size: 0.6rem; color: var(--dim); }
-.action:disabled { opacity: 0.35; cursor: default; }
-.action:not(:disabled) { border-color: var(--self); }
-.action:not(:disabled) small { color: var(--self); }
+.action > * { transform: rotate(25deg); }
+.action b { font-size: 1.05rem; }
+.action small { font-size: 0.6rem; color: #f4e6ea; opacity: 0.85; }
+.action:active:not(:disabled) {
+  background: var(--button-hi);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  transform: translateY(2px);
+}
+.action:disabled { opacity: 0.4; cursor: default; }
 
 @media (min-width: 480px) {
   :root { --cell: 1.6rem; }

@@ -37,9 +37,13 @@ const KEY_DIR = {
  */
 const REPEAT_MS = 140;
 
-/* How long a shot path and the hit blink stay on screen. Presentation only. */
+/* How long a shot path, a swing and the hit blink stay on screen. Presentation only. */
 const SHOT_MS = 100;
+const SWING_MS = 150;
 const HIT_MS = 150;
+
+/* The arc drawn on the tile a knife or pan swings at, curving the way it was swung. */
+const SWING_GLYPH = { UP: '⌒', DOWN: '⌣', LEFT: '(', RIGHT: ')' };
 
 const el = (id) => document.getElementById(id);
 
@@ -51,12 +55,13 @@ const ui = {
   btnA: el('btn-a'), btnB: el('btn-b'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), restart: el('restart'),
+  loot: el('loot'), lootFill: el('loot-fill'),
 };
 
 const cells = [];
 let socket = null;
 let lastSnapshot = null;
-let shot = null;       // { path, until } while a shot is on screen
+let flourishes = [];   // [{ marks: [{x, y, glyph, cls}], until }] shots and swings on screen
 let lastHp = null;
 let nickname = '';
 let startedAt = 0;
@@ -109,33 +114,45 @@ function paint(snapshot) {
     cell.textContent = SELF_GLYPH[self.direction] || '△';
   }
 
-  paintShot();
+  paintFlourishes();
 }
 
 /*
- * Drawn over whatever the snapshot put there, except players: the path starts at the
- * shooter, and a shooter you can see is already marked. A shooter you cannot see, in
- * a bush, is given away by exactly this dot on their tile.
+ * Shots and swings, drawn over whatever the snapshot put there except players. Both
+ * start on the attacker's tile: an attacker you can see is already marked, and one
+ * you cannot, in a bush, is given away by exactly this mark on their tile.
  */
-function paintShot() {
-  if (!shot || Date.now() >= shot.until) return;
-  for (const [x, y] of shot.path) {
-    const cell = cells[y * GRID + x];
-    if (!cell || cell.classList.contains('has-self') || cell.classList.contains('has-enemy')) continue;
-    cell.classList.add('shot');
-    cell.textContent = '•';
+function paintFlourishes() {
+  const now = Date.now();
+  flourishes = flourishes.filter((f) => f.until > now);
+  for (const { marks } of flourishes) {
+    for (const { x, y, glyph, cls } of marks) {
+      const cell = cells[y * GRID + x];
+      if (!cell || cell.classList.contains('has-self') || cell.classList.contains('has-enemy')) continue;
+      cell.classList.add(cls);
+      cell.textContent = glyph;
+    }
   }
 }
 
+function showFlourish(marks, ms) {
+  flourishes.push({ marks, until: Date.now() + ms });
+  paintFlourishes();
+  setTimeout(() => { if (lastSnapshot) paint(lastSnapshot); }, ms);
+}
+
 function showShot(path) {
-  shot = { path, until: Date.now() + SHOT_MS };
-  paintShot();
-  setTimeout(() => {
-    if (shot && Date.now() >= shot.until) {
-      shot = null;
-      if (lastSnapshot) paint(lastSnapshot);
-    }
-  }, SHOT_MS);
+  showFlourish(path.map(([x, y]) => ({ x, y, glyph: '•', cls: 'shot' })), SHOT_MS);
+}
+
+function showSwing(from, to) {
+  const [fx, fy] = from;
+  const [tx, ty] = to;
+  const dir = tx > fx ? 'RIGHT' : tx < fx ? 'LEFT' : ty > fy ? 'DOWN' : 'UP';
+  showFlourish([
+    { x: fx, y: fy, glyph: '•', cls: 'shot' },
+    { x: tx, y: ty, glyph: SWING_GLYPH[dir], cls: 'swing' },
+  ], SWING_MS);
 }
 
 function blink(element, cls, ms) {
@@ -168,8 +185,8 @@ function paintHud(snapshot) {
   if (self.concealment === 'CABINET') {
     ui.state.textContent = '캐비닛에 숨어 있음 — 이동·공격 불가';
     ui.state.classList.add('hidden-cabinet');
-  } else if (self.looting) {
-    ui.state.textContent = '줍는 중… 움직이면 처음부터';
+  } else if (self.lootMsLeft !== null) {
+    ui.state.textContent = '줍는 중 — B를 떼거나 움직이면 취소';
     ui.state.classList.add('looting');
   } else if (self.concealment === 'BUSH') {
     ui.state.textContent = '부시에 은폐 중 — 밖에서 보이지 않음';
@@ -177,6 +194,28 @@ function paintHud(snapshot) {
   } else {
     ui.state.textContent = '';
   }
+}
+
+/*
+ * The gauge fills over whatever time the server says is left. The server alone decides
+ * when the item lands; this only shows the wait, and restarts only when a new loot
+ * begins rather than on every snapshot that arrives during one.
+ */
+function paintLoot(self) {
+  const left = self.lootMsLeft;
+  if (left === null || left === undefined) {
+    ui.loot.hidden = true;
+    ui.lootFill.style.transition = 'none';
+    ui.lootFill.style.width = '0%';
+    return;
+  }
+  if (!ui.loot.hidden) return;
+  ui.loot.hidden = false;
+  ui.lootFill.style.transition = 'none';
+  ui.lootFill.style.width = '0%';
+  void ui.lootFill.offsetWidth;
+  ui.lootFill.style.transition = `width ${left}ms linear`;
+  ui.lootFill.style.width = '100%';
 }
 
 function setAction(button, letter, label) {
@@ -196,6 +235,7 @@ function send(message) {
 const move = (dir) => send({ type: 'MOVE', dir });
 const actionA = () => send({ type: 'ACTION_A' });
 const actionB = () => send({ type: 'ACTION_B' });
+const releaseB = () => send({ type: 'RELEASE_B' });
 
 function connect(token) {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -207,8 +247,10 @@ function connect(token) {
       lastSnapshot = message;
       paint(message);
       paintHud(message);
+      paintLoot(message.self);
     } else if (message.type === 'EVENT') {
       if (message.event === 'SHOT') showShot(message.path);
+      else if (message.event === 'SWING') showSwing(message.from, message.to);
       else if (message.event === 'HIT') blink(ui.board, 'hit', HIT_MS);
     } else if (message.type === 'YOU_DIED') {
       showDeath(message);
@@ -247,7 +289,7 @@ async function beginSession(typed) {
     startedAt = Date.now();
     lastSnapshot = null;
     lastHp = null;
-    shot = null;
+    flourishes = [];
     ui.lobby.hidden = true;
     ui.dead.hidden = true;
     ui.game.hidden = false;
@@ -264,11 +306,16 @@ function showDeath(message) {
   ui.dead.hidden = false;
 }
 
-/** Restart reuses the nickname, so death costs one tap rather than retyping an id. */
+/** Back to the lobby, with the last name filled in and selected so typing replaces it. */
 function restart() {
   if (socket) socket.close();
+  socket = null;
   ui.dead.hidden = true;
-  beginSession(nickname);
+  ui.game.hidden = true;
+  ui.lobby.hidden = false;
+  ui.nickname.value = nickname;
+  ui.nickname.focus();
+  ui.nickname.select();
 }
 
 // --- Input ---------------------------------------------------------------
@@ -300,7 +347,15 @@ function wireInput() {
     holdToRepeat(pad, () => move(pad.dataset.dir));
   }
   ui.btnA.addEventListener('click', actionA);
-  ui.btnB.addEventListener('click', actionB);
+  // B is held, not clicked: a loot lasts only while it stays down. Doors and cabinets
+  // act on the press and ignore the release.
+  let bDown = false;
+  const pressB = () => { if (!bDown) { bDown = true; actionB(); } };
+  const letGoB = () => { if (bDown) { bDown = false; releaseB(); } };
+  ui.btnB.addEventListener('pointerdown', (event) => { event.preventDefault(); pressB(); });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    ui.btnB.addEventListener(type, letGoB);
+  }
 
   // Browser auto-repeat fires far faster than the server accepts moves, so held keys
   // are throttled to the same cadence as the on-screen pad.
@@ -320,7 +375,10 @@ function wireInput() {
       return;
     }
     if (event.key === 'j' || event.key === 'J') actionA();
-    if (event.key === 'k' || event.key === 'K') actionB();
+    if ((event.key === 'k' || event.key === 'K') && !event.repeat) pressB();
+  });
+  window.addEventListener('keyup', (event) => {
+    if (event.key === 'k' || event.key === 'K') letGoB();
   });
 }
 

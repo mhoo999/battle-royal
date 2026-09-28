@@ -34,6 +34,14 @@ class OutboundTest {
     }
 
     @Test
+    void aSwingNamesItsTwoTiles() {
+        GameEvent.Swing swing = new GameEvent.Swing(new Pos(3, 4), new Pos(4, 4));
+
+        assertEquals("{\"type\":\"EVENT\",\"event\":\"SWING\",\"from\":[3,4],\"to\":[4,4]}",
+                mapper.writeValueAsString(Outbound.swing(swing)));
+    }
+
+    @Test
     void theResultReportsSurvivalInSeconds() {
         GameEvent.Died died = new GameEvent.Died("p1", 420, 2,
                 95L * GameConstants.TICKS_PER_SECOND + 7);

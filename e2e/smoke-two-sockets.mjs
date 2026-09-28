@@ -384,6 +384,15 @@ async function combat(a, b) {
     }
   } else {
     check(!aShot && bShot === undefined, `a ${weapon} blow leaves no shot trail`);
+    const bSwing = b.events.find((e) => e.event === 'SWING');
+    check(a.events.some((e) => e.event === 'SWING') && bSwing !== undefined,
+      `a ${weapon} swing is shown to the whole room`);
+    if (bSwing) {
+      const self = a.latest().self;
+      check(bSwing.from[0] === self.x && bSwing.from[1] === self.y
+          && bSwing.to[0] === bAt.x && bSwing.to[1] === bAt.y,
+        'the swing runs from the attacker to the tile struck', JSON.stringify(bSwing));
+    }
   }
 }
 

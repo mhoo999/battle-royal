@@ -114,10 +114,16 @@ public final class Player {
         this.heldItem = item;
     }
 
-    /** Hands the held item back to the caller, which is responsible for placing it. */
+    /**
+     * Hands the held item back to the caller, which is responsible for placing it.
+     *
+     * <p>A reload in progress goes with it. Leaving it running meant an empty pistol
+     * dropped mid-reload and taken back before the reload was due came back full.
+     */
     public Item releaseItem() {
         Item released = heldItem;
         heldItem = null;
+        reloadingItem = null;
         return released;
     }
 
@@ -226,6 +232,11 @@ public final class Player {
 
     public boolean looting() {
         return lootItemId != null;
+    }
+
+    /** The tick the current loot completes on. Meaningful only while looting. */
+    public long lootDoneTick() {
+        return lootDoneTick;
     }
 
     public void cancelLoot() {

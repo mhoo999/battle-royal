@@ -43,10 +43,21 @@ toggle cooldown. Not started.
       drives a "줍는 중" status line
 - [x] Hit feedback split: the victim's board flashes red on HP loss, the attacker's
       HIT is a neutral white flash
+- [x] Fix: an empty pistol dropped mid-reload and retaken came back with 6 rounds;
+      dropping now abandons the reload and its A lock
+- [x] Melee `SWING` event (room-wide, from/to) drawn as an arc for 150ms
+- [x] Hold-B looting: `RELEASE_B` cancels; `self.lootMsLeft` drives a gauge
+- [x] BATTLE ROYALE title and film theme copy, "탈락" overlay, "처음으로" returns to
+      the lobby with the last name prefilled, Game Boy A/B layout
 
 Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
 clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
 movement replication and one-way bush concealment.
+
+Swing, hold-B, reload fix, UI: `./gradlew test` 138 passing, smoke 8/8 including the
+swing audience and coordinates. Browser: new title, Game Boy buttons, gauge fills over
+500ms and hides, press-and-release leaves the item, swing arc drawn and cleared,
+탈락 → 처음으로 → lobby → rejoin under a new name; no console errors.
 
 Loot time and hit feedback: `./gradlew test` 133 passing, smoke 5/5. Browser: loot
 completes 502ms after B, a move in the same tick cancels it with the item left on the
@@ -79,8 +90,6 @@ Nothing. The tree is green.
 
 ## Known Issues
 
-- Swapping away a pistol mid-reload keeps A locked until the reload would have
-  finished, even with the new item.
 - Floor items all render as `$`; the kind shows only as a tooltip, so on mobile you
   learn what it is by picking it up.
 - No room-entry score yet, so score comes only from pickups and combat.
@@ -94,6 +103,15 @@ Nothing. The tree is green.
   needs a restart.
 
 ## Recent Decisions
+
+- **Looting lasts only while B is held.** User's call. `RELEASE_B` is a new inbound
+  intent, not state. Doors and cabinets act on press and ignore release.
+- **A melee swing is visible to the whole room**, hit or miss, starting on the
+  attacker's tile — swinging from a bush gives you away, same as firing.
+- **Death returns to the lobby.** User's call, replacing the old instant same-name
+  restart; the last name is prefilled and selected.
+- **Theme is the film *Battle Royale*.** Title BATTLE ROYALE; copy only, no rules
+  changed by it.
 
 - **Looting takes 10 ticks and leaving the tile resets it.** User's call: grabbing
   under fire should be a commitment. You may move meanwhile; a position change
