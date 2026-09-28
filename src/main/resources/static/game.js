@@ -107,8 +107,8 @@ function paint(snapshot) {
   for (const item of snapshot.items) {
     const cell = cells[item.y * GRID + item.x];
     cell.classList.add('has-item');
+    // Only that something lies here. What it is, you find out by looting it.
     cell.textContent = '$';
-    cell.title = ITEM_LABEL[item.kind] || item.kind;
   }
 
   for (const other of snapshot.players) {

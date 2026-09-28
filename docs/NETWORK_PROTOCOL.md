@@ -110,7 +110,7 @@ GET /ws/game?token=<uuid>
   "players": [
     { "id": "p2", "x": 15, "y": 5, "direction": "LEFT", "alive": true }
   ],
-  "items":   [ { "id": "i-31", "x": 4, "y": 9, "kind": "PISTOL" } ],
+  "items":   [ { "id": "i-31", "x": 4, "y": 9 } ],
   "score": 420
 }
 ```
@@ -121,9 +121,11 @@ GET /ws/game?token=<uuid>
 다른 플레이어가 루팅 중인지는 보내지 않는다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
-아이템 `kind`와 `self.item`: `KNIFE | PISTOL | MEDKIT | PAN | SPOON`.
-바닥 아이템의 종류는 방 안 모두에게 보인다(가시성 규칙: 아이템은 공개). 들고 있는
-아이템은 본인만 안다.
+`self.item`: `KNIFE | PISTOL | MEDKIT | PAN | SPOON`.
+**바닥 아이템은 위치만 보낸다. 종류는 누구에게도 보내지 않는다(결정).** 무엇인지는
+루팅이 끝나 손에 들어왔을 때 `self.item`으로 처음 안다. 클라가 그리지 않더라도
+전송하면 개발자 도구로 보이므로 필드 자체를 두지 않는다 — `SnapshotFilterTest`가
+`FloorItem`을 `id`/`x`/`y`로 고정한다. 들고 있는 아이템은 본인만 안다.
 
 `actionA`/`actionB`는 서버가 계산한 현재 유효 행동 **토큰**이다. 표시 문구가 아니다.
 

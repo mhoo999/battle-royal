@@ -78,10 +78,12 @@ Numbers live in `docs/GAME_RULES.md`. Do not invent one; read it.
 
 Entering a room reveals the whole room. Bushes are the single exception.
 
-Visible: room layout, other players, their facing, items, cabinets, obstacles, doors.
+Visible: room layout, other players, their facing, where floor items lie, cabinets,
+obstacles, doors.
 
 Hidden: enemy HP, equipped item, ammunition, cooldown, next action, whether a cabinet
-is occupied, and anyone standing in a bush you are not also standing in.
+is occupied, anyone standing in a bush you are not also standing in, and **what a
+floor item is** — every one is `$` until you loot it. That is what looting is for.
 
 Never expose hidden enemy state to the client.
 

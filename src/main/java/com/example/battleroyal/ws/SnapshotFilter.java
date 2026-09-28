@@ -47,7 +47,7 @@ public class SnapshotFilter {
         for (Map.Entry<Pos, Item> entry : room.floorItems().entrySet()) {
             Pos pos = entry.getKey();
             Item item = entry.getValue();
-            items.add(new Snapshot.FloorItem(item.id(), pos.x(), pos.y(), item.kind()));
+            items.add(new Snapshot.FloorItem(item.id(), pos.x(), pos.y()));
         }
 
         return Snapshot.of(tick, room.id(), room.map().terrainRows(),

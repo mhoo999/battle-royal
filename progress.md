@@ -117,8 +117,6 @@ the lobby ranking is still to do by eye.
 
 ## Known Issues
 
-- Floor items all render as `$`; the kind shows only as a tooltip, so on mobile you
-  learn what it is by picking it up.
 - No `DEAD` event; others learn of a death when the body leaves the next snapshot.
 - A page reload during the grace period cannot reconnect: the token lives only in
   page memory. The old player dies 15s later.
@@ -128,6 +126,11 @@ the lobby ranking is still to do by eye.
   needs a restart.
 
 ## Recent Decisions
+
+- **Floor items do not say what they are.** User's call: "보이면 루팅을 왜 해?"
+  Everything on the floor is `$`; you learn what it is when the loot lands in your
+  hand. The kind is not sent at all (`FloorItem` is id/x/y), so devtools shows
+  nothing either. Replaces the old "items are public" visibility rule in `CLAUDE.md`.
 
 - **A token lives until death, not until the socket closes.** That is what lets a
   reconnect inside the 15s grace find the same player, and retiring it on death stops
@@ -243,6 +246,12 @@ the lobby ranking is still to do by eye.
   serves 3.x and the starter names changed.
 
 ## Testing Notes
+
+- Back-to-back smoke runs share the world with the previous run's players for their
+  15s disconnect grace. The wander loop skips an unreachable door instead of giving
+  up, since a lingering player can block the path. Six consecutive runs clean.
+- The smoke combat check cannot see what floor items are, so A loots them one by one
+  until it holds a weapon; it still SKIPs when the meeting room has none.
 
 - Tests must be deterministic. `Room` has no `hashCode`, so iterating a `HashSet<Room>`
   used identity-hash order and the encounter measurements swung between 10 and 16 door

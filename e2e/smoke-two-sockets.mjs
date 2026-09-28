@@ -212,8 +212,10 @@ async function main() {
   } else {
     const scoreBefore = b.latest().self.score;
     const after = await pickUp(b, offered);
-    check(after !== null && after.self.item === offered.kind,
-      'B picks up the item it stands on', `${offered.kind} ${offered.id}`);
+    check(after !== null && after.self.item !== null,
+      'B picks up the item it stands on', `${after?.self.item} ${offered.id}`);
+    check(Object.keys(offered).sort().join() === 'id,x,y',
+      'a floor item does not say what it is', JSON.stringify(offered));
     if (after) {
       check(after.self.score === scoreBefore + 5, 'a first pickup scores +5',
         `${scoreBefore} -> ${after.self.score}`);
@@ -239,10 +241,11 @@ async function main() {
   // are no coordinates to steer by; A simply tries doors.
   const target = b.latest().roomId;
   const legs = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+  // A door that cannot be reached is skipped rather than ending the search: players
+  // from an earlier run stand in the world for their 15s grace and can block a path.
   let transits = 0;
-  while (transits < 20 && a.latest().roomId !== target) {
-    if (!(await takeDoor(a, legs[transits % legs.length]))) break;
-    transits++;
+  for (let attempt = 0; attempt < 30 && a.latest().roomId !== target; attempt++) {
+    if (await takeDoor(a, legs[attempt % legs.length])) transits++;
   }
   const met = a.latest().roomId === target;
   check(met, `A wanders into B after ${transits} door transits`,
@@ -361,20 +364,17 @@ async function reconnect() {
 
 async function combat(a, b) {
   const label = 'A strikes B';
-  let armed = WEAPONS.has(a.latest().self.item);
-  if (!armed) {
-    const weapon = a.latest().items.find((i) => WEAPONS.has(i.kind));
-    if (!weapon) {
+  // Floor items do not say what they are, so A loots them one by one until it holds a
+  // weapon, the same way a player would.
+  const tried = new Set();
+  while (!WEAPONS.has(a.latest().self.item)) {
+    const next = a.latest().items.find((i) => !tried.has(i.id));
+    if (!next) {
       skip(label, 'no weapon in the room they met in');
       return;
     }
-    armed = (await pickUp(a, weapon)) !== null && WEAPONS.has(a.latest().self.item);
-    if (!armed) {
-      const self = a.latest().self;
-      skip(label, `could not take the ${weapon.kind} at (${weapon.x},${weapon.y}); ` +
-        `A at (${self.x},${self.y}), B offers ${self.actionB}`);
-      return;
-    }
+    tried.add(next.id);
+    await pickUp(a, next);
   }
 
   const bAt = { x: b.latest().self.x, y: b.latest().self.y };

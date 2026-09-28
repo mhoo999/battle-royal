@@ -67,11 +67,15 @@ public record Snapshot(
     ) {
     }
 
+    /**
+     * That something lies here, never what. You learn what an item is by looting it,
+     * which is the point of looting; a kind on the wire would be one devtools panel
+     * away even if the client never drew it.
+     */
     public record FloorItem(
             String id,
             int x,
-            int y,
-            ItemKind kind
+            int y
     ) {
     }
 }

@@ -19,7 +19,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -193,7 +192,16 @@ class SnapshotFilterTest {
         assertEquals(15, snapshot.terrain().getFirst().length());
         assertEquals(1, snapshot.items().size());
         assertEquals(spawn.x(), snapshot.items().getFirst().x());
-        assertNotNull(snapshot.items().getFirst().kind());
+    }
+
+    @Test
+    void aFloorItemSaysThatSomethingLiesThereNeverWhat() {
+        List<String> fields = Arrays.stream(Snapshot.FloorItem.class.getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList();
+
+        assertEquals(List.of("id", "x", "y"), fields,
+                "an item's kind is learned by looting it; adding it here publishes it");
     }
 
     @Test
