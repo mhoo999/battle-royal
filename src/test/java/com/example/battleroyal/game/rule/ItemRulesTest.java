@@ -53,6 +53,12 @@ class ItemRulesTest {
         RoomSimulator.apply(room, new Command.ActionB(player.id()), tick);
     }
 
+    /** Presses B and stands still until the loot completes. */
+    private static void loot(Room room, Player player, long tick) {
+        pressB(room, player, tick);
+        RoomSimulator.tick(room, tick + GameConstants.LOOT_TICKS);
+    }
+
     private static Supplier<String> ids() {
         AtomicInteger next = new AtomicInteger();
         return () -> "i-" + next.incrementAndGet();
@@ -68,7 +74,7 @@ class ItemRulesTest {
         room.placeItem(FLOOR, knife);
         assertEquals(ActionB.PICKUP, ActionResolver.actionB(room, player));
 
-        pressB(room, player, 0);
+        loot(room, player, 0);
 
         assertSame(knife, player.heldItem());
         assertNull(room.itemAt(FLOOR));
@@ -86,7 +92,7 @@ class ItemRulesTest {
         room.placeItem(FLOOR, knife);
         assertEquals(ActionB.SWAP, ActionResolver.actionB(room, player));
 
-        pressB(room, player, 0);
+        loot(room, player, 0);
 
         assertSame(knife, player.heldItem());
         assertSame(pistol, room.itemAt(FLOOR), "never destroyed");
@@ -101,12 +107,94 @@ class ItemRulesTest {
         room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
         player.hold(item("i-2", ItemKind.SPOON));
 
-        pressB(room, player, 0);   // take the knife, drop the spoon
-        pressB(room, player, 1);   // take the spoon back
-        pressB(room, player, 2);   // and the knife again
+        loot(room, player, 0);     // take the knife, drop the spoon
+        loot(room, player, 20);    // take the spoon back
+        loot(room, player, 40);    // and the knife again
 
         assertEquals(2 * GameConstants.SCORE_ITEM_PICKUP, player.score(),
                 "once per item instance, however often it changes hands");
+    }
+
+    // --- Loot time ------------------------------------------------------------
+
+    @Test
+    void lootingTakesTimeAndTheItemArrivesWhenItIsUp() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        Item knife = item("i-1", ItemKind.KNIFE);
+        room.placeItem(FLOOR, knife);
+
+        pressB(room, player, 0);
+        assertTrue(player.looting());
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS - 1);
+        assertFalse(player.hasItem(), "not yet");
+        assertSame(knife, room.itemAt(FLOOR), "still on the floor for anyone to grab");
+
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
+        assertSame(knife, player.heldItem());
+        assertFalse(player.looting());
+    }
+
+    @Test
+    void steppingOffTheTileStartsTheLootOver() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
+
+        pressB(room, player, 0);
+        RoomSimulator.apply(room, new Command.Move("p", Direction.DOWN), 1);
+        RoomSimulator.apply(room, new Command.Move("p", Direction.UP), 5);
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
+
+        assertEquals(FLOOR, player.pos(), "back on the item");
+        assertFalse(player.hasItem(), "moving away abandoned the loot");
+        assertFalse(player.looting());
+
+        loot(room, player, 20);
+        assertTrue(player.hasItem(), "a fresh B starts it again");
+    }
+
+    @Test
+    void turningOnTheSpotDoesNotInterruptTheLoot() {
+        Room room = room();
+        // (1,1) has a wall above it, so UP only turns.
+        Player player = put(room, new Pos(1, 1));
+        room.placeItem(new Pos(1, 1), item("i-1", ItemKind.KNIFE));
+
+        pressB(room, player, 0);
+        RoomSimulator.apply(room, new Command.Move("p", Direction.UP), 2);
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
+
+        assertEquals(Direction.UP, player.facing());
+        assertTrue(player.hasItem());
+    }
+
+    @Test
+    void pressingBAgainDoesNotRestartTheClock() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
+
+        pressB(room, player, 0);
+        pressB(room, player, 5);
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
+
+        assertTrue(player.hasItem());
+    }
+
+    @Test
+    void anItemSnatchedFirstIsNotConjuredIntoTheSlowerHand() {
+        Room room = room();
+        Player slow = put(room, FLOOR);
+        Item knife = item("i-1", ItemKind.KNIFE);
+        room.placeItem(FLOOR, knife);
+
+        pressB(room, slow, 0);
+        room.takeItem(FLOOR);   // someone else got there
+        room.placeItem(FLOOR, item("i-2", ItemKind.SPOON));
+        RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
+
+        assertFalse(slow.hasItem(), "the loot was for the knife, not whatever lies there now");
     }
 
     @Test
@@ -193,11 +281,12 @@ class ItemRulesTest {
         Player player = put(room, SPAWN);
         room.placeItem(SPAWN, item("i-1", ItemKind.KNIFE));
 
-        pressB(room, player, 100);
+        loot(room, player, 100);
 
+        long taken = 100 + GameConstants.LOOT_TICKS;
         assertTrue(room.spawnRollPending(SPAWN));
-        assertTrue(room.takeDueSpawnRolls(100 + GameConstants.ITEM_RESPAWN_TICKS - 1).isEmpty());
-        assertEquals(1, room.takeDueSpawnRolls(100 + GameConstants.ITEM_RESPAWN_TICKS).size());
+        assertTrue(room.takeDueSpawnRolls(taken + GameConstants.ITEM_RESPAWN_TICKS - 1).isEmpty());
+        assertEquals(1, room.takeDueSpawnRolls(taken + GameConstants.ITEM_RESPAWN_TICKS).size());
     }
 
     @Test
@@ -207,7 +296,7 @@ class ItemRulesTest {
         player.hold(item("i-1", ItemKind.SPOON));
         room.placeItem(SPAWN, item("i-2", ItemKind.KNIFE));
 
-        pressB(room, player, 0);
+        loot(room, player, 0);
 
         assertFalse(room.spawnRollPending(SPAWN));
     }

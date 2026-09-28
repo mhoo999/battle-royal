@@ -68,6 +68,7 @@ public final class RoomSimulator {
                 continue;
             }
             finishReload(room, player, nowTick);
+            finishLoot(room, player, nowTick);
             if (player.inCabinet()) {
                 continue;
             }
@@ -102,6 +103,8 @@ public final class RoomSimulator {
         player.face(outcome.facing());
         if (outcome.moved()) {
             player.moveTo(outcome.pos());
+            // Stepping off the item starts the loot over; turning on the spot does not.
+            player.cancelLoot();
         }
         // A blocked input still spends the cooldown; that is what makes walls and other
         // players cost you time rather than being free to probe.
@@ -198,6 +201,7 @@ public final class RoomSimulator {
      */
     private static void die(Room room, Player victim, long nowTick) {
         victim.setInCabinet(false);
+        victim.cancelLoot();
         victim.clearBufferedMove();
         Item dropped = victim.releaseItem();
         if (dropped != null) {
@@ -250,12 +254,37 @@ public final class RoomSimulator {
                 Direction side = ActionResolver.doorSideFor(room, player);
                 return side == null ? null : new DoorTransit(player.id(), side);
             }
-            case PICKUP, SWAP -> takeItem(room, player, nowTick);
+            case PICKUP, SWAP -> startLoot(room, player, nowTick);
             // Cabinets arrive in Step 6.
             case HIDE, UNHIDE -> {
             }
         }
         return null;
+    }
+
+    /** Pressing B again while already looting does not restart the clock. */
+    private static void startLoot(Room room, Player player, long nowTick) {
+        if (player.looting()) {
+            return;
+        }
+        player.startLoot(room.itemAt(player.pos()).id(), nowTick + GameConstants.LOOT_TICKS);
+        room.markDirty();
+    }
+
+    private static void finishLoot(Room room, Player player, long nowTick) {
+        if (!player.looting()) {
+            return;
+        }
+        String itemId = player.takeFinishedLoot(nowTick);
+        if (player.looting()) {
+            return;
+        }
+        room.markDirty();
+        Item lying = room.itemAt(player.pos());
+        // Someone else may have taken it, or swapped something else onto the tile.
+        if (itemId != null && lying != null && lying.id().equals(itemId)) {
+            takeItem(room, player, nowTick);
+        }
     }
 
     /**

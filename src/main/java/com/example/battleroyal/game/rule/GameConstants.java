@@ -47,6 +47,12 @@ public final class GameConstants {
     public static final int CABINET_TOGGLE_COOLDOWN_TICKS = 8;
 
     /**
+     * Time to take an item off the floor: 500ms. Moving off the tile during it starts
+     * over, so grabbing a weapon under fire is a commitment rather than a free action.
+     */
+    public static final int LOOT_TICKS = 10;
+
+    /**
      * Delay before an emptied item spawn rolls again: 20s. A roll that comes up empty
      * waits the same again, so a spawn point is never dead for good.
      */

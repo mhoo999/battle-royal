@@ -39,10 +39,20 @@ toggle cooldown. Not started.
       after an empty roll), B `PICKUP`/`SWAP` (old item stays on the tile), +5 once per
       item id, Pan (weak melee) and Spoon (junk), Korean item names in the client,
       spawn-in-door-reach validation, death drops kept out of door reach
+- [x] Loot time: B starts a 10-tick loot, leaving the tile resets it; `self.looting`
+      drives a "줍는 중" status line
+- [x] Hit feedback split: the victim's board flashes red on HP loss, the attacker's
+      HIT is a neutral white flash
 
 Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
 clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
 movement replication and one-way bush concealment.
+
+Loot time and hit feedback: `./gradlew test` 133 passing, smoke 5/5. Browser: loot
+completes 502ms after B, a move in the same tick cancels it with the item left on the
+floor; a pan blow flashed the victim's board red (hp 100 → 85) and the attacker's
+white. Note: Chrome throttles timers in hidden tabs, so scripted two-tab tests must
+send one step per call rather than loop on `setTimeout`.
 
 Steps 4–5: `./gradlew test` 128 passing. Smoke suite 8/8 clean, now also checking
 pickup, HIT audience and payload, and SHOT path start; the combat check SKIPs when the
@@ -84,6 +94,14 @@ Nothing. The tree is green.
   needs a restart.
 
 ## Recent Decisions
+
+- **Looting takes 10 ticks and leaving the tile resets it.** User's call: grabbing
+  under fire should be a commitment. You may move meanwhile; a position change
+  cancels, turning, attacking or being hit does not. The loot is bound to the item id,
+  so an item snatched first is not replaced by whatever lies there next.
+- **Red border is the victim's, not the attacker's.** It is driven by the victim's own
+  HP drop in the snapshot, so it needs no new event and leaks nothing. The attacker's
+  HIT stays a board-wide neutral flash.
 
 - **Spawns roll nothing 40%, Spoon 15, Pan 10, Medkit 15, Knife 12, Pistol 8.** User's
   call: a real weapon should be a lucky find, as in *Battle Royale*. Pan and Spoon

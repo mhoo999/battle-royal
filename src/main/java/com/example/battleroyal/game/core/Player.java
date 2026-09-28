@@ -32,6 +32,10 @@ public final class Player {
     private Direction bufferedMove;
     private long bufferedMoveExpiresTick;
 
+    private String lootItemId;
+    private Pos lootPos;
+    private long lootDoneTick;
+
     private Item reloadingItem;
     private long reloadDoneTick;
 
@@ -208,6 +212,38 @@ public final class Player {
         Item finished = reloadingItem == heldItem ? reloadingItem : null;
         reloadingItem = null;
         return finished;
+    }
+
+    /**
+     * Starts taking the item on this tile. It lands in hand only if the player is
+     * still on the same tile, and the same item still lies there, when time is up.
+     */
+    public void startLoot(String itemId, long doneTick) {
+        this.lootItemId = itemId;
+        this.lootPos = pos;
+        this.lootDoneTick = doneTick;
+    }
+
+    public boolean looting() {
+        return lootItemId != null;
+    }
+
+    public void cancelLoot() {
+        this.lootItemId = null;
+        this.lootPos = null;
+    }
+
+    /**
+     * Returns the id of the item whose loot is due and clears the loot, or null if none
+     * is due. A loot abandoned by stepping off the tile is dropped, not returned.
+     */
+    public String takeFinishedLoot(long nowTick) {
+        if (lootItemId == null || nowTick < lootDoneTick) {
+            return null;
+        }
+        String itemId = pos.equals(lootPos) ? lootItemId : null;
+        cancelLoot();
+        return itemId;
     }
 
     /**

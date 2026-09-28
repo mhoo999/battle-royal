@@ -65,6 +65,7 @@ public class SnapshotFilter {
                 held == null ? null : held.kind(),
                 held != null && held.kind().usesAmmo() ? held.ammo() : null,
                 viewer.concealment(room.map()),
+                viewer.looting(),
                 viewer.score(),
                 viewer.kills(),
                 ActionResolver.actionA(viewer),

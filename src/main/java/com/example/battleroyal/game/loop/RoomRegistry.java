@@ -380,6 +380,8 @@ public class RoomRegistry {
         player.moveTo(entry);
         player.face(side);
         player.clearBufferedMove();
+        // The same coordinates in the next room are a different tile.
+        player.cancelLoot();
         player.setNextMoveTick(nowTick + GameConstants.MOVE_COOLDOWN_TICKS);
         place(player, target);
     }

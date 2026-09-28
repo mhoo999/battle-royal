@@ -148,7 +148,10 @@ function paintHud(snapshot) {
 
   ui.score.textContent = 'SCORE ' + self.score;
 
-  if (lastHp !== null && self.hp < lastHp) blink(ui.hpFill, 'hurt', HIT_MS);
+  if (lastHp !== null && self.hp < lastHp) {
+    blink(ui.hpFill, 'hurt', HIT_MS);
+    blink(ui.board, 'hurt', HIT_MS);
+  }
   lastHp = self.hp;
   ui.hpFill.style.width = Math.max(0, Math.min(100, self.hp)) + '%';
   ui.hpFill.classList.toggle('low', self.hp <= 30);
@@ -165,6 +168,9 @@ function paintHud(snapshot) {
   if (self.concealment === 'CABINET') {
     ui.state.textContent = '캐비닛에 숨어 있음 — 이동·공격 불가';
     ui.state.classList.add('hidden-cabinet');
+  } else if (self.looting) {
+    ui.state.textContent = '줍는 중… 움직이면 처음부터';
+    ui.state.classList.add('looting');
   } else if (self.concealment === 'BUSH') {
     ui.state.textContent = '부시에 은폐 중 — 밖에서 보이지 않음';
     ui.state.classList.add('hidden-bush');

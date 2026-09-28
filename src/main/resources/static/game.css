@@ -224,8 +224,13 @@ input, button {
 /* A shot is a 100ms flourish over the tiles it crossed, not a moving entity. */
 .cell.shot { color: var(--shot); }
 
-/* HIT says only that something was struck. The whole board blinks, never a tile. */
-#board.hit { outline: 2px solid var(--enemy); }
+/*
+ * Red is being hurt: the victim's own board. The attacker's HIT is a neutral blink —
+ * it says only that something was struck, so it is the whole board, never a tile.
+ */
+#board.hurt { outline: 2px solid var(--enemy); }
+#board.hit  { outline: 2px solid var(--shot); }
+.state.looting { color: var(--item); }
 #hp-fill.hurt { background: var(--hp-low); }
 
 /* --- Controls ---------------------------------------------------------- */

@@ -79,7 +79,7 @@ GET /ws/game?token=<uuid>
   "self": {
     "id": "p1", "x": 10, "y": 7, "direction": "UP",
     "hp": 80, "item": "MEDKIT", "ammo": null,
-    "concealment": "CABINET", "invulnerable": false,
+    "concealment": "CABINET", "looting": false, "invulnerable": false,
     "score": 420, "kills": 1,
     "actionA": "HEAL", "actionB": "UNHIDE"
   },
@@ -91,7 +91,8 @@ GET /ws/game?token=<uuid>
 }
 ```
 
-`self`만 `hp`/`item`/`ammo`/`cooldown`/`hidden`/`invulnerable`을 가진다.
+`self`만 `hp`/`item`/`ammo`/`cooldown`/`hidden`/`looting`/`invulnerable`을 가진다.
+다른 플레이어가 루팅 중인지는 보내지 않는다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
 아이템 `kind`와 `self.item`: `KNIFE | PISTOL | MEDKIT | PAN | SPOON`.
