@@ -57,7 +57,8 @@ const el = (id) => document.getElementById(id);
 const ui = {
   lobby: el('lobby'), lobbyForm: el('lobby-form'), nickname: el('nickname'),
   lobbyError: el('lobby-error'),
-  game: el('game'), hudName: el('hud-name'), score: el('score'), board: el('board'),
+  game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
+  board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
   btnA: el('btn-a'), btnB: el('btn-b'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
@@ -73,6 +74,7 @@ let flourishes = [];   // [{ marks: [{x, y, glyph, cls}], until }] shots and swi
 let lastHp = null;
 let nickname = '';
 let startedAt = 0;
+let clockTimer = null;
 
 // --- Board ---------------------------------------------------------------
 
@@ -276,6 +278,32 @@ function connect(token) {
   });
 }
 
+// --- Survival clock --------------------------------------------------------
+
+/*
+ * Time alive, counted from the browser's own start time. Presentation only: the death
+ * screen shows the server's figure, which can differ from this by about a second.
+ */
+function paintClock() {
+  const seconds = Math.floor((Date.now() - startedAt) / 1000);
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  ui.clock.textContent = `${mm}:${ss}`;
+}
+
+function startClock() {
+  stopClock();
+  paintClock();
+  clockTimer = setInterval(paintClock, 1000);
+}
+
+function stopClock() {
+  if (clockTimer !== null) {
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
+}
+
 // --- Screens -------------------------------------------------------------
 
 async function beginSession(typed) {
@@ -299,6 +327,7 @@ async function beginSession(typed) {
     nickname = session.nickname;
     ui.hudName.textContent = nickname;
     startedAt = Date.now();
+    startClock();
     lastSnapshot = null;
     lastHp = null;
     flourishes = [];
@@ -319,6 +348,7 @@ function deathCause(killer, weapon) {
 }
 
 function showDeath(message) {
+  stopClock();
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
   ui.deadName.textContent = nickname;
   ui.deadScore.textContent = message.score;
@@ -329,6 +359,7 @@ function showDeath(message) {
 
 /** Back to the lobby, with the last name filled in and selected so typing replaces it. */
 function restart() {
+  stopClock();
   if (socket) socket.close();
   socket = null;
   ui.dead.hidden = true;

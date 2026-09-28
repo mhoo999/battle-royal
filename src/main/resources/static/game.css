@@ -204,13 +204,19 @@ input, button {
 .hud-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0.65rem;
   background: var(--panel);
   border: 1px solid var(--line);
   font-size: 0.75rem;
   letter-spacing: 0.1em;
+}
+
+/* Name | clock | score. Equal outer columns keep the clock dead centre whatever the
+   name and score lengths are. */
+header.hud-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
 }
 
 .hud-status .spacer { flex: 1; }
@@ -255,7 +261,9 @@ input, button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#score { flex-shrink: 0; }
+#score { justify-self: end; white-space: nowrap; }
+/* letter-spacing trails the last digit; pull it back so the digits themselves centre */
+#clock { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: -0.1em; }
 
 /* --- Board ------------------------------------------------------------- */
 
