@@ -6,8 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Step 7 done. Next: browser check of reconnect and lobby ranking, then the Playwright
-question.
+Item economy rework (no reload, one-or-no loot tile per room, rarer weapons) — see
+Next item 0. Recorded only; nothing implemented yet.
 
 ## Completed
 
@@ -108,6 +108,24 @@ the lobby ranking is still to do by eye.
 
 ## Next
 
+0. **Item economy rework — user decisions (2026-09-28), not started.** Do these next.
+   - **Pistol has no reload.** When the last round is fired the pistol is gone.
+     Reload may return later with ammo/inventory systems. Conflicts to update first:
+     `CLAUDE.md` V1 scope lists "Reload" and §4 says "Pistol fires or reloads when
+     empty"; GAME_RULES §10 A table; `ActionA.RELOAD`, `PISTOL_RELOAD_TICKS`, the
+     reload/abandon code in `Player`/`RoomSimulator` and their tests.
+   - **Dying drops the held item, taken by looting.** Already how it works
+     (`RoomSimulator.die` → `dropSpot`, and any floor item needs the 10-tick loot).
+     Just confirm in the browser; no code expected.
+   - **A room has one loot tile or none, empty more often than not.** You should
+     have to travel. Today every map has exactly 4 `*` spawns
+     (`MapTemplate.REQUIRED_ITEM_SPAWNS`) and 40% of rolls are empty. Open question
+     for the user: one fixed spawn per map that rolls with a high empty chance, or
+     a per-room chance of having any spawn at all? And what percentage empty?
+   - **Pistol and knife rarer.** Today Pistol 8, Knife 12 (of 100). Ask the user for
+     the new weights; with one spawn per room the per-room odds change a lot anyway.
+   - Re-check the smoke combat check afterwards: with far fewer items it will SKIP
+     most runs and may need a seeded or scripted way to arm A.
 1. Browser check: lobby shows the top 10; after a death your row is highlighted, or
    appears under "⋮" with its rank when outside the top 10 (needs 11+ results);
    kill the network briefly and see "재접속 중 (n/15)" then recovery.
