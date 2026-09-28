@@ -25,10 +25,10 @@ com.example.battleroyal
 │   GameConstants, MovementRules, VisibilityRules, ActionResolver,
 │   RoomSimulator, CombatRules(raycast 포함), ScoreRules
 ├── game/map/      MapTemplate + 템플릿 문자열 상수
-├── game/loop/     GameLoopService, RoomRegistry (할로 규칙)
+├── game/loop/     GameLoopService, RoomRegistry (할로 규칙), RoomBroadcaster, DeathListener
 ├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)
-├── web/           SessionController, RankingController
-├── persistence/   PlayerAccount, GameResult 엔티티 + repository
+├── web/           SessionController, RankingController, GuestSessionService
+├── persistence/   GameResult 엔티티 + repository, ResultRecorder
 └── config/        WebSocketConfig, JacksonConfig
 ```
 
@@ -99,8 +99,14 @@ WS inbound thread              Game loop thread (20Hz)
 
 실시간 상태(Room, Player, Item, Bullet, Map)는 **서버 메모리에만** 둔다.
 
-DB에 저장하는 것은 `PlayerAccount`와 `GameResult`뿐이다. 실시간 이동 이벤트를 DB에
-쓰지 않는다. 랭킹은 `GameResult`에 대한 top-N 쿼리다 — 별도 테이블을 두지 않는다.
+DB에 저장하는 것은 `GameResult`뿐이다. 실시간 이동 이벤트를 DB에 쓰지 않는다.
+랭킹은 `GameResult`에 대한 top-N 쿼리다 — 별도 테이블을 두지 않는다. 게스트만
+있으므로 `PlayerAccount`는 아직 없다(계정이 생길 때 추가한다).
+
+사망은 루프 스레드에서 `DeathListener`로 알린다. `game/loop`는 듣는 쪽을 import하지
+않는다. `GuestSessionService`는 토큰을 폐기하고, `ResultRecorder`는 단일 writer
+스레드에 저장을 넘긴다. **루프 스레드에서 DB를 쓰지 않는다** — 쓰기 하나가 tick보다
+길 수 있다.
 
 ---
 

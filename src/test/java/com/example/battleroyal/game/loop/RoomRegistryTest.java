@@ -2,6 +2,7 @@ package com.example.battleroyal.game.loop;
 
 import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Direction;
+import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.rule.GameConstants;
@@ -98,6 +99,82 @@ class RoomRegistryTest {
             assertTrue(room.playerCount() <= 1,
                     "nobody should be dropped into a fight before seeing the screen");
         }
+    }
+
+    // --- Disconnect grace -------------------------------------------------
+
+    private static final int GRACE = GameConstants.DISCONNECT_GRACE_TICKS;
+
+    @Test
+    void aDroppedPlayerStaysInTheWorldForTheGracePeriodThenDies() {
+        RoomRegistry registry = withPlayers("a");
+        Room room = registry.roomOf("a");
+        room.drainEvents();
+
+        registry.requestDisconnect("a");
+        registry.processPending(0);
+        registry.tickRooms(GRACE - 1);
+        assertTrue(registry.player("a").alive(), "still inside the grace period");
+        assertTrue(room.drainEvents().isEmpty());
+
+        registry.tickRooms(GRACE);
+        assertFalse(registry.player("a").alive());
+        GameEvent.Died died = room.drainEvents().stream()
+                .filter(GameEvent.Died.class::isInstance)
+                .map(GameEvent.Died.class::cast)
+                .findFirst().orElseThrow();
+        assertEquals("a", died.playerId());
+        assertNull(died.killerNickname(), "nobody gets the credit");
+
+        settle(registry);
+        assertNull(registry.roomOf("a"));
+    }
+
+    @Test
+    void reconnectingInsideTheGracePeriodPicksUpWhereTheyWere() {
+        RoomRegistry registry = withPlayers("a");
+        Room room = registry.roomOf("a");
+        Player before = registry.player("a");
+        var pos = before.pos();
+
+        registry.requestDisconnect("a");
+        registry.processPending(0);
+        registry.requestJoin("a", "a");
+        room.clearDirty();
+        registry.processPending(GRACE - 1);
+
+        assertSame(before, registry.player("a"), "the same player, not a fresh one");
+        assertSame(room, registry.roomOf("a"));
+        assertEquals(pos, before.pos());
+        assertFalse(before.disconnected());
+        assertTrue(room.dirty(), "the new socket needs a snapshot straight away");
+
+        registry.tickRooms(10L * GRACE);
+        assertTrue(before.alive());
+    }
+
+    @Test
+    void aDropAndAReconnectInTheSameTickLeaveThePlayerConnected() {
+        RoomRegistry registry = withPlayers("a");
+
+        registry.requestDisconnect("a");
+        registry.requestJoin("a", "a");
+        registry.processPending(0);
+
+        assertFalse(registry.player("a").disconnected());
+    }
+
+    @Test
+    void aSecondDropDoesNotRestartTheClock() {
+        RoomRegistry registry = withPlayers("a");
+        registry.requestDisconnect("a");
+        registry.processPending(0);
+        registry.requestDisconnect("a");
+        registry.processPending(GRACE - 1);
+
+        registry.tickRooms(GRACE);
+
+        assertFalse(registry.player("a").alive());
     }
 
     // --- Room-entry score ------------------------------------------------

@@ -263,8 +263,23 @@ public final class RoomSimulator {
     }
 
     /**
+     * A disconnected player whose grace period has run out. Dies like anyone else, item
+     * dropped and result recorded, but with nobody to credit.
+     */
+    public static void abandon(Room room, Player player, long nowTick) {
+        if (!player.alive()) {
+            return;
+        }
+        player.takeDamage(player.hp());
+        die(room, player, null, nowTick);
+        room.markDirty();
+    }
+
+    /**
      * The body stays in the room, marked dead, until the registry reaps it after the
      * tick's broadcast; that way the victim's last snapshot shows them at zero.
+     *
+     * @param killer null when nobody killed them
      */
     private static void die(Room room, Player victim, Player killer, long nowTick) {
         victim.setInCabinet(false);
@@ -277,9 +292,11 @@ public final class RoomSimulator {
                 room.placeItem(spot, dropped);
             }
         }
-        room.emit(new GameEvent.Died(victim.id(), victim.score(), victim.kills(),
-                nowTick - victim.joinedTick(),
-                killer.nickname(), killer.heldItem() == null ? null : killer.heldItem().kind()));
+        String killerName = killer == null ? null : killer.nickname();
+        ItemKind weapon = killer == null || killer.heldItem() == null
+                ? null : killer.heldItem().kind();
+        room.emit(new GameEvent.Died(victim.id(), victim.nickname(), victim.score(),
+                victim.kills(), nowTick - victim.joinedTick(), killerName, weapon));
     }
 
     /**

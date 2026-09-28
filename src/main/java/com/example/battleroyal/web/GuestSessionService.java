@@ -1,5 +1,7 @@
 package com.example.battleroyal.web;
 
+import com.example.battleroyal.game.core.GameEvent;
+import com.example.battleroyal.game.loop.DeathListener;
 import com.example.battleroyal.game.rule.GameConstants;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +18,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * the player, so there is no code path where a client asserts a player id.
  *
  * <p>Nicknames may repeat. They are a label on a scoreboard row, not a login.
+ *
+ * <p>A token lives as long as the life it was issued for. It survives a dropped socket,
+ * which is what lets a reconnect inside the grace period find the same player, and is
+ * retired on death, so a reconnect after that cannot bring the player back.
  */
 @Service
-public class GuestSessionService {
+public class GuestSessionService implements DeathListener {
 
     public record GuestSession(String token, String playerId, String nickname) {
     }
@@ -54,9 +60,8 @@ public class GuestSessionService {
         return token == null ? null : byToken.get(token);
     }
 
-    public void discard(String token) {
-        if (token != null) {
-            byToken.remove(token);
-        }
+    @Override
+    public void onDeath(GameEvent.Died died) {
+        byToken.values().removeIf(session -> session.playerId().equals(died.playerId()));
     }
 }

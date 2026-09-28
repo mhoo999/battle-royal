@@ -22,9 +22,13 @@ public class SessionRegistry {
         byPlayerId.put(playerId, session);
     }
 
-    /** Removes the mapping only if it still points at this session. */
-    public void unregister(String playerId, WebSocketSession session) {
-        byPlayerId.remove(playerId, session);
+    /**
+     * Removes the mapping only if it still points at this session.
+     *
+     * @return false when a newer socket has already replaced this one
+     */
+    public boolean unregister(String playerId, WebSocketSession session) {
+        return byPlayerId.remove(playerId, session);
     }
 
     public WebSocketSession socketOf(String playerId) {

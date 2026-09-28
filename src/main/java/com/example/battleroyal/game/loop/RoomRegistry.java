@@ -61,6 +61,7 @@ public class RoomRegistry {
     private final Queue<Command> commands = new ConcurrentLinkedQueue<>();
     private final Queue<JoinRequest> joins = new ConcurrentLinkedQueue<>();
     private final Queue<String> leaves = new ConcurrentLinkedQueue<>();
+    private final Queue<String> disconnects = new ConcurrentLinkedQueue<>();
 
     private final AtomicLong roomSequence = new AtomicLong();
     private final AtomicLong itemSequence = new AtomicLong();
@@ -103,16 +104,32 @@ public class RoomRegistry {
         leaves.add(playerId);
     }
 
+    /**
+     * The player's socket dropped. They stay in the world for
+     * {@link GameConstants#DISCONNECT_GRACE_TICKS} so that closing the app is not an
+     * escape from a losing fight; {@link #requestJoin} with the same id brings them back.
+     */
+    public void requestDisconnect(String playerId) {
+        disconnects.add(playerId);
+    }
+
     // --- Called from the loop thread only ---------------------------------
 
     /**
-     * Applies queued departures and arrivals. Departures run first so that a reconnect
-     * landing in the same tick does not collide with the old session.
+     * Applies queued departures and arrivals. Departures and drops run first so that a
+     * reconnect landing in the same tick wins over the drop it follows.
      */
     public void processPending(long nowTick) {
         String leaving;
         while ((leaving = leaves.poll()) != null) {
             removePlayer(leaving);
+        }
+        String dropped;
+        while ((dropped = disconnects.poll()) != null) {
+            Player player = player(dropped);
+            if (player != null && player.alive()) {
+                player.markDisconnected(nowTick);
+            }
         }
         JoinRequest joining;
         while ((joining = joins.poll()) != null) {
@@ -138,6 +155,18 @@ public class RoomRegistry {
         for (Room room : rooms.values()) {
             RoomSimulator.tick(room, nowTick);
             ItemSpawns.tick(room, nowTick, itemRandom, this::nextItemId);
+            expireDisconnected(room, nowTick);
+        }
+    }
+
+    private void expireDisconnected(Room room, long nowTick) {
+        for (Player player : room.players()) {
+            if (player.alive() && player.disconnected()
+                    && nowTick - player.disconnectedSinceTick()
+                            >= GameConstants.DISCONNECT_GRACE_TICKS) {
+                RoomSimulator.abandon(room, player, nowTick);
+                log.info("{} did not come back in time", player.id());
+            }
         }
     }
 
@@ -321,7 +350,12 @@ public class RoomRegistry {
      * they have seen the screen; encounters are for door transits.
      */
     private void addPlayer(JoinRequest request, long nowTick) {
-        if (roomOfPlayer.containsKey(request.playerId())) {
+        Player existing = player(request.playerId());
+        if (existing != null) {
+            // A reconnect inside the grace period: pick up exactly where they were. The
+            // room is marked so the new socket gets a snapshot straight away.
+            existing.markConnected();
+            roomOf(request.playerId()).markDirty();
             return;
         }
         Room room = emptyRoom();

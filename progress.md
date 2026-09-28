@@ -6,8 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Step 7 — disconnect grace, survival and room-entry score, result persistence,
-ranking.
+Step 7 done. Next: browser check of reconnect and lobby ranking, then the Playwright
+question.
 
 ## Completed
 
@@ -59,8 +59,22 @@ ranking.
       8-tick toggle, no B; wood-background tile, own cabinet outlined
 - [x] HUD bar: name | survival clock (client-side, centred) | score
 
+- [x] Step 7 score: survival +1/10s outside cabinets, room entry +10 (first visit,
+      30s cap) — `ScoreRules`
+- [x] Step 7 disconnect grace: 15s in the world, hittable; same token reconnects to
+      the same player; expiry kills with no killer. Token retired on death.
+      Client auto-retries 15× at 1s.
+- [x] Step 7 results: `GameResult` saved on every death via `DeathListener` →
+      `ResultRecorder` (own writer thread). `GET /api/ranking`, top 10 on the lobby.
+
 Step 6 and HUD: `./gradlew test` green, smoke all passed, user verified cabinets, name
 and clock in the browser.
+
+Step 7: `./gradlew test` green (new: ScoreRulesTest 7, RoomRegistryTest grace and
+room-score cases, GuestSessionServiceTest, GameResultRepositoryTest 2). Smoke all
+passed including the new reconnect check (same room, same tile). Live server: the
+three smoke players died 15s after their sockets closed ("did not come back in
+time") and `/api/ranking` returned them best-first.
 
 Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
 clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
@@ -87,12 +101,13 @@ errors.
 
 ## In Progress
 
-Step 7, not started.
+Nothing. Step 7 is code complete; the browser walk of the reconnect status line and
+the lobby ranking is still to do by eye.
 
 ## Next
 
-1. Step 7: 15s disconnect grace, survival score, room-entry score (+10, first visit,
-   30s cap), result persistence, ranking.
+1. Browser check: lobby shows the top 10 (own name highlighted after a death);
+   kill the network briefly and see "재접속 중 (n/15)" then recovery.
 2. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
    that do not exist. Either write them or change the skill to point at the smoke
    script plus the manual two-tab walk.
@@ -101,17 +116,23 @@ Step 7, not started.
 
 - Floor items all render as `$`; the kind shows only as a tooltip, so on mobile you
   learn what it is by picking it up.
-- No room-entry score yet, so score comes only from pickups and combat.
 - No `DEAD` event; others learn of a death when the body leaves the next snapshot.
-- `YOU_DIED` is sent but the result is not persisted.
+- A page reload during the grace period cannot reconnect: the token lives only in
+  page memory. The old player dies 15s later.
 - A Medkit at full HP is spent for nothing. An "only when hurt" rule was tried and
   reverted: not in the docs, and `SnapshotFilterTest` expects `HEAL` at full HP.
-- A dropped socket removes the player immediately. The 15-second grace period that stops
-  players quitting to escape a fight is not implemented.
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
   needs a restart.
 
 ## Recent Decisions
+
+- **A token lives until death, not until the socket closes.** That is what lets a
+  reconnect inside the 15s grace find the same player, and retiring it on death stops
+  a late reconnect resurrecting them. A page reload loses the token (kept in memory).
+- **Results are written off the loop thread.** `ResultRecorder` hands each save to one
+  writer thread; a DB write can outlast a tick. No `PlayerAccount` until accounts exist.
+- **Survival score keeps accruing while disconnected.** At most +1 in the 15s grace;
+  not worth a special case.
 
 - **Cabinets are walked into, not pressed.** User's call, replacing B HIDE/UNHIDE.
   One occupant; an occupied cabinet blocks like a player, so bumping into it is how

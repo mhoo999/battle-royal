@@ -43,10 +43,13 @@ public sealed interface GameEvent {
      * with what. The killer's identity and weapon are hidden state while you live;
      * they are shown once you no longer can act on them in that life.
      *
-     * @param killerNickname null when nobody killed them (a future disconnect timeout)
+     * <p>Also the record of the life that ended, which is what gets saved as a result.
+     *
+     * @param nickname       the player who died, for the result record
+     * @param killerNickname null when nobody killed them (the disconnect grace ran out)
      * @param weapon         null likewise
      */
-    record Died(String playerId, int score, int kills, long survivedTicks,
+    record Died(String playerId, String nickname, int score, int kills, long survivedTicks,
                 String killerNickname, ItemKind weapon) implements GameEvent {
     }
 }

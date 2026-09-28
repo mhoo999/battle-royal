@@ -44,7 +44,7 @@ class OutboundTest {
 
     @Test
     void theResultReportsSurvivalInSeconds() {
-        GameEvent.Died died = new GameEvent.Died("p1", 420, 2,
+        GameEvent.Died died = new GameEvent.Died("p1", "me", 420, 2,
                 95L * GameConstants.TICKS_PER_SECOND + 7, "kang", ItemKind.PISTOL);
 
         assertEquals(

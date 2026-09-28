@@ -57,9 +57,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* safe: when the content is taller than a phone, scroll rather than clip the top */
+  justify-content: safe center;
   gap: 1rem;
   padding: 1.5rem;
+  overflow-y: auto;
   background: var(--bg);
   text-align: center;
 }
@@ -143,6 +145,42 @@ input, button {
 }
 
 #start:active, #restart:active { background: rgba(127, 212, 193, 0.12); }
+
+/* --- Ranking -------------------------------------------------------------- */
+
+.ranking[hidden] { display: none; }
+
+.ranking {
+  width: min(100%, 18rem);
+  font-size: 0.75rem;
+}
+
+.ranking-title {
+  margin: 0 0 0.5rem;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+
+.ranking ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.ranking li {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto;
+  gap: 0.5rem;
+  padding: 0.3rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.ranking .rank  { color: var(--dim); text-align: right; }
+.ranking .name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking .score { color: var(--item); font-variant-numeric: tabular-nums; }
+.ranking li.mine .name { color: var(--self); }
 
 .error {
   min-height: 1.2em;

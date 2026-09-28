@@ -44,6 +44,9 @@ public final class Player {
     private long nextRoomScoreTick;
     private int survivalTicks;
 
+    private static final long CONNECTED = -1;
+    private long disconnectedSinceTick = CONNECTED;
+
     private final long joinedTick;
     private int score;
     private int kills;
@@ -294,6 +297,30 @@ public final class Player {
 
     public void setSurvivalTicks(int ticks) {
         this.survivalTicks = ticks;
+    }
+
+    /**
+     * The socket dropped. The player stays in the world, still standing where they
+     * were and still able to be hit, until they reconnect or the grace period ends.
+     * A second drop while already disconnected keeps the original start.
+     */
+    public void markDisconnected(long nowTick) {
+        if (disconnectedSinceTick == CONNECTED) {
+            disconnectedSinceTick = nowTick;
+        }
+    }
+
+    public void markConnected() {
+        disconnectedSinceTick = CONNECTED;
+    }
+
+    public boolean disconnected() {
+        return disconnectedSinceTick != CONNECTED;
+    }
+
+    /** Meaningful only while {@link #disconnected()}. */
+    public long disconnectedSinceTick() {
+        return disconnectedSinceTick;
     }
 
     public long joinedTick() {

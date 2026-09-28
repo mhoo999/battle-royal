@@ -31,14 +31,17 @@ public class GameLoopService {
 
     private final RoomRegistry registry;
     private final RoomBroadcaster broadcaster;
+    private final List<DeathListener> deathListeners;
 
     private volatile boolean running;
     private Thread thread;
     private volatile long tick;
 
-    public GameLoopService(RoomRegistry registry, RoomBroadcaster broadcaster) {
+    public GameLoopService(RoomRegistry registry, RoomBroadcaster broadcaster,
+                           List<DeathListener> deathListeners) {
         this.registry = registry;
         this.broadcaster = broadcaster;
+        this.deathListeners = deathListeners;
     }
 
     public long tick() {
@@ -105,6 +108,11 @@ public class GameLoopService {
                 broadcaster.broadcast(room, events, tick);
                 room.clearDirty();
             }
+            for (GameEvent event : events) {
+                if (event instanceof GameEvent.Died died) {
+                    notifyDeath(died);
+                }
+            }
         }
 
         // Removing the dead marks their room dirty, so the survivors see the body go
@@ -112,5 +120,16 @@ public class GameLoopService {
         registry.reapDead();
         registry.collectRooms();
         registry.connectIslands();
+    }
+
+    private void notifyDeath(GameEvent.Died died) {
+        for (DeathListener listener : deathListeners) {
+            try {
+                listener.onDeath(died);
+            } catch (RuntimeException e) {
+                // A failed save must not cost the rest of the tick.
+                log.error("Death listener failed for {}", died.playerId(), e);
+            }
+        }
     }
 }

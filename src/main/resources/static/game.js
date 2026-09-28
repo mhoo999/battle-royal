@@ -65,6 +65,7 @@ const ui = {
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
   restart: el('restart'),
   loot: el('loot'), lootFill: el('loot-fill'),
+  ranking: el('ranking'), rankingList: el('ranking-list'),
 };
 
 const cells = [];
@@ -250,11 +251,24 @@ const actionA = () => send({ type: 'ACTION_A' });
 const actionB = () => send({ type: 'ACTION_B' });
 const releaseB = () => send({ type: 'RELEASE_B' });
 
+/*
+ * A dropped socket leaves the player standing in the world for 15 seconds (the server's
+ * grace period). Retrying once a second for that long brings them back if the network
+ * does. The server refuses the token once the player is dead, which ends the retries.
+ */
+const RECONNECT_MS = 1000;
+const RECONNECT_TRIES = 15;
+const CLOSE_REFUSED = 1003;
+let reconnectTries = 0;
+
 function connect(token) {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-  socket = new WebSocket(`${scheme}://${location.host}/ws/game?token=${encodeURIComponent(token)}`);
+  const ws = new WebSocket(`${scheme}://${location.host}/ws/game?token=${encodeURIComponent(token)}`);
+  socket = ws;
 
-  socket.addEventListener('message', (event) => {
+  ws.addEventListener('open', () => { reconnectTries = 0; });
+
+  ws.addEventListener('message', (event) => {
     const message = JSON.parse(event.data);
     if (message.type === 'SNAPSHOT') {
       lastSnapshot = message;
@@ -270,11 +284,20 @@ function connect(token) {
     }
   });
 
-  socket.addEventListener('close', () => {
-    if (ui.dead.hidden) {
-      ui.state.className = 'state';
+  ws.addEventListener('close', (event) => {
+    // Replaced by a newer socket, or closed on purpose by going back to the lobby.
+    if (socket !== ws) return;
+    // Dead: the result screen is up and there is nothing to come back to.
+    if (!ui.dead.hidden) return;
+
+    ui.state.className = 'state';
+    if (event.code === CLOSE_REFUSED || reconnectTries >= RECONNECT_TRIES) {
       ui.state.textContent = '연결이 끊어졌습니다';
+      return;
     }
+    reconnectTries++;
+    ui.state.textContent = `연결 끊김 — 재접속 중 (${reconnectTries}/${RECONNECT_TRIES})`;
+    setTimeout(() => { if (socket === ws) connect(token); }, RECONNECT_MS);
   });
 }
 
@@ -301,6 +324,36 @@ function stopClock() {
   if (clockTimer !== null) {
     clearInterval(clockTimer);
     clockTimer = null;
+  }
+}
+
+// --- Ranking -------------------------------------------------------------
+
+const RANKING_SIZE = 10;
+
+/*
+ * Nicknames are typed by other players, so rows are built with textContent only.
+ * A failed fetch simply leaves the ranking hidden; the lobby works without it.
+ */
+async function loadRanking() {
+  try {
+    const response = await fetch(`/api/ranking?limit=${RANKING_SIZE}`);
+    if (!response.ok) return;
+    const rows = await response.json();
+    ui.rankingList.replaceChildren(...rows.map((row, i) => {
+      const li = document.createElement('li');
+      if (nickname && row.nickname === nickname) li.classList.add('mine');
+      for (const [cls, text] of [['rank', i + 1], ['name', row.nickname], ['score', row.score]]) {
+        const span = document.createElement('span');
+        span.className = cls;
+        span.textContent = text;
+        li.appendChild(span);
+      }
+      return li;
+    }));
+    ui.ranking.hidden = rows.length === 0;
+  } catch (e) {
+    ui.ranking.hidden = true;
   }
 }
 
@@ -334,6 +387,7 @@ async function beginSession(typed) {
     ui.lobby.hidden = true;
     ui.dead.hidden = true;
     ui.game.hidden = false;
+    reconnectTries = 0;
     connect(session.token);
   } catch (e) {
     ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
@@ -368,6 +422,7 @@ function restart() {
   ui.nickname.value = nickname;
   ui.nickname.focus();
   ui.nickname.select();
+  loadRanking();
 }
 
 // --- Input ---------------------------------------------------------------
@@ -444,3 +499,4 @@ ui.lobbyForm.addEventListener('submit', (event) => {
 });
 ui.restart.addEventListener('click', restart);
 ui.nickname.focus();
+loadRanking();

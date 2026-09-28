@@ -321,10 +321,42 @@ async function main() {
   });
   check(refused, 'a socket with an unknown token is refused');
 
+  await reconnect();
+
   a.socket.close();
   b.socket.close();
   console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);
   process.exit(failures === 0 ? 0 : 1);
+}
+
+/**
+ * A dropped socket is not a way out of the world: the player stays put for the grace
+ * period, and the same token picks them up exactly where they were.
+ */
+async function reconnect() {
+  const c = await openSession('reconnect');
+  const before = c.latest();
+  c.socket.close();
+  await sleep(300);
+
+  const again = new WebSocket(`${WS}?token=${encodeURIComponent(c.session.token)}`);
+  let latest = null;
+  again.addEventListener('message', (event) => {
+    const message = JSON.parse(event.data);
+    if (message.type === 'SNAPSHOT') latest = message;
+  });
+  const deadline = Date.now() + 3000;
+  while (!latest && Date.now() < deadline) await sleep(25);
+
+  check(latest !== null, 'the same token reconnects inside the grace period');
+  if (latest) {
+    check(latest.roomId === before.roomId
+        && latest.self.x === before.self.x && latest.self.y === before.self.y,
+      'a reconnect picks up in the same room on the same tile',
+      `${before.roomId} (${before.self.x},${before.self.y}) -> `
+        + `${latest.roomId} (${latest.self.x},${latest.self.y})`);
+  }
+  again.close();
 }
 
 async function combat(a, b) {

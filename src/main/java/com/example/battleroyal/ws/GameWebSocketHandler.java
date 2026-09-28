@@ -31,7 +31,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(GameWebSocketHandler.class);
 
     private static final String PLAYER_ID = "playerId";
-    private static final String TOKEN = "token";
+    private static final String SEND_SAFE = "sendSafe";
 
     /** Give up on a client that cannot keep up rather than stalling the game loop. */
     private static final int SEND_TIME_LIMIT_MS = 5_000;
@@ -63,9 +63,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         WebSocketSession sendSafe = new ConcurrentWebSocketSessionDecorator(
                 session, SEND_TIME_LIMIT_MS, SEND_BUFFER_BYTES);
         session.getAttributes().put(PLAYER_ID, guest.playerId());
-        session.getAttributes().put(TOKEN, token);
+        session.getAttributes().put(SEND_SAFE, sendSafe);
 
         sessions.register(guest.playerId(), sendSafe);
+        // For a player still in the world, inside their grace period, this is a reconnect.
         rooms.requestJoin(guest.playerId(), guest.nickname());
         log.info("Player {} ({}) connected", guest.playerId(), guest.nickname());
     }
@@ -88,12 +89,16 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         if (playerId == null) {
             return;
         }
-        WebSocketSession stored = sessions.socketOf(playerId);
-        sessions.unregister(playerId, stored);
-        // Step 7 replaces this with a 15 second grace period so a dropped phone is not
-        // an escape from a losing fight.
-        rooms.requestLeave(playerId);
-        guests.discard((String) session.getAttributes().get(TOKEN));
+        WebSocketSession mine = (WebSocketSession) session.getAttributes().get(SEND_SAFE);
+        // A reconnect can open the new socket before the old one finishes closing. Only
+        // the socket still on record counts as a drop, or the player would be killed
+        // fifteen seconds into a perfectly good connection.
+        if (!sessions.unregister(playerId, mine)) {
+            return;
+        }
+        // Not removed: they stay in the world, hittable, for the grace period. The
+        // token outlives the socket so a reconnect finds them.
+        rooms.requestDisconnect(playerId);
         log.info("Player {} disconnected ({})", playerId, status);
     }
 
