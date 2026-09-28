@@ -1,9 +1,13 @@
 package com.example.battleroyal.game.rule;
 
+import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.ActionB;
 import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Direction;
+import com.example.battleroyal.game.core.GameEvent;
+import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.Player;
+import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
 
 /**
@@ -40,9 +44,7 @@ public final class RoomSimulator {
         }
         switch (command) {
             case Command.Move move -> move(room, player, move.dir(), nowTick);
-            case Command.ActionA ignored -> {
-                // Attack, fire, reload and heal arrive in Step 4.
-            }
+            case Command.ActionA ignored -> actionA(room, player, nowTick);
             case Command.ActionB ignored -> {
                 return actionB(room, player);
             }
@@ -51,12 +53,16 @@ public final class RoomSimulator {
     }
 
     /**
-     * Per-tick work that is not driven by a command: currently just releasing a move
-     * that was held back by the cooldown.
+     * Per-tick work that is not driven by a command: finishing reloads and releasing a
+     * move that was held back by the cooldown.
      */
     public static void tick(Room room, long nowTick) {
         for (Player player : room.players()) {
-            if (!player.alive() || player.inCabinet()) {
+            if (!player.alive()) {
+                continue;
+            }
+            finishReload(room, player, nowTick);
+            if (player.inCabinet()) {
                 continue;
             }
             if (!MovementRules.ready(nowTick, player.nextMoveTick())) {
@@ -100,6 +106,117 @@ public final class RoomSimulator {
             room.markDirty();
         }
     }
+
+    // --- A: the held item ------------------------------------------------
+
+    /**
+     * Every A shares one cooldown, set by whatever was just done. The token is
+     * recomputed here rather than trusted from the snapshot the client saw, so a stale
+     * button label can never unlock an action the rules no longer allow.
+     */
+    private static void actionA(Room room, Player player, long nowTick) {
+        // Commands run before tick(), so a press landing on the very tick a reload
+        // completes must see the full magazine rather than start a second reload.
+        finishReload(room, player, nowTick);
+        ActionA action = ActionResolver.actionA(player);
+        if (action == null || !MovementRules.ready(nowTick, player.nextActionTick())) {
+            return;
+        }
+        switch (action) {
+            case ATTACK -> {
+                strike(room, player, GameConstants.KNIFE_RANGE, GameConstants.KNIFE_DAMAGE,
+                        false, nowTick);
+                player.setNextActionTick(nowTick + GameConstants.KNIFE_COOLDOWN_TICKS);
+            }
+            case FIRE -> {
+                player.heldItem().spendAmmo();
+                strike(room, player, GameConstants.PISTOL_RANGE,
+                        GameConstants.PISTOL_DAMAGE, true, nowTick);
+                player.setNextActionTick(nowTick + GameConstants.PISTOL_COOLDOWN_TICKS);
+            }
+            case RELOAD -> {
+                long done = nowTick + GameConstants.PISTOL_RELOAD_TICKS;
+                player.startReload(done);
+                player.setNextActionTick(done);
+            }
+            case HEAL -> {
+                player.heal(GameConstants.MEDKIT_HEAL, GameConstants.MAX_HP);
+                player.releaseItem();
+                player.setNextActionTick(nowTick + GameConstants.MEDKIT_COOLDOWN_TICKS);
+            }
+        }
+        room.markDirty();
+    }
+
+    private static void finishReload(Room room, Player player, long nowTick) {
+        Item reloaded = player.takeFinishedReload(nowTick);
+        if (reloaded != null) {
+            reloaded.refill(GameConstants.PISTOL_MAGAZINE);
+            room.markDirty();
+        }
+    }
+
+    /**
+     * Resolves one attack along the attacker's facing. Only a pistol leaves a visible
+     * trail; a knife thrust is silent apart from its effect.
+     */
+    private static void strike(Room room, Player attacker, int range, int damage,
+                               boolean shot, long nowTick) {
+        CombatRules.Trace trace =
+                CombatRules.trace(room, attacker.pos(), attacker.facing(), range);
+        if (shot) {
+            room.emit(new GameEvent.Shot(trace.path()));
+        }
+        if (!trace.hit()) {
+            return;
+        }
+        Player victim = trace.victim();
+        room.emit(new GameEvent.Hit(attacker.id()));
+        attacker.addScore(GameConstants.SCORE_HIT);
+        if (victim.takeDamage(damage)) {
+            attacker.addScore(GameConstants.SCORE_KILL);
+            attacker.addKill();
+            die(room, victim, nowTick);
+        }
+    }
+
+    /**
+     * The body stays in the room, marked dead, until the registry reaps it after the
+     * tick's broadcast; that way the victim's last snapshot shows them at zero.
+     */
+    private static void die(Room room, Player victim, long nowTick) {
+        victim.setInCabinet(false);
+        victim.clearBufferedMove();
+        Item dropped = victim.releaseItem();
+        if (dropped != null) {
+            Pos spot = dropSpot(room, victim.pos());
+            if (spot != null) {
+                room.placeItem(spot, dropped);
+            }
+        }
+        room.emit(new GameEvent.Died(victim.id(), victim.score(), victim.kills(),
+                nowTick - victim.joinedTick()));
+    }
+
+    /**
+     * Where a dead player's item lands: their own tile, or the nearest free neighbour
+     * when an item is already lying there. Items are never destroyed on purpose; only
+     * a player boxed in by items on every side loses theirs.
+     */
+    private static Pos dropSpot(Room room, Pos at) {
+        if (room.map().walkable(at) && room.itemAt(at) == null) {
+            return at;
+        }
+        for (Direction dir : Direction.values()) {
+            Pos beside = at.step(dir);
+            if (room.map().walkable(beside) && room.itemAt(beside) == null) {
+                return beside;
+            }
+        }
+        return null;
+    }
+
+    // --- B: the surroundings --------------------------------------------
 
     private static DoorTransit actionB(Room room, Player player) {
         ActionB action = ActionResolver.actionB(room, player);

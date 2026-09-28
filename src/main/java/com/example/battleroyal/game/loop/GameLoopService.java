@@ -1,5 +1,6 @@
 package com.example.battleroyal.game.loop;
 
+import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.rule.GameConstants;
 import jakarta.annotation.PostConstruct;
@@ -8,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -94,14 +96,21 @@ public class GameLoopService {
         registry.processPending(tick);
         registry.applyCommands(tick);
         registry.tickRooms(tick);
-        registry.collectRooms();
-        registry.connectIslands();
 
+        // Before reaping, so a victim still receives the snapshot showing them at zero
+        // and the result that goes with it.
         for (Room room : registry.rooms()) {
-            if (room.dirty()) {
-                broadcaster.broadcast(room, tick);
+            List<GameEvent> events = room.drainEvents();
+            if (room.dirty() || !events.isEmpty()) {
+                broadcaster.broadcast(room, events, tick);
                 room.clearDirty();
             }
         }
+
+        // Removing the dead marks their room dirty, so the survivors see the body go
+        // on the next tick.
+        registry.reapDead();
+        registry.collectRooms();
+        registry.connectIslands();
     }
 }

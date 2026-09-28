@@ -29,14 +29,23 @@ public final class Player {
     private Direction bufferedMove;
     private long bufferedMoveExpiresTick;
 
+    private Item reloadingItem;
+    private long reloadDoneTick;
+
+    private final long joinedTick;
     private int score;
     private int kills;
 
     public Player(String id, String nickname, Pos pos, int maxHp) {
+        this(id, nickname, pos, maxHp, 0);
+    }
+
+    public Player(String id, String nickname, Pos pos, int maxHp, long joinedTick) {
         this.id = id;
         this.nickname = nickname;
         this.pos = pos;
         this.hp = maxHp;
+        this.joinedTick = joinedTick;
     }
 
     public String id() {
@@ -167,6 +176,37 @@ public final class Player {
 
     public void setNextCabinetToggleTick(long tick) {
         this.nextCabinetToggleTick = tick;
+    }
+
+    /**
+     * Starts reloading the held item. The magazine is refilled only when the reload
+     * finishes, and only if the same item is still in hand, so dropping a pistol
+     * halfway through does not leave a full one on the floor.
+     */
+    public void startReload(long doneTick) {
+        this.reloadingItem = heldItem;
+        this.reloadDoneTick = doneTick;
+    }
+
+    public boolean reloading() {
+        return reloadingItem != null;
+    }
+
+    /**
+     * Returns the item whose reload is due and clears the reload, or null if none is
+     * due yet. An item that has left the player's hand is abandoned, not returned.
+     */
+    public Item takeFinishedReload(long nowTick) {
+        if (reloadingItem == null || nowTick < reloadDoneTick) {
+            return null;
+        }
+        Item finished = reloadingItem == heldItem ? reloadingItem : null;
+        reloadingItem = null;
+        return finished;
+    }
+
+    public long joinedTick() {
+        return joinedTick;
     }
 
     public int score() {

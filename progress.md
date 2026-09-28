@@ -6,8 +6,9 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Step 4 — combat: hit resolution along a line, Knife/Pistol/Medkit, damage and death.
-None of it is written yet.
+Step 5 — items: spawn points filled at room creation, B pickup and swap, 20s respawn,
++5 pickup score. Once weapons can be picked up, verify Step 4 combat in two browser
+tabs (still owed).
 
 ## Completed
 
@@ -30,12 +31,19 @@ None of it is written yet.
 - [x] Door transit, arriving just inside the door you came through
 - [x] Bush and cabinet visibility filtering
 - [x] `e2e/smoke-two-sockets.mjs` — dependency-free two-socket checks
+- [x] Step 4 combat: `CombatRules.trace` (instant raycast), A wired in `RoomSimulator`
+      (Knife, Pistol fire / reload at zero, Medkit), damage, death, hit/kill score,
+      `GameEvent` (Shot/Hit/Died) queued on `Room` and routed by audience,
+      `ws/Outbound` wire records, dead reaped after broadcast, client draws `•` path
+      for 100ms and blinks on HIT / HP loss
 
 Verified: `./gradlew test` 79 passing; `node e2e/smoke-two-sockets.mjs` 10 consecutive
 clean runs with players meeting after 1–3 door transits. Two browser tabs confirmed
 movement replication and one-way bush concealment.
 
-Committed as `feat: V1 world, movement and real-time sync`.
+Step 4: `./gradlew test` 112 passing; smoke suite 3/3 clean against the running
+server with no loop errors. **Not browser-verified** — nobody can hold a weapon until
+Step 5 spawns items.
 
 ## In Progress
 
@@ -43,26 +51,44 @@ Nothing. The tree is green.
 
 ## Next
 
-1. `game/rule/CombatRules` and hit resolution: bushes pass, walls stop, a cabinet stops
-   the shot and wounds its occupant.
-2. Wire `ACTION_A` in `RoomSimulator` — Knife, Pistol (fire, reload at zero), Medkit.
-3. Introduce `GameEvent` and an event path to the client. `SHOT` carries the tile path
-   starting at the shooter; `HIT` carries nothing but the fact.
-4. Client: draw the shot path, react to HP changes.
-5. Tests: range edges, wall blocking, cabinet blocking plus occupant damage, bush
-   pass-through hitting a concealed player, A-at-zero-ammo reloads, cooldown rejection,
-   and that `HIT` names no target.
+1. Step 5: fill `itemSpawns` on room creation (weighted KNIFE/PISTOL/MEDKIT), B
+   `PICKUP`/`SWAP` in `ActionResolver` + `RoomSimulator` (swap leaves the old item on
+   the floor), 20s respawn per spawn point, +5 once per item id.
+2. Browser: two tabs, pick up a pistol, shoot across a room and through a bush, knife
+   into a cabinet, die and restart. Extend `e2e/smoke-two-sockets.mjs` with a
+   shot/HIT/YOU_DIED check.
+3. Step 6: cabinets (HIDE/UNHIDE, 8-tick toggle). `CombatRules` already assumes the
+   occupant's `pos` is the cabinet tile — keep that convention.
+4. Step 7: 15s disconnect grace, survival score, result persistence, ranking.
 
 ## Known Issues
 
-- No combat, so nobody can die and score never moves.
-- Items never spawn. `ActionResolver.actionB` only handles doors and cabinets.
+- Items never spawn, so combat is unreachable in real play. `ActionResolver.actionB`
+  only handles doors and cabinets.
+- Combat not yet verified in a browser (see Next 2).
+- No `DEAD` event; others learn of a death when the body leaves the next snapshot.
+- `YOU_DIED` is sent but the result is not persisted.
+- A Medkit at full HP is spent for nothing. An "only when hurt" rule was tried and
+  reverted: not in the docs, and `SnapshotFilterTest` expects `HEAL` at full HP.
 - A dropped socket removes the player immediately. The 15-second grace period that stops
   players quitting to escape a fight is not implemented.
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
   needs a restart.
 
 ## Recent Decisions
+
+- **A SHOT path ends on the victim's tile, even one hidden in a bush.** It reveals the
+  victim's tile to the room and the distance to the shooter. Chosen by the user over
+  drawing the path as if the hidden player were absent, and over per-viewer paths.
+- **A dead player's item drops where they died**, ammo intact; on a neighbouring tile
+  if one already lies there or they died in a cabinet.
+- **One A cooldown**, set by the last action. A reload blocks A for 24 ticks and fills
+  the magazine at the end, only if the same pistol is still in hand. A press landing on
+  the completion tick fires rather than reloading again.
+- **Events are queued on the Room and sent after that tick's snapshot**, each to its
+  own audience. The dead are reaped after the broadcast so the victim sees HP 0.
+- **Knife emits no SHOT.** Same scan at range 1; it can stab into a cabinet.
+- **A hit that kills pays both** +20 hit and +100 kill.
 
 - **Persistent world.** No rounds, no winner. What V1 forbids is writing world state to
   the database, not the model itself.

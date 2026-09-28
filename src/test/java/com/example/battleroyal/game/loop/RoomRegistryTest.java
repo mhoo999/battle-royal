@@ -48,6 +48,7 @@ class RoomRegistryTest {
      * islands without a single unit test noticing.
      */
     private static void settle(RoomRegistry registry) {
+        registry.reapDead();
         registry.collectRooms();
         registry.connectIslands();
     }
@@ -394,5 +395,28 @@ class RoomRegistryTest {
         registry.applyCommands(31);
 
         assertNull(registry.roomOf("a"));
+    }
+
+    @Test
+    void theDeadAreTakenOutOfTheWorld() {
+        RoomRegistry registry = withPlayers("a", "b");
+        Player a = registry.player("a");
+
+        a.takeDamage(GameConstants.MAX_HP);
+        settle(registry);
+
+        assertNull(registry.player("a"));
+        assertNull(registry.roomOf("a"));
+        assertNotNull(registry.player("b"), "the living stay");
+    }
+
+    @Test
+    void aJoinRemembersWhenThePlayerArrived() {
+        RoomRegistry registry = registry(1);
+        registry.requestJoin("a", "a");
+
+        registry.processPending(42);
+
+        assertEquals(42, registry.player("a").joinedTick());
     }
 }

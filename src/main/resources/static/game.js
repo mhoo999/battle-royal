@@ -36,6 +36,10 @@ const KEY_DIR = {
  */
 const REPEAT_MS = 140;
 
+/* How long a shot path and the hit blink stay on screen. Presentation only. */
+const SHOT_MS = 100;
+const HIT_MS = 150;
+
 const el = (id) => document.getElementById(id);
 
 const ui = {
@@ -50,6 +54,9 @@ const ui = {
 
 const cells = [];
 let socket = null;
+let lastSnapshot = null;
+let shot = null;       // { path, until } while a shot is on screen
+let lastHp = null;
 let nickname = '';
 let startedAt = 0;
 
@@ -99,6 +106,39 @@ function paint(snapshot) {
     cell.classList.add('has-self');
     cell.textContent = SELF_GLYPH[self.direction] || '△';
   }
+
+  paintShot();
+}
+
+/*
+ * Drawn over whatever the snapshot put there, except players: the path starts at the
+ * shooter, and a shooter you can see is already marked. A shooter you cannot see, in
+ * a bush, is given away by exactly this dot on their tile.
+ */
+function paintShot() {
+  if (!shot || Date.now() >= shot.until) return;
+  for (const [x, y] of shot.path) {
+    const cell = cells[y * GRID + x];
+    if (!cell || cell.classList.contains('has-self') || cell.classList.contains('has-enemy')) continue;
+    cell.classList.add('shot');
+    cell.textContent = '•';
+  }
+}
+
+function showShot(path) {
+  shot = { path, until: Date.now() + SHOT_MS };
+  paintShot();
+  setTimeout(() => {
+    if (shot && Date.now() >= shot.until) {
+      shot = null;
+      if (lastSnapshot) paint(lastSnapshot);
+    }
+  }, SHOT_MS);
+}
+
+function blink(element, cls, ms) {
+  element.classList.add(cls);
+  setTimeout(() => element.classList.remove(cls), ms);
 }
 
 function paintHud(snapshot) {
@@ -106,6 +146,8 @@ function paintHud(snapshot) {
 
   ui.score.textContent = 'SCORE ' + self.score;
 
+  if (lastHp !== null && self.hp < lastHp) blink(ui.hpFill, 'hurt', HIT_MS);
+  lastHp = self.hp;
   ui.hpFill.style.width = Math.max(0, Math.min(100, self.hp)) + '%';
   ui.hpFill.classList.toggle('low', self.hp <= 30);
   ui.hpText.textContent = self.hp;
@@ -154,8 +196,12 @@ function connect(token) {
   socket.addEventListener('message', (event) => {
     const message = JSON.parse(event.data);
     if (message.type === 'SNAPSHOT') {
+      lastSnapshot = message;
       paint(message);
       paintHud(message);
+    } else if (message.type === 'EVENT') {
+      if (message.event === 'SHOT') showShot(message.path);
+      else if (message.event === 'HIT') blink(ui.board, 'hit', HIT_MS);
     } else if (message.type === 'YOU_DIED') {
       showDeath(message);
     }
@@ -191,6 +237,9 @@ async function beginSession(typed) {
     const session = await response.json();
     nickname = session.nickname;
     startedAt = Date.now();
+    lastSnapshot = null;
+    lastHp = null;
+    shot = null;
     ui.lobby.hidden = true;
     ui.dead.hidden = true;
     ui.game.hidden = false;

@@ -99,7 +99,7 @@ public class RoomRegistry {
         }
         JoinRequest joining;
         while ((joining = joins.poll()) != null) {
-            addPlayer(joining);
+            addPlayer(joining, nowTick);
         }
     }
 
@@ -120,6 +120,24 @@ public class RoomRegistry {
     public void tickRooms(long nowTick) {
         for (Room room : rooms.values()) {
             RoomSimulator.tick(room, nowTick);
+        }
+    }
+
+    /**
+     * Takes the dead out of the world. Runs after the tick's broadcast, so the victim
+     * has already been sent their last snapshot and their result.
+     *
+     * <p>Their socket stays open; the client starts a fresh session to play again.
+     */
+    public void reapDead() {
+        for (Room room : rooms.values()) {
+            List<String> dead = room.players().stream()
+                    .filter(player -> !player.alive())
+                    .map(Player::id)
+                    .toList();
+            for (String playerId : dead) {
+                removePlayer(playerId);
+            }
         }
     }
 
@@ -284,7 +302,7 @@ public class RoomRegistry {
      * A fresh login always starts alone. Nobody should be dropped into a fight before
      * they have seen the screen; encounters are for door transits.
      */
-    private void addPlayer(JoinRequest request) {
+    private void addPlayer(JoinRequest request, long nowTick) {
         if (roomOfPlayer.containsKey(request.playerId())) {
             return;
         }
@@ -296,7 +314,7 @@ public class RoomRegistry {
         }
 
         Player player = new Player(request.playerId(), request.nickname(),
-                spawn, GameConstants.MAX_HP);
+                spawn, GameConstants.MAX_HP, nowTick);
         place(player, room);
         log.info("{} joined {} ({} rooms, cap {})",
                 request.playerId(), room.id(), rooms.size(), roomCap());

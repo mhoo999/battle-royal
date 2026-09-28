@@ -19,6 +19,7 @@
   --item:      #e5c07b;
   --hp:        #7fd4c1;
   --hp-low:    #e06c75;
+  --shot:      #f0f0e0;
 
   --cell: min(6.2vw, 2rem);
 }
@@ -219,6 +220,13 @@ input, button {
 .cell.has-item  { color: var(--item); }
 .cell.has-enemy { color: var(--enemy); }
 .cell.has-self  { color: var(--self); }
+
+/* A shot is a 100ms flourish over the tiles it crossed, not a moving entity. */
+.cell.shot { color: var(--shot); }
+
+/* HIT says only that something was struck. The whole board blinks, never a tile. */
+#board.hit { outline: 2px solid var(--enemy); }
+#hp-fill.hurt { background: var(--hp-low); }
 
 /* --- Controls ---------------------------------------------------------- */
 

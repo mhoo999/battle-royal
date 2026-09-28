@@ -1,0 +1,37 @@
+package com.example.battleroyal.game.core;
+
+import java.util.List;
+
+/**
+ * Something that happened once, as opposed to state. Snapshots say where things are;
+ * events say that a shot was fired or somebody died.
+ *
+ * <p>Each event decides its own audience, and the audience is part of the rule: a
+ * {@link Hit} going to anyone but the attacker would tell them who is hiding where.
+ * See docs/NETWORK_PROTOCOL.md.
+ */
+public sealed interface GameEvent {
+
+    /**
+     * A pistol shot, for everyone in the room to draw. The path starts on the shooter's
+     * own tile, which is what gives away a bush camper the moment they fire.
+     */
+    record Shot(List<Pos> path) implements GameEvent {
+
+        public Shot {
+            path = List.copyOf(path);
+        }
+    }
+
+    /**
+     * To the attacker alone, and only the fact of it. Deliberately carries nothing
+     * about the target: not who, not how badly, not whether they died.
+     */
+    record Hit(String attackerId) implements GameEvent {
+    }
+
+    /** To the player who died: the numbers for their result screen. */
+    record Died(String playerId, int score, int kills, long survivedTicks)
+            implements GameEvent {
+    }
+}

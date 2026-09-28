@@ -20,13 +20,13 @@ Game State  ->  Game Logic  ->  Network State  ->  Client Renderer
 com.example.battleroyal
 ├── game/core/     순수 도메인 — 아무것도 import하지 않는다
 │   Pos, Direction, TileType, GridMap, Player, Room, Item, ItemKind,
-│   Command, Concealment, ActionA, ActionB
+│   Command, Concealment, ActionA, ActionB, GameEvent
 ├── game/rule/     상수와 판정 — 전부 tick 단위. core만 의존한다
 │   GameConstants, MovementRules, VisibilityRules, ActionResolver,
-│   RoomSimulator, CombatRules, RaycastResolver, ScoreRules
+│   RoomSimulator, CombatRules(raycast 포함), ScoreRules
 ├── game/map/      MapTemplate + 템플릿 문자열 상수
 ├── game/loop/     GameLoopService, RoomRegistry (할로 규칙)
-├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, codec
+├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)
 ├── web/           SessionController, RankingController
 ├── persistence/   PlayerAccount, GameResult 엔티티 + repository
 └── config/        WebSocketConfig, JacksonConfig
@@ -58,9 +58,12 @@ WS inbound thread              Game loop thread (20Hz)
        |                          join/leave 반영
   RoomRegistry 큐에 제출  ----->  커맨드 drain -> 방으로 라우팅 -> 적용
   ConcurrentLinkedQueue               |
-                                 raycast / 쿨다운 / 타이머 / 할로 GC
+                                 raycast / 쿨다운 / 타이머 -> 이벤트는 Room에 적재
                                       |
-                                 dirty 방만 스냅샷 -> per-player 필터 -> send
+                                 dirty·이벤트 있는 방만 스냅샷 -> per-player 필터 -> send
+                                 이벤트 drain -> 대상별 send (SHOT 방 전체, HIT 공격자, YOU_DIED 사망자)
+                                      |
+                                 시체 제거 -> 할로 GC -> 섬 연결
 ```
 
 **큐는 `RoomRegistry`에 하나뿐이다. 방별 큐가 아니다.** 루프 스레드가 하나라 방별

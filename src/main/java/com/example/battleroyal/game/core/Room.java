@@ -3,7 +3,9 @@ package com.example.battleroyal.game.core;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +30,7 @@ public final class Room {
     private final Map<String, Player> players = new LinkedHashMap<>();
     private final Map<Pos, Item> floorItems = new HashMap<>();
     private final Map<Direction, Room> links = new EnumMap<>(Direction.class);
+    private final List<GameEvent> events = new ArrayList<>();
 
     private boolean dirty = true;
 
@@ -173,6 +176,23 @@ public final class Room {
             dirty = true;
         }
         return taken;
+    }
+
+    // --- Events -----------------------------------------------------------
+
+    /** Queues a one-off event for the next broadcast. Events always force one. */
+    public void emit(GameEvent event) {
+        events.add(event);
+    }
+
+    /** Hands over every event emitted since the last drain, in emission order. */
+    public List<GameEvent> drainEvents() {
+        if (events.isEmpty()) {
+            return List.of();
+        }
+        List<GameEvent> drained = List.copyOf(events);
+        events.clear();
+        return drained;
     }
 
     // --- Broadcast gating -------------------------------------------------
