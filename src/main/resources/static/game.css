@@ -159,6 +159,25 @@ input, button {
   word-break: keep-all;
 }
 
+/* The caption and the numbers read as one record, so they sit tight together. */
+.record {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.record-title {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+.record-title span { color: var(--self); }
+
+.record .result { margin: 0; }
+
 .result {
   display: grid;
   grid-template-columns: auto auto;

@@ -61,7 +61,8 @@ const ui = {
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
   btnA: el('btn-a'), btnB: el('btn-b'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
-  deadTime: el('dead-time'), deadCause: el('dead-cause'), restart: el('restart'),
+  deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
+  restart: el('restart'),
   loot: el('loot'), lootFill: el('loot-fill'),
 };
 
@@ -315,6 +316,7 @@ function deathCause(killer, weapon) {
 
 function showDeath(message) {
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
+  ui.deadName.textContent = nickname;
   ui.deadScore.textContent = message.score;
   ui.deadKills.textContent = message.kills;
   ui.deadTime.textContent = (message.survivedSeconds ?? Math.round((Date.now() - startedAt) / 1000)) + 's';

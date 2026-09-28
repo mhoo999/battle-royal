@@ -70,12 +70,14 @@
 <div id="dead" class="overlay" hidden>
   <h2>GAME OVER</h2>
   <p id="dead-cause" class="cause"></p>
-  <p class="tagline">의 생존기록</p>
-  <dl class="result">
-    <dt>SCORE</dt><dd id="dead-score">0</dd>
-    <dt>KILLS</dt><dd id="dead-kills">0</dd>
-    <dt>TIME</dt><dd id="dead-time">0s</dd>
-  </dl>
+  <section class="record">
+    <p class="record-title"><span id="dead-name"></span>의 생존기록</p>
+    <dl class="result">
+      <dt>SCORE</dt><dd id="dead-score">0</dd>
+      <dt>KILLS</dt><dd id="dead-kills">0</dd>
+      <dt>TIME</dt><dd id="dead-time">0s</dd>
+    </dl>
+  </section>
   <button id="restart" type="button">처음으로</button>
 </div>
 
