@@ -23,6 +23,9 @@ public class RankingController {
     public record Row(String nickname, int score, int kills, long survivedSeconds) {
     }
 
+    public record Position(long rank) {
+    }
+
     private final GameResultRepository results;
 
     public RankingController(GameResultRepository results) {
@@ -37,5 +40,20 @@ public class RankingController {
                 .stream()
                 .map(r -> new Row(r.nickname(), r.score(), r.kills(), r.survivedSeconds()))
                 .toList();
+    }
+
+    /**
+     * Where a result with these numbers stands: one more than the number of results
+     * strictly better. Equal results share a rank.
+     *
+     * <p>Asked by the number, not by nickname, because nicknames repeat. The client asks
+     * about the life it just finished; a client lying about its numbers only changes
+     * what it shows itself. It also means the answer does not wait for that result to
+     * reach the database.
+     */
+    @GetMapping("/rank")
+    public Position rank(@RequestParam int score, @RequestParam long survivedSeconds) {
+        return new Position(1 + results.countByScoreGreaterThanOrScoreAndSurvivedSecondsGreaterThan(
+                score, score, survivedSeconds));
     }
 }

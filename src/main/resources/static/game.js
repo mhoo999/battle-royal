@@ -331,27 +331,59 @@ function stopClock() {
 
 const RANKING_SIZE = 10;
 
+/* The life that just ended, from YOU_DIED: { nickname, score, survivedSeconds }. */
+let lastResult = null;
+
+/* Nicknames are typed by other players, so rows are built with textContent only. */
+function rankingRow(rank, name, score, mine) {
+  const li = document.createElement('li');
+  if (mine) li.classList.add('mine');
+  for (const [cls, text] of [['rank', rank], ['name', name], ['score', score]]) {
+    const span = document.createElement('span');
+    span.className = cls;
+    span.textContent = text;
+    li.appendChild(span);
+  }
+  return li;
+}
+
+function isLastResult(row) {
+  return lastResult !== null
+    && row.nickname === lastResult.nickname
+    && row.score === lastResult.score
+    && row.survivedSeconds === lastResult.survivedSeconds;
+}
+
 /*
- * Nicknames are typed by other players, so rows are built with textContent only.
- * A failed fetch simply leaves the ranking hidden; the lobby works without it.
+ * The top ten, and below it, after a death, where that life ranks: "⋮" then its row.
+ * Found by its numbers rather than by name, since names repeat. A failed fetch leaves
+ * the ranking hidden; the lobby works without it.
  */
 async function loadRanking() {
   try {
-    const response = await fetch(`/api/ranking?limit=${RANKING_SIZE}`);
-    if (!response.ok) return;
-    const rows = await response.json();
-    ui.rankingList.replaceChildren(...rows.map((row, i) => {
-      const li = document.createElement('li');
-      if (nickname && row.nickname === nickname) li.classList.add('mine');
-      for (const [cls, text] of [['rank', i + 1], ['name', row.nickname], ['score', row.score]]) {
-        const span = document.createElement('span');
-        span.className = cls;
-        span.textContent = text;
-        li.appendChild(span);
+    const mine = lastResult;
+    const [top, position] = await Promise.all([
+      fetch(`/api/ranking?limit=${RANKING_SIZE}`).then((r) => (r.ok ? r.json() : [])),
+      mine
+        ? fetch(`/api/ranking/rank?score=${mine.score}&survivedSeconds=${mine.survivedSeconds}`)
+          .then((r) => (r.ok ? r.json() : null))
+        : Promise.resolve(null),
+    ]);
+
+    const items = top.map((row, i) => rankingRow(i + 1, row.nickname, row.score, isLastResult(row)));
+    if (mine && position && !top.some(isLastResult)) {
+      // "⋮" only when ranks are actually skipped. A top-ten life can be missing from
+      // the list for a moment while its save is still on the way; it just goes last.
+      if (position.rank > top.length + 1) {
+        const gap = document.createElement('li');
+        gap.className = 'gap';
+        gap.textContent = '⋮';
+        items.push(gap);
       }
-      return li;
-    }));
-    ui.ranking.hidden = rows.length === 0;
+      items.push(rankingRow(position.rank, mine.nickname, mine.score, true));
+    }
+    ui.rankingList.replaceChildren(...items);
+    ui.ranking.hidden = items.length === 0;
   } catch (e) {
     ui.ranking.hidden = true;
   }
@@ -403,6 +435,7 @@ function deathCause(killer, weapon) {
 
 function showDeath(message) {
   stopClock();
+  lastResult = { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
   ui.deadName.textContent = nickname;
   ui.deadScore.textContent = message.score;

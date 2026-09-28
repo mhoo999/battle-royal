@@ -180,7 +180,18 @@ input, button {
 .ranking .rank  { color: var(--dim); text-align: right; }
 .ranking .name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ranking .score { color: var(--item); font-variant-numeric: tabular-nums; }
-.ranking li.mine .name { color: var(--self); }
+.ranking li.mine { background: rgba(127, 212, 193, 0.08); }
+.ranking li.mine .name,
+.ranking li.mine .rank { color: var(--self); }
+/* The break between the top ten and your own row further down. */
+.ranking li.gap {
+  display: block;
+  padding: 0;
+  border-bottom: none;
+  color: var(--dim);
+  text-align: center;
+  line-height: 1.2;
+}
 
 .error {
   min-height: 1.2em;

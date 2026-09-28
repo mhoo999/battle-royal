@@ -66,6 +66,8 @@ question.
       Client auto-retries 15× at 1s.
 - [x] Step 7 results: `GameResult` saved on every death via `DeathListener` →
       `ResultRecorder` (own writer thread). `GET /api/ranking`, top 10 on the lobby.
+- [x] Own rank under the top 10 after a death ("⋮" then "25 kang 37"), asked by the
+      numbers via `GET /api/ranking/rank`, since nicknames repeat
 
 Step 6 and HUD: `./gradlew test` green, smoke all passed, user verified cabinets, name
 and clock in the browser.
@@ -106,7 +108,8 @@ the lobby ranking is still to do by eye.
 
 ## Next
 
-1. Browser check: lobby shows the top 10 (own name highlighted after a death);
+1. Browser check: lobby shows the top 10; after a death your row is highlighted, or
+   appears under "⋮" with its rank when outside the top 10 (needs 11+ results);
    kill the network briefly and see "재접속 중 (n/15)" then recovery.
 2. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
    that do not exist. Either write them or change the skill to point at the smoke

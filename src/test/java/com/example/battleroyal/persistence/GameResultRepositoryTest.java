@@ -50,6 +50,23 @@ class GameResultRepositoryTest {
     }
 
     @Test
+    void onlyStrictlyBetterResultsCountAgainstARank() {
+        save("a", 500, 10, 0);
+        save("b", 100, 300, 0);
+        save("c", 100, 100, 0);
+        save("d", 10, 999, 0);
+
+        // score 100, 100s: behind a (higher score) and b (same score, longer life);
+        // level with c, which does not count against it.
+        assertEquals(2, results.countByScoreGreaterThanOrScoreAndSurvivedSecondsGreaterThan(
+                100, 100, 100));
+        assertEquals(0, results.countByScoreGreaterThanOrScoreAndSurvivedSecondsGreaterThan(
+                900, 900, 0));
+        assertEquals(4, results.countByScoreGreaterThanOrScoreAndSurvivedSecondsGreaterThan(
+                0, 0, 0));
+    }
+
+    @Test
     void aDeathIsRecordedAsOneResult() {
         ResultRecorder recorder = new ResultRecorder(results, new DirectExecutor(),
                 Clock.fixed(T0, ZoneOffset.UTC));

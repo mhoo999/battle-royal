@@ -12,4 +12,12 @@ public interface GameResultRepository extends JpaRepository<GameResult, Long> {
      * then whoever got there first.
      */
     List<GameResult> findAllByOrderByScoreDescSurvivedSecondsDescEndedAtAsc(Pageable page);
+
+    /**
+     * Results strictly better than the given numbers: a higher score, or the same score
+     * with a longer life. {@code And} binds tighter than {@code Or} in derived queries,
+     * so this reads {@code score > ?1 or (score = ?2 and survivedSeconds > ?3)}.
+     */
+    long countByScoreGreaterThanOrScoreAndSurvivedSecondsGreaterThan(
+            int score, int sameScore, long survivedSeconds);
 }
