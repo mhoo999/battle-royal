@@ -357,7 +357,8 @@ input, button {
 .pad.right { grid-area: 2 / 3; border-radius: 0 0.3rem 0.3rem 0; }
 
 /*
- * Game Boy layout: B low on the left, A high on the right, on a tilted pill. The
+ * Game Boy look, but mirrored by choice: A low on the left, B high on the right, on a
+ * tilted pill, so the left key J and the left button are both A. The
  * letters are counter-rotated so they stay upright.
  */
 #actions {
@@ -370,7 +371,7 @@ input, button {
   transform: rotate(-25deg);
 }
 
-#btn-a { margin-bottom: 1.1rem; }
+#btn-b { margin-bottom: 1.1rem; }
 
 .action {
   display: flex;

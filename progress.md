@@ -113,8 +113,9 @@ Nothing. The tree is green.
 - **The victim learns who killed them and with what.** Hidden while alive; told only
   to the dead player. Accepted that a restart then knows that name carries that
   weapon. Words stay on the client (`DEATH_VERB`, default `에 당해`).
-- **A/B stay as they are.** Checked against the original Game Boy: A upper right, B
-  lower left.
+- **A lower left, B upper right — mirrored from the Game Boy on purpose.** The original
+  has A upper right; the user chose the swap after playing. It also lines up with the
+  keyboard, where J (left) is A and K (right) is B.
 
 - **Looting lasts only while B is held.** User's call. `RELEASE_B` is a new inbound
   intent, not state. Doors and cabinets act on press and ignore release.
