@@ -73,6 +73,10 @@ None in flight. Bare hands, new weapons and junk done; next is the browser check
       up like the pistol), junk Cup/Doll/Recorder/Register, Spoon now swings.
       `Weapons.strikeOf` maps held kind (null = fists) to range/damage/cooldown/shot.
       New loot table. Death screen: "주먹에 맞고" for a bare-hand kill.
+- [x] Deploy prep: `application-prod.properties` (env-var DB, H2 console off, bind
+      127.0.0.1, forwarded headers, graceful shutdown), MySQL driver, `deploy/`
+      (systemd unit, Nginx site, env template). Rehearsed locally: prod jar + Docker
+      MySQL 8.0 + Docker Nginx + browser. `docs/AWS_DEPLOYMENT.md` written.
 - [x] A page reload resumes the same player (token in `sessionStorage`); a refused
       resume returns to the lobby with "이전 게임은 끝났습니다"
 - [x] Doors lead to the facing wall 98% of the time (was 90%): the encounter bias only
@@ -136,7 +140,8 @@ Nothing.
 
 ## Next
 
-1. AWS deployment — tracked in `docs/AWS_DEPLOYMENT.md`.
+1. AWS deployment — Phase 1 onwards in `docs/AWS_DEPLOYMENT.md`, which carries its own
+   state. Console work is the user's; the doc says what to click and what to record.
 
 ## Known Issues
 
@@ -147,6 +152,12 @@ Nothing.
   needs a restart.
 
 ## Recent Decisions
+
+- **AWS: one EC2 (jar + systemd behind Nginx) and RDS for MySQL 8.0.** No ALB, Redis
+  or containers. Rationale and rejected options in `docs/AWS_DEPLOYMENT.md` §6.
+- **Nginx must forward `Host $http_host` and `X-Forwarded-Port`.** Found in the local
+  rehearsal: without them the browser's WebSocket handshake gets 403 from Spring's
+  same-origin check on any non-80 port, while Node clients (no Origin) pass.
 
 - **Empty hands punch; junk never hits softer than a fist.** User's call (2026-09-29),
   replacing "Spoon does nothing" and "no item, no A". There is no drop action, so

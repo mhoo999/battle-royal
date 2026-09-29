@@ -377,6 +377,7 @@ docs/PRD.md               what the product does
 docs/ARCHITECTURE.md      how the system is structured
 docs/GAME_RULES.md        how gameplay works, and every number
 docs/NETWORK_PROTOCOL.md  events, payloads, and the visibility filter
+docs/AWS_DEPLOYMENT.md    AWS deployment: console steps, recorded values, progress
 progress.md               what is done and what happens next
 ```
 

@@ -1,0 +1,24 @@
+# systemd unit for the game server on EC2.
+# Install: sudo cp deploy/battle-royal.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now battle-royal
+[Unit]
+Description=BATTLE ROYALE game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=battleroyal
+Group=battleroyal
+WorkingDirectory=/opt/battle-royal
+# DB_URL, DB_USERNAME, DB_PASSWORD. Readable by root only; see deploy/env.example.
+EnvironmentFile=/etc/battle-royal/env
+Environment=SPRING_PROFILES_ACTIVE=prod
+# A t3.micro has 1 GiB. Leave room for the OS and Nginx.
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/battle-royal/app.jar
+# The JVM exits 143 on SIGTERM; that is a clean stop, not a failure.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
