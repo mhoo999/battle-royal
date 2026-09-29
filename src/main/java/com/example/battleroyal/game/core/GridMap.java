@@ -1,6 +1,8 @@
 package com.example.battleroyal.game.core;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +41,10 @@ public final class GridMap {
         this.bushRegionCount = bushRegionCount;
         this.cabinets = List.copyOf(cabinets);
         this.itemSpawns = List.copyOf(itemSpawns);
-        this.doors = Map.copyOf(doors);
+        // Not Map.copyOf: immutable maps iterate in an order salted per JVM run, and
+        // door order decides which free door a new link takes. That made the world
+        // graph, and every encounter measurement, differ from one test run to the next.
+        this.doors = Collections.unmodifiableMap(new EnumMap<>(doors));
     }
 
     public boolean inBounds(Pos p) {

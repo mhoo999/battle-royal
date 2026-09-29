@@ -273,10 +273,14 @@ Nothing.
 - **Newly opened doors lean 40% toward occupied rooms — only ones whose facing door
   is free.** User's call (2026-09-29, option B): leaving by the top wall and arriving
   at the top wall read as a bug. The old any-occupied-room bias made one link in ten
-  sideways (90% facing). Facing-only at 30% gave 99% facing but a worst case of 18
-  transits; 40% gives 98% facing, 2.3 average, 11 worst — better than the old rule on
-  every count. Measurements in `GameConstants.ENCOUNTER_BIAS_PERCENT`; guarded by
-  `mostDoorsLeadToTheFacingWall` (>= 95%).
+  sideways (89% facing). Facing-only at 40%: 98% facing, 2.8 average, 14 worst — equal
+  or better than the old rule (3.0, 14) on every count. Measurements in
+  `GameConstants.ENCOUNTER_BIAS_PERCENT`; guarded by `mostDoorsLeadToTheFacingWall`.
+- **Door order no longer depends on a per-JVM hash salt.** `GridMap` stored doors with
+  `Map.copyOf`, whose iteration order is salted per JVM run, so `freeDoors()` order —
+  and the whole world graph — changed between runs. CI caught it: the encounter
+  worst-case test failed on unchanged code. Now an `EnumMap`; figures recorded before
+  this fix (2.3 average, 11 worst) were one salt's luck.
 - **Arrival is just inside the door you came through**, not a random tile. A pursuer has
   to appear where their quarry did or a chase stops reading as one.
 - **No entry invulnerability.** A fresh login starts alone so it needs no shield, and on
@@ -320,7 +324,9 @@ Nothing.
 ## Tuning Candidates
 
 - 150ms movement once combat exists — Knife's 500ms cooldown needs melee to stay viable.
-- `ENCOUNTER_BIAS_PERCENT` 40 (facing-only): average 2.3 door transits, worst 11.
+- `ENCOUNTER_BIAS_PERCENT` 40 (facing-only): average 2.8 door transits, worst 14.
+  50% measures 2.2 / 11 / 99% facing, at the cost of doors opening onto people half
+  the time.
 - `ROOMS_PER_PLAYER` 2, `MIN_ROOMS` 4.
 - Loot weights and `LOOT_REGROW_TICKS` 600: a real weapon about one room in eight,
   a pistol one in a hundred. Watch whether fights are mostly fists and junk.

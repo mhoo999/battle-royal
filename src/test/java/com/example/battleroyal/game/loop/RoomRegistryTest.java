@@ -276,7 +276,7 @@ class RoomRegistryTest {
             }
         }
         int percent = 100 * facing / transits;
-        // Measured 98% with a facing-only encounter bias, against 90% before it.
+        // Measured 98% with a facing-only encounter bias, against 89% before it.
         assertTrue(percent >= 95, percent + "% of transits arrived at the facing wall");
     }
 

@@ -192,14 +192,19 @@ public final class GameConstants {
      *
      * <pre>
      *   bias   average doors   worst   facing wall
-     *    30%        3.1          18        99%
-     *    40%        2.3          11        98%
-     *    50%        2.4          17        99%
-     *   (30%, any occupied room, the old rule: 2.7 average, 11 worst, 90% facing)
+     *    30%        3.0          14        98%
+     *    40%        2.8          14        98%
+     *    50%        2.2          11        99%
+     *   (30%, any occupied room, the old rule: 3.0 average, 14 worst, 89% facing)
      * </pre>
      *
-     * <p>Forty beats the old rule on every column. The tail is noisy and comes from
-     * unlucky routes more than from the bias, so higher buys nothing.
+     * <p>Forty matches or beats the old rule on every column and sits on the design
+     * target of about three doors. Fifty meets sooner, but then half of all new doors
+     * open onto somebody, and opening a door stops being a gamble.
+     *
+     * <p>These numbers are reproducible run to run only since door order stopped
+     * depending on a per-JVM hash salt (see {@code GridMap}); earlier figures were
+     * one salt's luck.
      */
     public static final int ENCOUNTER_BIAS_PERCENT = 40;
 
