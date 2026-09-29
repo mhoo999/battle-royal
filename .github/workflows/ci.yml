@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew test
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The socket suite needs a running server: real WebSocket traffic, two clients,
+      # forged frames. It prints SKIP (not FAIL) when a room happens to hold no item.
+      - name: Start the server
+        run: |
+          ./gradlew bootRun > server.log 2>&1 &
+          for i in $(seq 1 90); do
+            curl -sf http://localhost:8080/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "server did not start"; cat server.log; exit 1
+
+      - name: Socket smoke suite
+        run: node e2e/smoke-two-sockets.mjs
+
+      - name: Server log
+        if: always()
+        run: cat server.log || true
+
+      - name: Build the jar
+        run: ./gradlew bootJar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: battle-royal-jar
+          path: build/libs/*.jar
+          retention-days: 7

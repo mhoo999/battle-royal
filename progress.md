@@ -73,6 +73,8 @@ None in flight. Bare hands, new weapons and junk done; next is the browser check
       up like the pistol), junk Cup/Doll/Recorder/Register, Spoon now swings.
       `Weapons.strikeOf` maps held kind (null = fists) to range/damage/cooldown/shot.
       New loot table. Death screen: "주먹에 맞고" for a bare-hand kill.
+- [x] README (screenshot, design points) and GitHub Actions CI: unit tests, a real
+      server with the socket smoke suite, jar artifact. Repo on GitHub, branch `main`.
 - [x] Deploy prep: `application-prod.properties` (env-var DB, H2 console off, bind
       127.0.0.1, forwarded headers, graceful shutdown), MySQL driver, `deploy/`
       (systemd unit, Nginx site, env template). Rehearsed locally: prod jar + Docker
