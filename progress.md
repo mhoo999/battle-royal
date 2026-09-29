@@ -73,8 +73,14 @@ None in flight. Bare hands, new weapons and junk done; next is the browser check
       up like the pistol), junk Cup/Doll/Recorder/Register, Spoon now swings.
       `Weapons.strikeOf` maps held kind (null = fists) to range/damage/cooldown/shot.
       New loot table. Death screen: "주먹에 맞고" for a bare-hand kill.
+- [x] A page reload resumes the same player (token in `sessionStorage`); a refused
+      resume returns to the lobby with "이전 게임은 끝났습니다"
 - [x] Doors lead to the facing wall 98% of the time (was 90%): the encounter bias only
       picks occupied rooms whose facing door is free, and runs at 40%.
+
+Reload resume: browser — moved, reloaded, came back on room-1 (4,11) with the name
+and clock kept; a stored unknown token led to the lobby, name prefilled, message
+shown, storage cleared. Smoke all passed. No console errors.
 
 Step 7 browser walk (2026-09-29): lobby top 10 shown; `socket.close()` showed
 "연결 끊김 — 재접속 중 (1/15)" and came back on the same room and tile; a socket player
@@ -130,14 +136,11 @@ Nothing.
 
 ## Next
 
-1. Reconnect after a page reload (token in `sessionStorage`).
-2. AWS deployment — tracked in `docs/AWS_DEPLOYMENT.md`.
+1. AWS deployment — tracked in `docs/AWS_DEPLOYMENT.md`.
 
 ## Known Issues
 
 - No `DEAD` event; others learn of a death when the body leaves the next snapshot.
-- A page reload during the grace period cannot reconnect: the token lives only in
-  page memory. The old player dies 15s later.
 - A Medkit at full HP is spent for nothing. An "only when hurt" rule was tried and
   reverted: not in the docs, and `SnapshotFilterTest` expects `HEAL` at full HP.
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
@@ -172,7 +175,9 @@ Nothing.
 
 - **A token lives until death, not until the socket closes.** That is what lets a
   reconnect inside the 15s grace find the same player, and retiring it on death stops
-  a late reconnect resurrecting them. A page reload loses the token (kept in memory).
+  a late reconnect resurrecting them. The client keeps it in `sessionStorage`, so a
+  page reload inside the grace resumes the same player; per tab, so two tabs stay two
+  players. A refused resume clears it and returns to the lobby.
 - **Results are written off the loop thread.** `ResultRecorder` hands each save to one
   writer thread; a DB write can outlast a tick. No `PlayerAccount` until accounts exist.
 - **Survival score keeps accruing while disconnected.** At most +1 in the 15s grace;

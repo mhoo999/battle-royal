@@ -298,8 +298,18 @@ function connect(token) {
     // Dead: the result screen is up and there is nothing to come back to.
     if (!ui.dead.hidden) return;
 
+    if (event.code === CLOSE_REFUSED) {
+      forgetSession();
+      // A page reload tried to resume a player who died while it was away.
+      if (lastSnapshot === null) {
+        restart();
+        ui.lobbyError.textContent = '이전 게임은 끝났습니다';
+        return;
+      }
+    }
     ui.state.className = 'state';
     if (event.code === CLOSE_REFUSED || reconnectTries >= RECONNECT_TRIES) {
+      forgetSession();
       ui.state.textContent = '연결이 끊어졌습니다';
       return;
     }
@@ -397,6 +407,33 @@ async function loadRanking() {
   }
 }
 
+// --- Surviving a page reload -------------------------------------------------
+
+/*
+ * The session token is kept in sessionStorage so a reload inside the server's 15s
+ * grace period picks the same player back up. sessionStorage is per tab, so two tabs
+ * stay two players. Storage can be missing or throw (private windows, blocked site
+ * data); the game then simply behaves as it did before: a reload ends the life.
+ */
+const SESSION_KEY = 'battle-royal.session';
+
+function saveSession(saved) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(saved)); } catch (e) { /* none */ }
+}
+
+function savedSession() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+    return saved && saved.token && saved.nickname ? saved : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function forgetSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* none */ }
+}
+
 // --- Screens -------------------------------------------------------------
 
 async function beginSession(typed) {
@@ -417,21 +454,28 @@ async function beginSession(typed) {
       return;
     }
     const session = await response.json();
-    nickname = session.nickname;
-    ui.hudName.textContent = nickname;
-    startedAt = Date.now();
-    startClock();
-    lastSnapshot = null;
-    lastHp = null;
-    flourishes = [];
-    ui.lobby.hidden = true;
-    ui.dead.hidden = true;
-    ui.game.hidden = false;
-    reconnectTries = 0;
-    connect(session.token);
+    const saved = { token: session.token, nickname: session.nickname, startedAt: Date.now() };
+    saveSession(saved);
+    enterGame(saved);
   } catch (e) {
     ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
   }
+}
+
+/** Into the game screen for a new session, or for one resumed after a reload. */
+function enterGame(saved) {
+  nickname = saved.nickname;
+  ui.hudName.textContent = nickname;
+  startedAt = saved.startedAt ?? Date.now();
+  startClock();
+  lastSnapshot = null;
+  lastHp = null;
+  flourishes = [];
+  ui.lobby.hidden = true;
+  ui.dead.hidden = true;
+  ui.game.hidden = false;
+  reconnectTries = 0;
+  connect(saved.token);
 }
 
 function deathCause(killer, weapon) {
@@ -444,6 +488,7 @@ function deathCause(killer, weapon) {
 
 function showDeath(message) {
   stopClock();
+  forgetSession();
   lastResult = { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
   ui.deadName.textContent = nickname;
@@ -540,5 +585,10 @@ ui.lobbyForm.addEventListener('submit', (event) => {
   beginSession(ui.nickname.value.trim());
 });
 ui.restart.addEventListener('click', restart);
-ui.nickname.focus();
 loadRanking();
+const resumable = savedSession();
+if (resumable) {
+  enterGame(resumable);
+} else {
+  ui.nickname.focus();
+}
