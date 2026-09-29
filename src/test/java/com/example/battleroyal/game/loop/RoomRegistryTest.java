@@ -248,6 +248,38 @@ class RoomRegistryTest {
      * not of the map; a player who kept seeing the same rooms would try a different
      * door.
      */
+    /**
+     * Leaving by the top wall should land you at the bottom one. The graph cannot
+     * always manage it: a facing door may already be spoken for, and a saturated world
+     * opens one-way passages. But it should be the rule, not the exception.
+     */
+    @Test
+    void mostDoorsLeadToTheFacingWall() {
+        int transits = 0;
+        int facing = 0;
+        for (long seed = 0; seed < 60; seed++) {
+            RoomRegistry registry = withPlayers(seed, "a", "b");
+            Random walk = new Random(seed * 31 + 7);
+            for (int i = 0; i < 20; i++) {
+                Direction side = LOOP[walk.nextInt(LOOP.length)];
+                Room before = registry.roomOf("a");
+                takeDoor(registry, "a", side, i * 10L);
+                settle(registry);
+                Room after = registry.roomOf("a");
+                if (after == before) {
+                    continue;
+                }
+                transits++;
+                if (after.linkedRoom(side.opposite()) == before) {
+                    facing++;
+                }
+            }
+        }
+        int percent = 100 * facing / transits;
+        // Measured 98% with a facing-only encounter bias, against 90% before it.
+        assertTrue(percent >= 95, percent + "% of transits arrived at the facing wall");
+    }
+
     @Test
     void twoPlayersWanderingRunIntoEachOtherQuickly() {
         int worstCase = 0;

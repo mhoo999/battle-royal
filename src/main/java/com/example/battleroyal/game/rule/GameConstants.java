@@ -186,21 +186,22 @@ public final class GameConstants {
      * Chance that a newly opened door leads straight to someone, out of 100.
      *
      * <p>The room cap alone already guarantees people meet, but it takes its time about
-     * it. Measured over sixty seeded pairs, each wandering at random until they met:
+     * it. The bias only picks rooms whose facing door is free, so doors keep leading
+     * to the opposite wall. Measured over sixty seeded pairs, each wandering at random
+     * until they met, with the share of transits arriving at the facing wall:
      *
      * <pre>
-     *   bias   average doors   worst
-     *    25%         3           16
-     *    30%         3           16
-     *    40%         2           15
-     *    50%         2           13
+     *   bias   average doors   worst   facing wall
+     *    30%        3.1          18        99%
+     *    40%        2.3          11        98%
+     *    50%        2.4          17        99%
+     *   (30%, any occupied room, the old rule: 2.7 average, 11 worst, 90% facing)
      * </pre>
      *
-     * <p>Thirty sits on the design target of about three doors. Pushing higher buys
-     * little on the tail, which comes from unlucky routes rather than from the bias,
-     * and costs the gamble of opening a door at all.
+     * <p>Forty beats the old rule on every column. The tail is noisy and comes from
+     * unlucky routes more than from the bias, so higher buys nothing.
      */
-    public static final int ENCOUNTER_BIAS_PERCENT = 30;
+    public static final int ENCOUNTER_BIAS_PERCENT = 40;
 
     // --- Session ----------------------------------------------------------
 

@@ -446,17 +446,17 @@ public class RoomRegistry {
         // Sometimes a door simply opens onto someone. Left purely to the cap, running
         // into another player took about half a minute of walking.
         //
-        // This branch deliberately ignores the facing-door preference and considers
-        // every occupied room. Restricting it was tried and pushed the worst measured
-        // search from ten door transits to sixteen, around eighty seconds of finding
-        // nobody. Occasionally arriving at the wall you left by is barely noticeable in
-        // procedurally generated rooms; an empty-feeling world is not.
+        // Only an occupied room whose facing door is free, so leaving by the top wall
+        // still lands you at the bottom one. Any occupied room used to do, and players
+        // noticed walking out of the wall they had just walked into: one link in ten
+        // came out sideways. The encounters that restriction costs are bought back by a
+        // higher bias; see ENCOUNTER_BIAS_PERCENT.
         if (random.nextInt(100) < GameConstants.ENCOUNTER_BIAS_PERCENT) {
-            List<Room> occupied = anyDoor.stream()
+            List<Room> occupiedFacing = facing.stream()
                     .filter(room -> !room.isEmpty())
                     .toList();
-            if (!occupied.isEmpty()) {
-                return attach(from, side, pick(occupied));
+            if (!occupiedFacing.isEmpty()) {
+                return attach(from, side, pick(occupiedFacing));
             }
         }
 
