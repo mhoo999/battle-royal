@@ -154,7 +154,7 @@ public class RoomRegistry {
     public void tickRooms(long nowTick) {
         for (Room room : rooms.values()) {
             RoomSimulator.tick(room, nowTick);
-            ItemSpawns.tick(room, nowTick, itemRandom, this::nextItemId);
+            ItemSpawns.tick(room, itemRandom, this::nextItemId);
             expireDisconnected(room, nowTick);
         }
     }

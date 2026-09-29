@@ -130,7 +130,7 @@ GET /ws/game?token=<uuid>
 `actionA`/`actionB`는 서버가 계산한 현재 유효 행동 **토큰**이다. 표시 문구가 아니다.
 
 ```
-actionA   ATTACK | FIRE | RELOAD | HEAL | null
+actionA   ATTACK | FIRE | HEAL | null
 actionB   PICKUP | SWAP | DOOR | null
 ```
 

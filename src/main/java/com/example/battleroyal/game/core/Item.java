@@ -47,8 +47,4 @@ public final class Item {
         }
         ammo--;
     }
-
-    public void refill(int magazineSize) {
-        ammo = kind.usesAmmo() ? magazineSize : 0;
-    }
 }

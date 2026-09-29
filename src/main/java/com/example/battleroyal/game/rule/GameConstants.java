@@ -52,12 +52,6 @@ public final class GameConstants {
      */
     public static final int LOOT_TICKS = 10;
 
-    /**
-     * Delay before an emptied item spawn rolls again: 20s. A roll that comes up empty
-     * waits the same again, so a spawn point is never dead for good.
-     */
-    public static final int ITEM_RESPAWN_TICKS = 400;
-
     /** Grace period after a socket drops before the player is killed: 15s. */
     public static final int DISCONNECT_GRACE_TICKS = 300;
 
@@ -72,8 +66,8 @@ public final class GameConstants {
     public static final int PISTOL_RANGE = 10;
     public static final int PISTOL_DAMAGE = 25;
     public static final int PISTOL_COOLDOWN_TICKS = 8;
+    /** Rounds a pistol comes with. There is no reload: the last shot uses it up. */
     public static final int PISTOL_MAGAZINE = 6;
-    public static final int PISTOL_RELOAD_TICKS = 24;
 
     public static final int MEDKIT_HEAL = 50;
     public static final int MEDKIT_COOLDOWN_TICKS = 20;
@@ -83,19 +77,27 @@ public final class GameConstants {
     public static final int PAN_DAMAGE = 15;
     public static final int PAN_COOLDOWN_TICKS = 10;
 
-    // --- Item spawns --------------------------------------------------------
+    // --- Loot ---------------------------------------------------------------
 
     /**
-     * What a spawn point rolls, out of 100. Weapons are meant to be a lucky find: a
-     * room's four spawns hold a real weapon (knife or pistol) only about half the time
-     * and a pistol about a quarter of the time, and a roll can come up empty.
+     * What a new room rolls, out of 100: one item or nothing. Most rooms are bare so
+     * that loot means travelling, and a real weapon is a lucky find — about one room in
+     * ten, a pistol one in twenty-five. Starting values, not playtested.
      */
-    public static final int SPAWN_WEIGHT_NOTHING = 40;
-    public static final int SPAWN_WEIGHT_SPOON = 15;
-    public static final int SPAWN_WEIGHT_PAN = 10;
-    public static final int SPAWN_WEIGHT_MEDKIT = 15;
-    public static final int SPAWN_WEIGHT_KNIFE = 12;
-    public static final int SPAWN_WEIGHT_PISTOL = 8;
+    public static final int LOOT_WEIGHT_NOTHING = 60;
+    public static final int LOOT_WEIGHT_SPOON = 10;
+    public static final int LOOT_WEIGHT_PAN = 10;
+    public static final int LOOT_WEIGHT_MEDKIT = 10;
+    public static final int LOOT_WEIGHT_KNIFE = 6;
+    public static final int LOOT_WEIGHT_PISTOL = 4;
+
+    /**
+     * A room rolls again after 30s in all with nobody in it and nothing on its floor.
+     * Anyone inside pauses the clock, so camping never restocks a room; leaving does.
+     * A pause, not a reset: resetting on every visit meant a player touring a small
+     * world kept every room's clock at zero and never found anything.
+     */
+    public static final int LOOT_REGROW_TICKS = 600;
 
     // --- Score ------------------------------------------------------------
 

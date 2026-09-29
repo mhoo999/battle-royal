@@ -19,7 +19,7 @@ const TERRAIN = {
 const SELF_GLYPH  = { UP: '△', DOWN: '▽', LEFT: '◁', RIGHT: '▷' };
 const ENEMY_GLYPH = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
 
-const A_LABEL = { ATTACK: '공격', FIRE: '발사', RELOAD: '재장전', HEAL: '치료' };
+const A_LABEL = { ATTACK: '공격', FIRE: '발사', HEAL: '치료' };
 const ITEM_LABEL = { KNIFE: '칼', PISTOL: '권총', MEDKIT: '메디킷', PAN: '프라이팬', SPOON: '숟가락' };
 /*
  * How a weapon killed you, glued after its name. Optional per weapon: anything not

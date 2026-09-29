@@ -4,8 +4,9 @@
  * events and who receives them, and a server that ignores anything the client asserts
  * about itself.
  *
- * Items spawn at random, so the pickup and combat checks run only when the room
- * happens to offer something. They print SKIP rather than PASS when it does not.
+ * A room holds one item at most and usually none. The pickup check runs only when B's
+ * starting room offers something and prints SKIP otherwise; the combat check sends A
+ * roaming for a weapon first when the room they meet in has none.
  *
  * Uses Node's built-in WebSocket (Node 18+), so it runs with no dependencies. The
  * browser-level suite lives in two-player.spec.ts; this one isolates the server.
@@ -208,7 +209,7 @@ async function main() {
   // Items: B picks up whatever its starting room offers.
   const offered = b.latest().items[0];
   if (!offered) {
-    skip('B picks up an item', 'every spawn in the starting room rolled empty');
+    skip('B picks up an item', 'the starting room rolled nothing');
   } else {
     const scoreBefore = b.latest().self.score;
     const after = await pickUp(b, offered);
@@ -362,19 +363,50 @@ async function reconnect() {
   again.close();
 }
 
+/**
+ * Floor items do not say what they are, so the player loots them one by one until it
+ * holds a weapon, the same way a person would. Resolves to whether it is armed.
+ */
+async function lootRoom(player, tried) {
+  while (!WEAPONS.has(player.latest().self.item)) {
+    const next = player.latest().items.find((i) => !tried.has(i.id));
+    if (!next) return false;
+    tried.add(next.id);
+    await pickUp(player, next);
+  }
+  return true;
+}
+
+/** Tries doors until the player stands in the given room. */
+async function wanderTo(player, roomId, attempts = 30) {
+  const legs = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+  for (let i = 0; i < attempts && player.latest().roomId !== roomId; i++) {
+    await takeDoor(player, legs[i % legs.length]);
+  }
+  return player.latest().roomId === roomId;
+}
+
 async function combat(a, b) {
   const label = 'A strikes B';
-  // Floor items do not say what they are, so A loots them one by one until it holds a
-  // weapon, the same way a player would.
   const tried = new Set();
-  while (!WEAPONS.has(a.latest().self.item)) {
-    const next = a.latest().items.find((i) => !tried.has(i.id));
-    if (!next) {
-      skip(label, 'no weapon in the room they met in');
+  if (!(await lootRoom(a, tried))) {
+    // A room holds one item at most and usually none, so a weapon means travelling.
+    // Door order is rotated differently from wanderTo's so A does not shuttle between
+    // the same two rooms.
+    const legs = ['RIGHT', 'DOWN', 'LEFT', 'UP', 'DOWN'];
+    let rooms = 0;
+    for (let i = 0; i < 60 && !(await lootRoom(a, tried)); i++) {
+      if (await takeDoor(a, legs[i % legs.length])) rooms++;
+    }
+    if (!WEAPONS.has(a.latest().self.item)) {
+      skip(label, `no weapon found in ${rooms} rooms`);
       return;
     }
-    tried.add(next.id);
-    await pickUp(a, next);
+    console.log(`      A armed with ${a.latest().self.item} after ${rooms} rooms`);
+    if (!(await wanderTo(a, b.latest().roomId, 40))) {
+      skip(label, 'armed, but could not find B again');
+      return;
+    }
   }
 
   const bAt = { x: b.latest().self.x, y: b.latest().self.y };

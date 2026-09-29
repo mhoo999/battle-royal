@@ -6,8 +6,7 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Item economy rework (no reload, one-or-no loot tile per room, rarer weapons) — see
-Next item 0. Recorded only; nothing implemented yet.
+None in flight. Item economy rework done; next is the browser checks in Next.
 
 ## Completed
 
@@ -43,8 +42,6 @@ Next item 0. Recorded only; nothing implemented yet.
       drives a "줍는 중" status line
 - [x] Hit feedback split: the victim's board flashes red on HP loss, the attacker's
       HIT is a neutral white flash
-- [x] Fix: an empty pistol dropped mid-reload and retaken came back with 6 rounds;
-      dropping now abandons the reload and its A lock
 - [x] Melee `SWING` event (room-wide, from/to) drawn as an arc for 150ms
 - [x] Hold-B looting: `RELEASE_B` cancels; `self.lootMsLeft` drives a gauge
 - [x] Death screen names the killer and weapon ("'kang'의 권총에 맞고 당신은
@@ -68,6 +65,15 @@ Next item 0. Recorded only; nothing implemented yet.
       `ResultRecorder` (own writer thread). `GET /api/ranking`, top 10 on the lobby.
 - [x] Own rank under the top 10 after a death ("⋮" then "25 kang 37"), asked by the
       numbers via `GET /api/ranking/rank`, since nicknames repeat
+- [x] Item economy rework: no reload (last shot uses the pistol up), one floor item
+      or none per room on one of the 4 `*` candidates, rarer weapons, loot regrows
+      only while a room sits empty and bare (`LOOT_REGROW_TICKS`). Smoke combat now
+      roams for a weapon when the meeting room has none.
+
+Item economy: `./gradlew test` 165 passing. Smoke 6/6 clean; combat ran in 5 (A armed
+after 1–17 rooms) and SKIPped once after 60 rooms without a weapon. Browser: a room
+renders with a single `$`, no console errors. Not seen in the browser: a pistol
+vanishing on its last shot (4% per roll; covered by `CombatSimulationTest`).
 
 Step 6 and HUD: `./gradlew test` green, smoke all passed, user verified cabinets, name
 and clock in the browser.
@@ -108,24 +114,6 @@ the lobby ranking is still to do by eye.
 
 ## Next
 
-0. **Item economy rework — user decisions (2026-09-28), not started.** Do these next.
-   - **Pistol has no reload.** When the last round is fired the pistol is gone.
-     Reload may return later with ammo/inventory systems. Conflicts to update first:
-     `CLAUDE.md` V1 scope lists "Reload" and §4 says "Pistol fires or reloads when
-     empty"; GAME_RULES §10 A table; `ActionA.RELOAD`, `PISTOL_RELOAD_TICKS`, the
-     reload/abandon code in `Player`/`RoomSimulator` and their tests.
-   - **Dying drops the held item, taken by looting.** Already how it works
-     (`RoomSimulator.die` → `dropSpot`, and any floor item needs the 10-tick loot).
-     Just confirm in the browser; no code expected.
-   - **A room has one loot tile or none, empty more often than not.** You should
-     have to travel. Today every map has exactly 4 `*` spawns
-     (`MapTemplate.REQUIRED_ITEM_SPAWNS`) and 40% of rolls are empty. Open question
-     for the user: one fixed spawn per map that rolls with a high empty chance, or
-     a per-room chance of having any spawn at all? And what percentage empty?
-   - **Pistol and knife rarer.** Today Pistol 8, Knife 12 (of 100). Ask the user for
-     the new weights; with one spawn per room the per-room odds change a lot anyway.
-   - Re-check the smoke combat check afterwards: with far fewer items it will SKIP
-     most runs and may need a seeded or scripted way to arm A.
 1. Browser check: lobby shows the top 10; after a death your row is highlighted, or
    appears under "⋮" with its rank when outside the top 10 (needs 11+ results);
    kill the network briefly and see "재접속 중 (n/15)" then recovery.
@@ -144,6 +132,19 @@ the lobby ranking is still to do by eye.
   needs a restart.
 
 ## Recent Decisions
+
+- **No reload.** User's call (2026-09-28). A pistol comes with 6 rounds; the last shot
+  uses it up after the strike, so a kill with it still names the pistol. Consumed like
+  a medkit, not dropped. Reload may return with an ammo system.
+- **A room holds one floor item or none.** User's call: loot should mean travelling.
+  One roll at creation; a hit lands on one of the map's 4 `*` tiles, chosen per roll.
+  Weights nothing 60, Spoon 10, Pan 10, Medkit 10, Knife 6, Pistol 4 (my pick under
+  "알아서", not playtested).
+- **Loot regrows after 30s of the room standing empty and bare — the clock pauses,
+  never resets.** No regrowth was tried first: the population cap keeps nearly every
+  room alive as a neighbour, so the world dried up (smoke: 60 rooms, no weapon). A
+  reset-on-visit clock failed the same way for anyone touring a small world. Pausing
+  keeps camping useless while rewarding rooms you left behind.
 
 - **Floor items do not say what they are.** User's call: "보이면 루팅을 왜 해?"
   Everything on the floor is `$`; you learn what it is when the loot lands in your
@@ -190,16 +191,13 @@ the lobby ranking is still to do by eye.
   HP drop in the snapshot, so it needs no new event and leaks nothing. The attacker's
   HIT stays a board-wide neutral flash.
 
-- **Spawns roll nothing 40%, Spoon 15, Pan 10, Medkit 15, Knife 12, Pistol 8.** User's
-  call: a real weapon should be a lucky find, as in *Battle Royale*. Pan and Spoon
-  expand the V1 item set; recorded as the fourth exception in `CLAUDE.md`. Pan is
-  range 1, 15 damage, 10-tick cooldown (starting values, not playtested).
-- **An empty roll re-rolls after 20s.** Otherwise a spawn that missed stays dead until
-  its room is rebuilt.
+- **Pan and Spoon expand the V1 item set** so a real weapon is a lucky find, as in
+  *Battle Royale*; recorded as an exception in `CLAUDE.md`. Pan is range 1, 15 damage,
+  10-tick cooldown (starting values, not playtested).
 - **Item rolls use their own `Random`.** Sharing the world's would shift every door
   choice whenever the spawn table changed, moving the encounter measurements.
-- **New rooms are primed, not filled inline.** Every spawn is scheduled due-now and
-  rolled in `tickRooms`, before the first broadcast, so `createRoom` needs no tick.
+- **New rooms are primed, not filled inline.** The roll is marked due and made in
+  `tickRooms`, before the first broadcast, so `createRoom` needs no tick.
 - **No item spawn or death drop within reach of a door.** B resolves DOOR before
   PICKUP, so such an item could never be taken. Kept the documented priority and fixed
   the placement instead; ARENA and GALLERY had one each.
@@ -209,9 +207,7 @@ the lobby ranking is still to do by eye.
   drawing the path as if the hidden player were absent, and over per-viewer paths.
 - **A dead player's item drops where they died**, ammo intact; on a neighbouring tile
   if one already lies there or they died in a cabinet.
-- **One A cooldown**, set by the last action. A reload blocks A for 24 ticks and fills
-  the magazine at the end, only if the same pistol is still in hand. A press landing on
-  the completion tick fires rather than reloading again.
+- **One A cooldown**, set by the last action.
 - **Events are queued on the Room and sent after that tick's snapshot**, each to its
   own audience. The dead are reaped after the broadcast so the victim sees HP 0.
 - **Knife emits no SHOT.** Same scan at range 1; it can stab into a cabinet.
@@ -269,7 +265,8 @@ the lobby ranking is still to do by eye.
   15s disconnect grace. The wander loop skips an unreachable door instead of giving
   up, since a lingering player can block the path. Six consecutive runs clean.
 - The smoke combat check cannot see what floor items are, so A loots them one by one
-  until it holds a weapon; it still SKIPs when the meeting room has none.
+  until it holds a weapon. When the meeting room has none, A roams up to 60 doors
+  looting, then wanders back to B; it SKIPs if nothing turns up (about 1 run in 6).
 
 - Tests must be deterministic. `Room` has no `hashCode`, so iterating a `HashSet<Room>`
   used identity-hash order and the encounter measurements swung between 10 and 16 door
@@ -285,4 +282,6 @@ the lobby ranking is still to do by eye.
 - 150ms movement once combat exists — Knife's 500ms cooldown needs melee to stay viable.
 - `ENCOUNTER_BIAS_PERCENT` 30: average 3 door transits, worst measured 16.
 - `ROOMS_PER_PLAYER` 2, `MIN_ROOMS` 4.
+- Loot: weights 60/10/10/10/6/4 and `LOOT_REGROW_TICKS` 600. With two players a
+  weapon can take a dozen rooms to turn up; watch whether fights ever start armed.
 - Whether door camping becomes dominant without an entry shield.

@@ -10,6 +10,5 @@ package com.example.battleroyal.game.core;
 public enum ActionA {
     ATTACK,
     FIRE,
-    RELOAD,
     HEAL
 }

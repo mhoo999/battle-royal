@@ -21,7 +21,10 @@ public final class ActionResolver {
     private ActionResolver() {
     }
 
-    /** A follows the held item. An empty pistol turns A into a reload. */
+    /**
+     * A follows the held item. A pistol in hand always has a round: the last shot uses
+     * it up.
+     */
     public static ActionA actionA(Player player) {
         if (!player.hasItem()) {
             return null;
@@ -30,13 +33,8 @@ public final class ActionResolver {
             case KNIFE, PAN -> player.inCabinet() ? null : ActionA.ATTACK;
             // A spoon fills the slot and does nothing else.
             case SPOON -> null;
-            case PISTOL -> {
-                if (player.inCabinet()) {
-                    // A cabinet is for surviving, not shooting.
-                    yield null;
-                }
-                yield player.heldItem().hasAmmo() ? ActionA.FIRE : ActionA.RELOAD;
-            }
+            // A cabinet is for surviving, not shooting.
+            case PISTOL -> player.inCabinet() ? null : ActionA.FIRE;
             // Healing is the one action a cabinet allows.
             case MEDKIT -> ActionA.HEAL;
         };

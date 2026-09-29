@@ -31,8 +31,8 @@ public final class Room {
     private final Map<Pos, Item> floorItems = new HashMap<>();
     private final Map<Direction, Room> links = new EnumMap<>(Direction.class);
     private final List<GameEvent> events = new ArrayList<>();
-    private final Map<Pos, Long> spawnRolls = new LinkedHashMap<>();
-
+    private boolean lootRollPending;
+    private int lootRegrowTicks;
     private boolean dirty = true;
 
     public Room(String id, GridMap map) {
@@ -179,31 +179,31 @@ public final class Room {
         return taken;
     }
 
-    // --- Item spawn points ----------------------------------------------
+    // --- Loot roll --------------------------------------------------------
 
-    /** Schedules this spawn point to roll for a new item at the given tick. */
-    public void scheduleSpawnRoll(Pos spawn, long atTick) {
-        spawnRolls.put(spawn, atTick);
+    /** Marks this room as waiting for its first loot roll. */
+    public void scheduleLootRoll() {
+        lootRollPending = true;
     }
 
-    public boolean spawnRollPending(Pos spawn) {
-        return spawnRolls.containsKey(spawn);
+    public boolean lootRollPending() {
+        return lootRollPending;
     }
 
-    /**
-     * Spawn points whose roll is due, in insertion order, removed from the schedule.
-     * Insertion order keeps seeded rolls reproducible.
-     */
-    public List<Pos> takeDueSpawnRolls(long nowTick) {
-        List<Pos> due = new ArrayList<>();
-        spawnRolls.entrySet().removeIf(entry -> {
-            if (entry.getValue() <= nowTick) {
-                due.add(entry.getKey());
-                return true;
-            }
-            return false;
-        });
-        return due;
+    /** Whether the first loot roll was pending, clearing it. */
+    public boolean takeLootRoll() {
+        boolean pending = lootRollPending;
+        lootRollPending = false;
+        return pending;
+    }
+
+    /** Counts one more tick spent empty and bare, returning the total so far. */
+    public int advanceLootRegrow() {
+        return ++lootRegrowTicks;
+    }
+
+    public void resetLootRegrow() {
+        lootRegrowTicks = 0;
     }
 
     // --- Events -----------------------------------------------------------

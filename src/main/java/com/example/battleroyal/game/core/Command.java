@@ -15,7 +15,7 @@ public sealed interface Command {
     record Move(String playerId, Direction dir) implements Command {
     }
 
-    /** Use the held item: attack, fire, reload when empty, or heal. */
+    /** Use the held item: attack, fire, or heal. */
     record ActionA(String playerId) implements Command {
     }
 

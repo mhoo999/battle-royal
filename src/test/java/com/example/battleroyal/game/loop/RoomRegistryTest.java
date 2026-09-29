@@ -539,16 +539,19 @@ class RoomRegistryTest {
         registry.tickRooms(0);
 
         Room room = registry.roomOf("a");
-        for (var spawn : room.map().itemSpawns()) {
-            assertTrue(room.itemAt(spawn) != null || room.spawnRollPending(spawn),
-                    "rolled on the first tick: " + spawn);
-        }
+        assertFalse(room.lootRollPending(), "rolled on the first tick");
     }
 
     @Test
     void itemRollsAreReproducibleForAGivenSeed() {
-        assertEquals(stockOf(new RoomRegistry(new Random(3), new Random(9))),
-                stockOf(new RoomRegistry(new Random(3), new Random(9))));
+        // Most rooms roll nothing, and two bare rooms prove nothing, so try several seeds.
+        boolean sawLoot = false;
+        for (int seed = 0; seed < 20; seed++) {
+            String stock = stockOf(new RoomRegistry(new Random(3), new Random(seed)));
+            assertEquals(stock, stockOf(new RoomRegistry(new Random(3), new Random(seed))));
+            sawLoot |= !stock.equals("[]");
+        }
+        assertTrue(sawLoot, "at least one seed stocked the room");
     }
 
     private static String stockOf(RoomRegistry registry) {

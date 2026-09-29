@@ -121,17 +121,16 @@ class SnapshotFilterTest {
     }
 
     @Test
-    void anEmptyPistolOffersReloadInsteadOfFire() {
+    void aPistolOnItsLastRoundStillOffersFire() {
         Room room = room();
         Player viewer = at("viewer", OPEN);
         viewer.hold(new Item("i-3", ItemKind.PISTOL, 1));
-        viewer.heldItem().spendAmmo();
         room.add(viewer);
 
         Snapshot.Self self = filter.forViewer(room, viewer, 100).self();
 
-        assertEquals(0, self.ammo());
-        assertEquals(ActionA.RELOAD, self.actionA());
+        assertEquals(1, self.ammo());
+        assertEquals(ActionA.FIRE, self.actionA());
     }
 
     @Test

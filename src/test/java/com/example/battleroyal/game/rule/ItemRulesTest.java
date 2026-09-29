@@ -14,8 +14,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -27,12 +29,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pickup, swap, spawn and respawn. CROSSROADS spawn points are (10,2), (5,7), (9,7) and
+ * Pickup, swap and the loot roll. CROSSROADS spawn points are (10,2), (5,7), (9,7) and
  * (4,12); (2,1) is plain floor well away from any door.
  */
 class ItemRulesTest {
 
-    private static final Pos SPAWN = new Pos(10, 2);
     private static final Pos FLOOR = new Pos(2, 1);
 
     private static Room room() {
@@ -250,83 +251,140 @@ class ItemRulesTest {
 
     // --- Spawning -----------------------------------------------------------------
 
+    /** Answers every draw with its top value: the table's last row, the last spawn. */
+    private static Random alwaysLast() {
+        return new Random() {
+            @Override
+            public int nextInt(int bound) {
+                return bound - 1;
+            }
+        };
+    }
+
     @Test
-    void aPrimedRoomRollsEverySpawnOnItsFirstTick() {
-        Room room = room();
-        ItemSpawns.prime(room);
+    void aPrimedRoomRollsOnceOnItsFirstTickAndHoldsAtMostOneItem() {
+        for (int seed = 0; seed < 200; seed++) {
+            Room room = room();
+            ItemSpawns.prime(room);
 
-        ItemSpawns.tick(room, 0, new Random(1), ids());
+            ItemSpawns.tick(room, new Random(seed), ids());
 
-        for (Pos spawn : room.map().itemSpawns()) {
-            assertTrue(room.itemAt(spawn) != null || room.spawnRollPending(spawn),
-                    "each spawn either holds an item or is waiting to roll again: " + spawn);
+            assertFalse(room.lootRollPending(), "rolled, seed " + seed);
+            assertTrue(room.floorItems().size() <= 1, "one item or none, seed " + seed);
+            for (Pos at : room.floorItems().keySet()) {
+                assertTrue(room.map().itemSpawns().contains(at), "on a spawn tile: " + at);
+            }
         }
     }
 
     @Test
-    void anEmptyRollTriesAgainAfterTheRespawnDelay() {
+    void aHitPutsOneFullPistolOnOneOfTheSpawnTiles() {
         Room room = room();
-        room.scheduleSpawnRoll(SPAWN, 0);
-        Random alwaysEmpty = new Random() {
+        ItemSpawns.prime(room);
+
+        ItemSpawns.tick(room, alwaysLast(), ids());
+
+        Pos last = room.map().itemSpawns().getLast();
+        assertEquals(1, room.floorItems().size());
+        assertEquals(ItemKind.PISTOL, room.itemAt(last).kind());
+        assertEquals(GameConstants.PISTOL_MAGAZINE, room.itemAt(last).ammo());
+    }
+
+    @Test
+    void theLootTileVariesBetweenRoomsOfTheSameLayout() {
+        Set<Pos> used = new HashSet<>();
+        for (int seed = 0; seed < 200; seed++) {
+            Room room = room();
+            ItemSpawns.prime(room);
+            ItemSpawns.tick(room, new Random(seed), ids());
+            used.addAll(room.floorItems().keySet());
+        }
+        assertEquals(Set.copyOf(room().map().itemSpawns()), used);
+    }
+
+    private static Random alwaysEmpty() {
+        return new Random() {
             @Override
             public int nextInt(int bound) {
                 return 0;   // the first row of the table is "nothing"
             }
         };
+    }
 
-        ItemSpawns.tick(room, 0, alwaysEmpty, ids());
-        assertNull(room.itemAt(SPAWN));
-
-        ItemSpawns.tick(room, GameConstants.ITEM_RESPAWN_TICKS - 1, new Random(1), ids());
-        assertTrue(room.spawnRollPending(SPAWN), "not yet");
-
-        Random alwaysPistol = new Random() {
-            @Override
-            public int nextInt(int bound) {
-                return bound - 1;   // the last row is the pistol
-            }
-        };
-        ItemSpawns.tick(room, GameConstants.ITEM_RESPAWN_TICKS, alwaysPistol, ids());
-        assertEquals(ItemKind.PISTOL, room.itemAt(SPAWN).kind());
-        assertEquals(GameConstants.PISTOL_MAGAZINE, room.itemAt(SPAWN).ammo());
+    /** Runs the per-tick loot check the given number of times. */
+    private static void ticks(Room room, int count, Random random) {
+        for (int i = 0; i < count; i++) {
+            ItemSpawns.tick(room, random, ids());
+        }
     }
 
     @Test
-    void takingFromASpawnPointStartsItsRespawnTimer() {
+    void aBareRoomNobodyIsInRollsAgainAfterTheRegrowDelay() {
         Room room = room();
-        Player player = put(room, SPAWN);
-        room.placeItem(SPAWN, item("i-1", ItemKind.KNIFE));
+        ItemSpawns.prime(room);
+        ItemSpawns.tick(room, alwaysEmpty(), ids());
+
+        ticks(room, GameConstants.LOOT_REGROW_TICKS - 1, alwaysLast());
+        assertTrue(room.floorItems().isEmpty(), "not yet");
+
+        ticks(room, 1, alwaysLast());
+        assertEquals(1, room.floorItems().size());
+    }
+
+    @Test
+    void waitingInsideARoomNeverRestocksIt() {
+        Room room = room();
+        put(room, FLOOR);
+        ItemSpawns.prime(room);
+        ItemSpawns.tick(room, alwaysEmpty(), ids());
+
+        ticks(room, 10 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
+
+        assertTrue(room.floorItems().isEmpty(), "camping gains nothing");
+    }
+
+    @Test
+    void passingThroughPausesTheClockRatherThanResettingIt() {
+        Room room = room();
+        ItemSpawns.prime(room);
+        ItemSpawns.tick(room, alwaysEmpty(), ids());
+        int half = GameConstants.LOOT_REGROW_TICKS / 2;
+
+        ticks(room, half, alwaysLast());
+        Player visitor = put(room, FLOOR);
+        ticks(room, 5 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
+        room.remove(visitor.id());
+        ticks(room, GameConstants.LOOT_REGROW_TICKS - half - 1, alwaysLast());
+        assertTrue(room.floorItems().isEmpty(), "the visit did not count");
+
+        ticks(room, 1, alwaysLast());
+        assertEquals(1, room.floorItems().size(), "the time before the visit did");
+    }
+
+    @Test
+    void anItemLyingAroundHoldsRegrowthBackSoARoomNeverStacksLoot() {
+        Room room = room();
+        ItemSpawns.prime(room);
+        ItemSpawns.tick(room, alwaysLast(), ids());
+
+        ticks(room, 5 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
+
+        assertEquals(1, room.floorItems().size());
+    }
+
+    @Test
+    void takingTheItemDoesNotRestockTheRoomWhileYouAreInIt() {
+        Room room = room();
+        ItemSpawns.prime(room);
+        ItemSpawns.tick(room, alwaysLast(), ids());
+        Pos spawn = room.map().itemSpawns().getLast();
+        Player player = put(room, spawn);
 
         loot(room, player, 100);
+        ticks(room, 2 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
 
-        long taken = 100 + GameConstants.LOOT_TICKS;
-        assertTrue(room.spawnRollPending(SPAWN));
-        assertTrue(room.takeDueSpawnRolls(taken + GameConstants.ITEM_RESPAWN_TICKS - 1).isEmpty());
-        assertEquals(1, room.takeDueSpawnRolls(taken + GameConstants.ITEM_RESPAWN_TICKS).size());
-    }
-
-    @Test
-    void aSwapOnASpawnPointLeavesItStockedSoNoTimerStarts() {
-        Room room = room();
-        Player player = put(room, SPAWN);
-        player.hold(item("i-1", ItemKind.SPOON));
-        room.placeItem(SPAWN, item("i-2", ItemKind.KNIFE));
-
-        loot(room, player, 0);
-
-        assertFalse(room.spawnRollPending(SPAWN));
-    }
-
-    @Test
-    void aRollDueOnAnOccupiedSpawnKeepsWhatIsLyingThere() {
-        Room room = room();
-        Item dropped = item("i-1", ItemKind.MEDKIT);
-        room.placeItem(SPAWN, dropped);
-        room.scheduleSpawnRoll(SPAWN, 0);
-
-        ItemSpawns.tick(room, 0, new Random(1), ids());
-
-        assertSame(dropped, room.itemAt(SPAWN));
+        assertEquals(ItemKind.PISTOL, player.heldItem().kind());
+        assertTrue(room.floorItems().isEmpty());
     }
 
     @Test
@@ -345,12 +403,12 @@ class ItemRulesTest {
         }
 
         Map<ItemKind, Integer> expected = new HashMap<>(Map.of(
-                ItemKind.SPOON, GameConstants.SPAWN_WEIGHT_SPOON,
-                ItemKind.PAN, GameConstants.SPAWN_WEIGHT_PAN,
-                ItemKind.MEDKIT, GameConstants.SPAWN_WEIGHT_MEDKIT,
-                ItemKind.KNIFE, GameConstants.SPAWN_WEIGHT_KNIFE,
-                ItemKind.PISTOL, GameConstants.SPAWN_WEIGHT_PISTOL));
-        assertEquals(GameConstants.SPAWN_WEIGHT_NOTHING, percent(nothing, rolls), 1.0);
+                ItemKind.SPOON, GameConstants.LOOT_WEIGHT_SPOON,
+                ItemKind.PAN, GameConstants.LOOT_WEIGHT_PAN,
+                ItemKind.MEDKIT, GameConstants.LOOT_WEIGHT_MEDKIT,
+                ItemKind.KNIFE, GameConstants.LOOT_WEIGHT_KNIFE,
+                ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL));
+        assertEquals(GameConstants.LOOT_WEIGHT_NOTHING, percent(nothing, rolls), 1.0);
         for (Map.Entry<ItemKind, Integer> entry : expected.entrySet()) {
             assertNotNull(counts.get(entry.getKey()), entry.getKey() + " never rolled");
             assertEquals(entry.getValue(), percent(counts.get(entry.getKey()), rolls), 1.0,

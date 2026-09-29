@@ -65,7 +65,7 @@ public final class RoomSimulator {
     }
 
     /**
-     * Per-tick work that is not driven by a command: finishing reloads and releasing a
+     * Per-tick work that is not driven by a command: finishing loots and releasing a
      * move that was held back by the cooldown.
      */
     public static void tick(Room room, long nowTick) {
@@ -73,7 +73,6 @@ public final class RoomSimulator {
             if (!player.alive()) {
                 continue;
             }
-            finishReload(room, player, nowTick);
             finishLoot(room, player, nowTick);
             if (ScoreRules.accrueSurvival(player)) {
                 room.markDirty();
@@ -188,9 +187,6 @@ public final class RoomSimulator {
      * button label can never unlock an action the rules no longer allow.
      */
     private static void actionA(Room room, Player player, long nowTick) {
-        // Commands run before tick(), so a press landing on the very tick a reload
-        // completes must see the full magazine rather than start a second reload.
-        finishReload(room, player, nowTick);
         ActionA action = ActionResolver.actionA(player);
         if (action == null || !MovementRules.ready(nowTick, player.nextActionTick())) {
             return;
@@ -208,15 +204,16 @@ public final class RoomSimulator {
                 }
             }
             case FIRE -> {
-                player.heldItem().spendAmmo();
+                Item pistol = player.heldItem();
+                pistol.spendAmmo();
                 strike(room, player, GameConstants.PISTOL_RANGE,
                         GameConstants.PISTOL_DAMAGE, true, nowTick);
+                if (!pistol.hasAmmo()) {
+                    // No reload: the last round uses the pistol up, like a medkit. Only
+                    // after the strike, so a kill with it still names the pistol.
+                    player.releaseItem();
+                }
                 player.setNextActionTick(nowTick + GameConstants.PISTOL_COOLDOWN_TICKS);
-            }
-            case RELOAD -> {
-                long done = nowTick + GameConstants.PISTOL_RELOAD_TICKS;
-                player.startReload(done);
-                player.setNextActionTick(done);
             }
             case HEAL -> {
                 player.heal(GameConstants.MEDKIT_HEAL, GameConstants.MAX_HP);
@@ -225,14 +222,6 @@ public final class RoomSimulator {
             }
         }
         room.markDirty();
-    }
-
-    private static void finishReload(Room room, Player player, long nowTick) {
-        Item reloaded = player.takeFinishedReload(nowTick);
-        if (reloaded != null) {
-            reloaded.refill(GameConstants.PISTOL_MAGAZINE);
-            room.markDirty();
-        }
     }
 
     /**
@@ -365,7 +354,7 @@ public final class RoomSimulator {
         Item lying = room.itemAt(player.pos());
         // Someone else may have taken it, or swapped something else onto the tile.
         if (itemId != null && lying != null && lying.id().equals(itemId)) {
-            takeItem(room, player, nowTick);
+            takeItem(room, player);
         }
     }
 
@@ -373,13 +362,9 @@ public final class RoomSimulator {
      * Picks up the item underfoot. When already holding one, the two trade places: the
      * outgoing item stays on this tile for anyone to take. Never destroyed.
      */
-    private static void takeItem(Room room, Player player, long nowTick) {
+    private static void takeItem(Room room, Player player) {
         Pos here = player.pos();
         Item taken = room.takeItem(here);
-        if (player.reloading()) {
-            // The reload leaves with the pistol, and so does the A lock it imposed.
-            player.setNextActionTick(nowTick);
-        }
         Item outgoing = player.releaseItem();
         if (outgoing != null) {
             room.placeItem(here, outgoing);
@@ -388,7 +373,6 @@ public final class RoomSimulator {
         if (player.firstPickup(taken.id())) {
             player.addScore(GameConstants.SCORE_ITEM_PICKUP);
         }
-        ItemSpawns.onTaken(room, here, nowTick);
         room.markDirty();
     }
 }

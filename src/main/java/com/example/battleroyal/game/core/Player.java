@@ -36,9 +36,6 @@ public final class Player {
     private Pos lootPos;
     private long lootDoneTick;
 
-    private Item reloadingItem;
-    private long reloadDoneTick;
-
     private final Set<String> pickedItemIds = new HashSet<>();
     private final Set<String> visitedRoomIds = new HashSet<>();
     private long nextRoomScoreTick;
@@ -121,15 +118,12 @@ public final class Player {
     }
 
     /**
-     * Hands the held item back to the caller, which is responsible for placing it.
-     *
-     * <p>A reload in progress goes with it. Leaving it running meant an empty pistol
-     * dropped mid-reload and taken back before the reload was due came back full.
+     * Hands the held item back to the caller, which places it or, for a used-up medkit
+     * or pistol, lets it go.
      */
     public Item releaseItem() {
         Item released = heldItem;
         heldItem = null;
-        reloadingItem = null;
         return released;
     }
 
@@ -197,33 +191,6 @@ public final class Player {
 
     public void setNextCabinetToggleTick(long tick) {
         this.nextCabinetToggleTick = tick;
-    }
-
-    /**
-     * Starts reloading the held item. The magazine is refilled only when the reload
-     * finishes, and only if the same item is still in hand, so dropping a pistol
-     * halfway through does not leave a full one on the floor.
-     */
-    public void startReload(long doneTick) {
-        this.reloadingItem = heldItem;
-        this.reloadDoneTick = doneTick;
-    }
-
-    public boolean reloading() {
-        return reloadingItem != null;
-    }
-
-    /**
-     * Returns the item whose reload is due and clears the reload, or null if none is
-     * due yet. An item that has left the player's hand is abandoned, not returned.
-     */
-    public Item takeFinishedReload(long nowTick) {
-        if (reloadingItem == null || nowTick < reloadDoneTick) {
-            return null;
-        }
-        Item finished = reloadingItem == heldItem ? reloadingItem : null;
-        reloadingItem = null;
-        return finished;
     }
 
     /**
