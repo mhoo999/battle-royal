@@ -4,18 +4,27 @@ package com.example.battleroyal.game.core;
  * The V1 items. A player carries exactly one, so picking anything up is always a
  * trade.
  *
- * <p>Pan and Spoon are the junk that makes a real weapon a lucky find: the pan is a
- * poor club, the spoon does nothing at all but still fills the one slot.
+ * <p>Most of what lies around is junk from a school trip: a spoon, a cup, a doll
+ * leaking stuffing, a recorder, the class register. Junk hits about as hard as a bare
+ * fist, never less, because there is no way to drop an item: junk that could not
+ * attack would leave its holder worse off than empty-handed until they found a swap.
+ * The pan is the one piece of junk that does real harm. A real weapon is a lucky find.
  *
- * <p>Only identity lives here. Range, damage, cooldown, magazine size and spawn weight
+ * <p>Only identity lives here. Range, damage, cooldown, ammunition and loot weight
  * are in {@code game.rule.GameConstants}.
  */
 public enum ItemKind {
     KNIFE(false),
+    BAT(false),
     PISTOL(true),
+    CROSSBOW(true),
     MEDKIT(false),
     PAN(false),
-    SPOON(false);
+    SPOON(false),
+    CUP(false),
+    DOLL(false),
+    RECORDER(false),
+    REGISTER(false);
 
     private final boolean usesAmmo;
 

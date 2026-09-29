@@ -242,11 +242,31 @@ class ItemRulesTest {
     }
 
     @Test
-    void aSpoonDoesNothing() {
-        Player player = put(room(), FLOOR);
-        player.hold(item("i-1", ItemKind.SPOON));
+    void junkIsSwungForAtLeastWhatAFistDoes() {
+        // There is no way to drop an item, so junk that hit softer than bare hands would
+        // leave its holder worse off than empty-handed.
+        for (ItemKind junk : new ItemKind[] {ItemKind.SPOON, ItemKind.DOLL, ItemKind.CUP,
+                ItemKind.RECORDER, ItemKind.REGISTER}) {
+            Player player = put(room(), FLOOR);
+            player.hold(item("i-1", junk));
+            assertEquals(ActionA.ATTACK, ActionResolver.actionA(player), junk.toString());
+            assertTrue(Weapons.strikeOf(junk).damage() >= GameConstants.FIST_DAMAGE,
+                    junk + " hits at least as hard as a fist");
+        }
+    }
 
-        assertNull(ActionResolver.actionA(player));
+    @Test
+    void aCupHitsOneHarderThanAFist() {
+        Room room = room();
+        Player attacker = put(room, FLOOR);
+        attacker.face(Direction.RIGHT);
+        attacker.hold(item("i-1", ItemKind.CUP));
+        Player target = new Player("t", "t", FLOOR.step(Direction.RIGHT), GameConstants.MAX_HP);
+        room.add(target);
+
+        RoomSimulator.apply(room, new Command.ActionA("p"), 0);
+
+        assertEquals(GameConstants.MAX_HP - GameConstants.FIST_DAMAGE - 1, target.hp());
     }
 
     // --- Spawning -----------------------------------------------------------------
@@ -402,12 +422,19 @@ class ItemRulesTest {
             }
         }
 
-        Map<ItemKind, Integer> expected = new HashMap<>(Map.of(
-                ItemKind.SPOON, GameConstants.LOOT_WEIGHT_SPOON,
-                ItemKind.PAN, GameConstants.LOOT_WEIGHT_PAN,
-                ItemKind.MEDKIT, GameConstants.LOOT_WEIGHT_MEDKIT,
-                ItemKind.KNIFE, GameConstants.LOOT_WEIGHT_KNIFE,
-                ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL));
+        Map<ItemKind, Integer> expected = new HashMap<>(Map.ofEntries(
+                Map.entry(ItemKind.SPOON, GameConstants.LOOT_WEIGHT_SPOON),
+                Map.entry(ItemKind.DOLL, GameConstants.LOOT_WEIGHT_DOLL),
+                Map.entry(ItemKind.CUP, GameConstants.LOOT_WEIGHT_CUP),
+                Map.entry(ItemKind.RECORDER, GameConstants.LOOT_WEIGHT_RECORDER),
+                Map.entry(ItemKind.REGISTER, GameConstants.LOOT_WEIGHT_REGISTER),
+                Map.entry(ItemKind.PAN, GameConstants.LOOT_WEIGHT_PAN),
+                Map.entry(ItemKind.MEDKIT, GameConstants.LOOT_WEIGHT_MEDKIT),
+                Map.entry(ItemKind.KNIFE, GameConstants.LOOT_WEIGHT_KNIFE),
+                Map.entry(ItemKind.BAT, GameConstants.LOOT_WEIGHT_BAT),
+                Map.entry(ItemKind.CROSSBOW, GameConstants.LOOT_WEIGHT_CROSSBOW),
+                Map.entry(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL)));
+        assertEquals(ItemKind.values().length, expected.size(), "every item can be found");
         assertEquals(GameConstants.LOOT_WEIGHT_NOTHING, percent(nothing, rolls), 1.0);
         for (Map.Entry<ItemKind, Integer> entry : expected.entrySet()) {
             assertNotNull(counts.get(entry.getKey()), entry.getKey() + " never rolled");

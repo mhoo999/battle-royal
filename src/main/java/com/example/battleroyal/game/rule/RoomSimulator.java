@@ -193,27 +193,21 @@ public final class RoomSimulator {
         }
         switch (action) {
             case ATTACK -> {
-                if (player.heldItem().kind() == ItemKind.PAN) {
-                    strike(room, player, GameConstants.PAN_RANGE, GameConstants.PAN_DAMAGE,
-                            false, nowTick);
-                    player.setNextActionTick(nowTick + GameConstants.PAN_COOLDOWN_TICKS);
-                } else {
-                    strike(room, player, GameConstants.KNIFE_RANGE,
-                            GameConstants.KNIFE_DAMAGE, false, nowTick);
-                    player.setNextActionTick(nowTick + GameConstants.KNIFE_COOLDOWN_TICKS);
-                }
+                Weapons.Strike blow = Weapons.strikeOf(heldKind(player));
+                strike(room, player, blow, nowTick);
+                player.setNextActionTick(nowTick + blow.cooldownTicks());
             }
             case FIRE -> {
-                Item pistol = player.heldItem();
-                pistol.spendAmmo();
-                strike(room, player, GameConstants.PISTOL_RANGE,
-                        GameConstants.PISTOL_DAMAGE, true, nowTick);
-                if (!pistol.hasAmmo()) {
-                    // No reload: the last round uses the pistol up, like a medkit. Only
-                    // after the strike, so a kill with it still names the pistol.
+                Item gun = player.heldItem();
+                Weapons.Strike shot = Weapons.strikeOf(gun.kind());
+                gun.spendAmmo();
+                strike(room, player, shot, nowTick);
+                if (!gun.hasAmmo()) {
+                    // No reload: the last round uses the gun up, like a medkit. Only
+                    // after the strike, so a kill with it still names the gun.
                     player.releaseItem();
                 }
-                player.setNextActionTick(nowTick + GameConstants.PISTOL_COOLDOWN_TICKS);
+                player.setNextActionTick(nowTick + shot.cooldownTicks());
             }
             case HEAL -> {
                 player.heal(GameConstants.MEDKIT_HEAL, GameConstants.MAX_HP);
@@ -224,15 +218,19 @@ public final class RoomSimulator {
         room.markDirty();
     }
 
+    /** Bare hands are a null kind, which is how {@link Weapons} tells them apart. */
+    private static ItemKind heldKind(Player player) {
+        return player.hasItem() ? player.heldItem().kind() : null;
+    }
+
     /**
-     * Resolves one attack along the attacker's facing. A pistol leaves a trail along
-     * the whole shot; a knife or pan leaves a swing on the tile in front.
+     * Resolves one attack along the attacker's facing. A gun leaves a trail along the
+     * whole shot; anything swung, fists included, leaves a swing on the tile in front.
      */
-    private static void strike(Room room, Player attacker, int range, int damage,
-                               boolean shot, long nowTick) {
+    private static void strike(Room room, Player attacker, Weapons.Strike blow, long nowTick) {
         CombatRules.Trace trace =
-                CombatRules.trace(room, attacker.pos(), attacker.facing(), range);
-        if (shot) {
+                CombatRules.trace(room, attacker.pos(), attacker.facing(), blow.range());
+        if (blow.shot()) {
             room.emit(new GameEvent.Shot(trace.path()));
         } else {
             room.emit(new GameEvent.Swing(attacker.pos(),
@@ -244,7 +242,7 @@ public final class RoomSimulator {
         Player victim = trace.victim();
         room.emit(new GameEvent.Hit(attacker.id()));
         attacker.addScore(GameConstants.SCORE_HIT);
-        if (victim.takeDamage(damage)) {
+        if (victim.takeDamage(blow.damage())) {
             attacker.addScore(GameConstants.SCORE_KILL);
             attacker.addKill();
             die(room, victim, attacker, nowTick);

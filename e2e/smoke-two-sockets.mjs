@@ -4,9 +4,9 @@
  * events and who receives them, and a server that ignores anything the client asserts
  * about itself.
  *
- * A room holds one item at most and usually none. The pickup check runs only when B's
- * starting room offers something and prints SKIP otherwise; the combat check sends A
- * roaming for a weapon first when the room they meet in has none.
+ * A room holds one item at most and often none, so the pickup check runs only when B's
+ * starting room offers something and prints SKIP otherwise. The combat check needs
+ * nothing: A strikes with bare hands.
  *
  * Uses Node's built-in WebSocket (Node 18+), so it runs with no dependencies. The
  * browser-level suite lives in two-player.spec.ts; this one isolates the server.
@@ -24,8 +24,6 @@ const WALKABLE = new Set(['.', '+', 'b']);
 const MOVE_COOLDOWN_MS = 200;
 
 let failures = 0;
-
-const WEAPONS = new Set(['KNIFE', 'PISTOL', 'PAN']);
 
 function skip(label, why) {
   console.log(`SKIP  ${label}  ${why}`);
@@ -363,50 +361,13 @@ async function reconnect() {
   again.close();
 }
 
-/**
- * Floor items do not say what they are, so the player loots them one by one until it
- * holds a weapon, the same way a person would. Resolves to whether it is armed.
- */
-async function lootRoom(player, tried) {
-  while (!WEAPONS.has(player.latest().self.item)) {
-    const next = player.latest().items.find((i) => !tried.has(i.id));
-    if (!next) return false;
-    tried.add(next.id);
-    await pickUp(player, next);
-  }
-  return true;
-}
-
-/** Tries doors until the player stands in the given room. */
-async function wanderTo(player, roomId, attempts = 30) {
-  const legs = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
-  for (let i = 0; i < attempts && player.latest().roomId !== roomId; i++) {
-    await takeDoor(player, legs[i % legs.length]);
-  }
-  return player.latest().roomId === roomId;
-}
-
 async function combat(a, b) {
   const label = 'A strikes B';
-  const tried = new Set();
-  if (!(await lootRoom(a, tried))) {
-    // A room holds one item at most and usually none, so a weapon means travelling.
-    // Door order is rotated differently from wanderTo's so A does not shuttle between
-    // the same two rooms.
-    const legs = ['RIGHT', 'DOWN', 'LEFT', 'UP', 'DOWN'];
-    let rooms = 0;
-    for (let i = 0; i < 60 && !(await lootRoom(a, tried)); i++) {
-      if (await takeDoor(a, legs[i % legs.length])) rooms++;
-    }
-    if (!WEAPONS.has(a.latest().self.item)) {
-      skip(label, `no weapon found in ${rooms} rooms`);
-      return;
-    }
-    console.log(`      A armed with ${a.latest().self.item} after ${rooms} rooms`);
-    if (!(await wanderTo(a, b.latest().roomId, 40))) {
-      skip(label, 'armed, but could not find B again');
-      return;
-    }
+  // Empty hands punch, so A needs nothing from the floor. A has picked nothing up by
+  // now; a medkit in hand would turn A into a heal rather than a blow.
+  if (a.latest().self.item !== null) {
+    skip(label, `A is holding ${a.latest().self.item}`);
+    return;
   }
 
   const bAt = { x: b.latest().self.x, y: b.latest().self.y };
@@ -415,7 +376,7 @@ async function combat(a, b) {
     return;
   }
 
-  const weapon = a.latest().self.item;
+  const weapon = a.latest().self.item ?? 'FIST';
   const hpBefore = b.latest().self.hp;
   a.events.length = 0;
   b.events.length = 0;
@@ -439,24 +400,17 @@ async function combat(a, b) {
 
   const aShot = a.events.some((e) => e.event === 'SHOT');
   const bShot = b.events.find((e) => e.event === 'SHOT');
-  if (weapon === 'PISTOL') {
-    check(aShot && bShot !== undefined, 'a pistol shot is shown to the whole room');
-    if (bShot) {
-      const [sx, sy] = bShot.path[0];
-      const self = a.latest().self;
-      check(sx === self.x && sy === self.y, 'the shot path starts at the shooter');
-    }
-  } else {
-    check(!aShot && bShot === undefined, `a ${weapon} blow leaves no shot trail`);
-    const bSwing = b.events.find((e) => e.event === 'SWING');
-    check(a.events.some((e) => e.event === 'SWING') && bSwing !== undefined,
-      `a ${weapon} swing is shown to the whole room`);
-    if (bSwing) {
-      const self = a.latest().self;
-      check(bSwing.from[0] === self.x && bSwing.from[1] === self.y
-          && bSwing.to[0] === bAt.x && bSwing.to[1] === bAt.y,
-        'the swing runs from the attacker to the tile struck', JSON.stringify(bSwing));
-    }
+  // The SHOT path of a gun is covered by CombatSimulationTest; guns are too rare to
+  // count on here.
+  check(!aShot && bShot === undefined, `a ${weapon} blow leaves no shot trail`);
+  const bSwing = b.events.find((e) => e.event === 'SWING');
+  check(a.events.some((e) => e.event === 'SWING') && bSwing !== undefined,
+    `a ${weapon} swing is shown to the whole room`);
+  if (bSwing) {
+    const self = a.latest().self;
+    check(bSwing.from[0] === self.x && bSwing.from[1] === self.y
+        && bSwing.to[0] === bAt.x && bSwing.to[1] === bAt.y,
+      'the swing runs from the attacker to the tile struck', JSON.stringify(bSwing));
   }
 }
 

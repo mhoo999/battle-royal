@@ -121,7 +121,9 @@ GET /ws/game?token=<uuid>
 다른 플레이어가 루팅 중인지는 보내지 않는다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
-`self.item`: `KNIFE | PISTOL | MEDKIT | PAN | SPOON`.
+`self.item`: `KNIFE | BAT | PISTOL | CROSSBOW | MEDKIT | PAN | SPOON | CUP | DOLL |
+RECORDER | REGISTER`, or null for empty hands. `YOU_DIED.weapon` is null for a
+bare-hand kill.
 **바닥 아이템은 위치만 보낸다. 종류는 누구에게도 보내지 않는다(결정).** 무엇인지는
 루팅이 끝나 손에 들어왔을 때 `self.item`으로 처음 안다. 클라가 그리지 않더라도
 전송하면 개발자 도구로 보이므로 필드 자체를 두지 않는다 — `SnapshotFilterTest`가

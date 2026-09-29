@@ -58,7 +58,7 @@ ASCII에서 영감을 받은 텍스트 기반 UI를 쓰되, 구현은 `<pre>`가
 
 게스트 로그인 · 방 생성/삭제 · 방 이동 · 실시간 이동 · WebSocket 동기화 ·
 서버 권위 상태 · 플레이어 방향 · 전투 · 즉시 raycast 판정 · 데미지/사망 ·
-아이템 1개 소지 · 아이템 교체 · Knife/Pistol/Medkit + 잡템(Pan/Spoon) · 캐비닛 · 부시 ·
+아이템 1개 소지 · 아이템 교체 · 맨손 공격 · Knife/Bat/Pistol/Crossbow/Medkit + 잡템(Pan/Spoon/Cup/Doll/Recorder/Register) · 캐비닛 · 부시 ·
 점수 · 결과 저장 · 랭킹
 
 ## V1 제외

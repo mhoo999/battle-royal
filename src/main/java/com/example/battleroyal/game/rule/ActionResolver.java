@@ -3,6 +3,7 @@ package com.example.battleroyal.game.rule;
 import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.ActionB;
 import com.example.battleroyal.game.core.Direction;
+import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
@@ -22,21 +23,25 @@ public final class ActionResolver {
     }
 
     /**
-     * A follows the held item. A pistol in hand always has a round: the last shot uses
-     * it up.
+     * A follows the held item, and empty hands punch. A gun in hand always has a round:
+     * the last shot uses it up.
      */
     public static ActionA actionA(Player player) {
-        if (!player.hasItem()) {
+        if (player.hasItem() && player.heldItem().kind() == ItemKind.MEDKIT) {
+            // Healing is the one action a cabinet allows.
+            return ActionA.HEAL;
+        }
+        if (player.inCabinet()) {
+            // A cabinet is for surviving, not fighting.
             return null;
         }
+        if (!player.hasItem()) {
+            return ActionA.ATTACK;
+        }
         return switch (player.heldItem().kind()) {
-            case KNIFE, PAN -> player.inCabinet() ? null : ActionA.ATTACK;
-            // A spoon fills the slot and does nothing else.
-            case SPOON -> null;
-            // A cabinet is for surviving, not shooting.
-            case PISTOL -> player.inCabinet() ? null : ActionA.FIRE;
-            // Healing is the one action a cabinet allows.
-            case MEDKIT -> ActionA.HEAL;
+            case PISTOL, CROSSBOW -> ActionA.FIRE;
+            // Everything else is swung, junk included.
+            default -> ActionA.ATTACK;
         };
     }
 

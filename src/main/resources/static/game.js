@@ -20,12 +20,20 @@ const SELF_GLYPH  = { UP: '△', DOWN: '▽', LEFT: '◁', RIGHT: '▷' };
 const ENEMY_GLYPH = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
 
 const A_LABEL = { ATTACK: '공격', FIRE: '발사', HEAL: '치료' };
-const ITEM_LABEL = { KNIFE: '칼', PISTOL: '권총', MEDKIT: '메디킷', PAN: '프라이팬', SPOON: '숟가락' };
+const ITEM_LABEL = {
+  KNIFE: '칼', BAT: '야구배트', PISTOL: '권총', CROSSBOW: '석궁', MEDKIT: '메디킷',
+  PAN: '프라이팬', SPOON: '숟가락', CUP: '컵', DOLL: '솜 빠진 인형', RECORDER: '리코더',
+  REGISTER: '출석부',
+};
 /*
  * How a weapon killed you, glued after its name. Optional per weapon: anything not
  * listed falls back to DEATH_VERB_DEFAULT, so a new weapon needs only an ITEM_LABEL.
  */
-const DEATH_VERB = { PISTOL: '에 맞고', KNIFE: '에 찔려', PAN: '에 얻어맞고' };
+const DEATH_VERB = {
+  PISTOL: '에 맞고', CROSSBOW: '에 맞고', KNIFE: '에 찔려', BAT: '에 두들겨 맞고',
+  PAN: '에 얻어맞고', SPOON: '에 얻어맞고', CUP: '에 얻어맞고', DOLL: '에 얻어맞고',
+  RECORDER: '에 얻어맞고', REGISTER: '에 얻어맞고',
+};
 const DEATH_VERB_DEFAULT = '에 당해';
 
 const B_LABEL = { PICKUP: '줍기', SWAP: '교체', DOOR: '이동' };
@@ -428,7 +436,8 @@ async function beginSession(typed) {
 
 function deathCause(killer, weapon) {
   if (!killer) return '당신은 사망했다.';
-  if (!weapon) return `'${killer}'에게 당해 당신은 사망했다.`;
+  // A killer with nothing in hand did it with their fists.
+  if (!weapon) return `'${killer}'의 주먹에 맞고 당신은 사망했다.`;
   const name = ITEM_LABEL[weapon] || weapon;
   return `'${killer}'의 ${name}${DEATH_VERB[weapon] ?? DEATH_VERB_DEFAULT} 당신은 사망했다.`;
 }

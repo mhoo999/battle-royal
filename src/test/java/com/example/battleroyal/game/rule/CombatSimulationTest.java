@@ -35,7 +35,7 @@ class CombatSimulationTest {
         Player player = new Player(id, id, pos, FULL);
         player.face(facing);
         if (kind != null) {
-            player.hold(new Item("i-" + id, kind, GameConstants.PISTOL_MAGAZINE));
+            player.hold(new Item("i-" + id, kind, Weapons.startingAmmo(kind)));
         }
         room.add(player);
         return player;
@@ -110,7 +110,7 @@ class CombatSimulationTest {
                 "the last round is still a shot");
         assertNull(shooter.heldItem(), "no reload: the empty pistol is gone");
         assertTrue(room.floorItems().isEmpty(), "and not left on the floor either");
-        assertNull(ActionResolver.actionA(shooter));
+        assertEquals(ActionA.ATTACK, ActionResolver.actionA(shooter), "back to bare hands");
     }
 
     @Test
@@ -188,6 +188,98 @@ class CombatSimulationTest {
 
         assertFalse(target.alive());
         assertEquals(1, attacker.kills());
+    }
+
+    // --- Bare hands, bat, crossbow -------------------------------------------
+
+    @Test
+    void emptyHandsPunch() {
+        Room room = room();
+        Player attacker = put(room, "a", new Pos(1, 1), Direction.RIGHT, null);
+        Player target = put(room, "t", new Pos(2, 1), Direction.LEFT, null);
+        assertEquals(ActionA.ATTACK, ActionResolver.actionA(attacker));
+
+        pressA(room, attacker, 0);
+
+        assertEquals(FULL - GameConstants.FIST_DAMAGE, target.hp());
+        assertEquals(List.of(new GameEvent.Swing(new Pos(1, 1), new Pos(2, 1)),
+                        new GameEvent.Hit("a")),
+                room.drainEvents(), "a punch is a swing like any other");
+        assertEquals(GameConstants.FIST_COOLDOWN_TICKS, attacker.nextActionTick());
+    }
+
+    @Test
+    void noPunchingFromInsideACabinet() {
+        Room room = room();
+        Player inside = put(room, "in", new Pos(9, 4), Direction.UP, null);
+        inside.setInCabinet(true);
+
+        assertNull(ActionResolver.actionA(inside));
+    }
+
+    @Test
+    void aKillWithBareHandsNamesNoWeapon() {
+        Room room = room();
+        Player attacker = put(room, "a", new Pos(1, 1), Direction.RIGHT, null);
+        Player target = new Player("t", "t", new Pos(2, 1), GameConstants.FIST_DAMAGE);
+        room.add(target);
+
+        pressA(room, attacker, 0);
+
+        GameEvent.Died died = room.drainEvents().stream()
+                .filter(GameEvent.Died.class::isInstance)
+                .map(GameEvent.Died.class::cast)
+                .findFirst().orElseThrow();
+        assertEquals("a", died.killerNickname());
+        assertNull(died.weapon(), "fists: the client says so");
+    }
+
+    @Test
+    void aBatHitsHarderAndSlowerThanAKnife() {
+        Room room = room();
+        Player attacker = put(room, "a", new Pos(1, 1), Direction.RIGHT, ItemKind.BAT);
+        Player target = put(room, "t", new Pos(2, 1), Direction.LEFT, null);
+
+        pressA(room, attacker, 0);
+        pressA(room, attacker, GameConstants.BAT_COOLDOWN_TICKS - 1);
+
+        assertEquals(FULL - GameConstants.BAT_DAMAGE, target.hp(), "the second was too soon");
+        assertTrue(GameConstants.BAT_DAMAGE > GameConstants.KNIFE_DAMAGE);
+        assertTrue(GameConstants.BAT_COOLDOWN_TICKS > GameConstants.KNIFE_COOLDOWN_TICKS);
+    }
+
+    @Test
+    void aCrossbowShootsAlongTheLineAndItsLastBoltUsesItUp() {
+        Room room = room();
+        Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.CROSSBOW);
+        Player target = put(room, "t", new Pos(4, 1), Direction.LEFT, null);
+        assertEquals(GameConstants.CROSSBOW_BOLTS, shooter.heldItem().ammo());
+        assertEquals(ActionA.FIRE, ActionResolver.actionA(shooter));
+        room.drainEvents();
+
+        pressA(room, shooter, 0);
+
+        assertEquals(FULL - GameConstants.CROSSBOW_DAMAGE, target.hp());
+        assertInstanceOf(GameEvent.Shot.class, room.drainEvents().getFirst());
+
+        target.heal(FULL, FULL);
+        for (int i = 1; i < GameConstants.CROSSBOW_BOLTS; i++) {
+            pressA(room, shooter, (long) i * GameConstants.CROSSBOW_COOLDOWN_TICKS);
+            target.heal(FULL, FULL);
+        }
+        assertNull(shooter.heldItem(), "no bolts left, no crossbow");
+    }
+
+    @Test
+    void aCrossbowFallsShortOfWhereAPistolReaches() {
+        Room room = room();
+        Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.CROSSBOW);
+        Player far = put(room, "t", new Pos(1 + GameConstants.CROSSBOW_RANGE + 1, 1),
+                Direction.LEFT, null);
+
+        pressA(room, shooter, 0);
+
+        assertEquals(FULL, far.hp());
     }
 
     // --- Death ---------------------------------------------------------------
@@ -332,13 +424,14 @@ class CombatSimulationTest {
     }
 
     @Test
-    void anEmptyHandDoesNothing() {
+    void aSwingAtNothingWithBareHandsStillSpendsTheCooldown() {
         Room room = room();
-        Player player = put(room, "p", new Pos(1, 1), Direction.RIGHT, null);
+        Player player = put(room, "p", new Pos(1, 1), Direction.UP, null);
 
         pressA(room, player, 0);
 
-        assertTrue(room.drainEvents().isEmpty());
-        assertEquals(0, player.nextActionTick());
+        assertEquals(List.of(new GameEvent.Swing(new Pos(1, 1), new Pos(1, 0))),
+                room.drainEvents());
+        assertEquals(GameConstants.FIST_COOLDOWN_TICKS, player.nextActionTick());
     }
 }

@@ -6,7 +6,7 @@ V1 Multiplayer Core
 
 ## Current Task
 
-None in flight. Item economy rework done; next is the browser checks in Next.
+None in flight. Bare hands, new weapons and junk done; next is the browser checks in Next.
 
 ## Completed
 
@@ -69,6 +69,15 @@ None in flight. Item economy rework done; next is the browser checks in Next.
       or none per room on one of the 4 `*` candidates, rarer weapons, loot regrows
       only while a room sits empty and bare (`LOOT_REGROW_TICKS`). Smoke combat now
       roams for a weapon when the meeting room has none.
+- [x] Bare-hand attack (5 dmg), Bat (45, slow), Crossbow (range 7, 40, 3 bolts, used
+      up like the pistol), junk Cup/Doll/Recorder/Register, Spoon now swings.
+      `Weapons.strikeOf` maps held kind (null = fists) to range/damage/cooldown/shot.
+      New loot table. Death screen: "주먹에 맞고" for a bare-hand kill.
+
+Weapons and junk: `./gradlew test` 172 passing. Smoke 5/5; the combat check now
+always runs, with bare hands (hp 100 -> 95). Browser: empty-handed A reads 공격, death
+wording checked for fist/cup/doll/bat/crossbow/register, no console errors. Not seen
+in play: bat or crossbow in hand (4% and 2% per roll; covered by CombatSimulationTest).
 
 Item economy: `./gradlew test` 165 passing. Smoke 6/6 clean; combat ran in 5 (A armed
 after 1–17 rooms) and SKIPped once after 60 rooms without a weapon. Browser: a room
@@ -133,13 +142,20 @@ the lobby ranking is still to do by eye.
 
 ## Recent Decisions
 
+- **Empty hands punch; junk never hits softer than a fist.** User's call (2026-09-29),
+  replacing "Spoon does nothing" and "no item, no A". There is no drop action, so
+  weaker junk would trap its holder. Fist 5, Spoon/Doll 5, Cup 6 (user: "+1"),
+  Recorder 7, Register 8. Cabinets still forbid every attack.
+- **Bat and Crossbow added**, each with its own role: bat slow and heavy against the
+  knife's quick jabs; crossbow scarce, short and slow against the pistol. Loot
+  nothing 45, junk 6 each, Pan 5, Medkit 8, Knife 5, Bat 4, Crossbow 2, Pistol 1 —
+  my numbers, not playtested.
 - **No reload.** User's call (2026-09-28). A pistol comes with 6 rounds; the last shot
   uses it up after the strike, so a kill with it still names the pistol. Consumed like
   a medkit, not dropped. Reload may return with an ammo system.
 - **A room holds one floor item or none.** User's call: loot should mean travelling.
   One roll at creation; a hit lands on one of the map's 4 `*` tiles, chosen per roll.
-  Weights nothing 60, Spoon 10, Pan 10, Medkit 10, Knife 6, Pistol 4 (my pick under
-  "알아서", not playtested).
+  Weights are in `GameConstants.LOOT_WEIGHT_*` and GAME_RULES §8.
 - **Loot regrows after 30s of the room standing empty and bare — the clock pauses,
   never resets.** No regrowth was tried first: the population cap keeps nearly every
   room alive as a neighbour, so the world dried up (smoke: 60 rooms, no weapon). A
@@ -264,9 +280,8 @@ the lobby ranking is still to do by eye.
 - Back-to-back smoke runs share the world with the previous run's players for their
   15s disconnect grace. The wander loop skips an unreachable door instead of giving
   up, since a lingering player can block the path. Six consecutive runs clean.
-- The smoke combat check cannot see what floor items are, so A loots them one by one
-  until it holds a weapon. When the meeting room has none, A roams up to 60 doors
-  looting, then wanders back to B; it SKIPs if nothing turns up (about 1 run in 6).
+- The smoke combat check strikes with bare hands, so it no longer depends on loot.
+  Gun SHOT paths are left to `CombatSimulationTest`.
 
 - Tests must be deterministic. `Room` has no `hashCode`, so iterating a `HashSet<Room>`
   used identity-hash order and the encounter measurements swung between 10 and 16 door
@@ -282,6 +297,7 @@ the lobby ranking is still to do by eye.
 - 150ms movement once combat exists — Knife's 500ms cooldown needs melee to stay viable.
 - `ENCOUNTER_BIAS_PERCENT` 30: average 3 door transits, worst measured 16.
 - `ROOMS_PER_PLAYER` 2, `MIN_ROOMS` 4.
-- Loot: weights 60/10/10/10/6/4 and `LOOT_REGROW_TICKS` 600. With two players a
-  weapon can take a dozen rooms to turn up; watch whether fights ever start armed.
+- Loot weights and `LOOT_REGROW_TICKS` 600: a real weapon about one room in eight,
+  a pistol one in a hundred. Watch whether fights are mostly fists and junk.
+- Fist 5 (20 blows). Whether bare-hand brawls drag on too long.
 - Whether door camping becomes dominant without an entry shield.

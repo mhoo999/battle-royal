@@ -59,15 +59,35 @@ public final class GameConstants {
 
     public static final int MAX_HP = 100;
 
+    /**
+     * Bare hands: twenty blows to kill. Enough to finish someone off or to fight back
+     * rather than run, never a plan.
+     */
+    public static final int FIST_RANGE = 1;
+    public static final int FIST_DAMAGE = 5;
+    public static final int FIST_COOLDOWN_TICKS = 10;
+
     public static final int KNIFE_RANGE = 1;
     public static final int KNIFE_DAMAGE = 34;
     public static final int KNIFE_COOLDOWN_TICKS = 10;
+
+    /** Slow and heavy against the knife's quick jabs: three blows either way. */
+    public static final int BAT_RANGE = 1;
+    public static final int BAT_DAMAGE = 45;
+    public static final int BAT_COOLDOWN_TICKS = 20;
 
     public static final int PISTOL_RANGE = 10;
     public static final int PISTOL_DAMAGE = 25;
     public static final int PISTOL_COOLDOWN_TICKS = 8;
     /** Rounds a pistol comes with. There is no reload: the last shot uses it up. */
     public static final int PISTOL_MAGAZINE = 6;
+
+    /** Shorter, slower and scarcer than the pistol, but three bolts make a kill. */
+    public static final int CROSSBOW_RANGE = 7;
+    public static final int CROSSBOW_DAMAGE = 40;
+    public static final int CROSSBOW_COOLDOWN_TICKS = 30;
+    /** Bolts a crossbow comes with; like the pistol, the last one uses it up. */
+    public static final int CROSSBOW_BOLTS = 3;
 
     public static final int MEDKIT_HEAL = 50;
     public static final int MEDKIT_COOLDOWN_TICKS = 20;
@@ -77,19 +97,39 @@ public final class GameConstants {
     public static final int PAN_DAMAGE = 15;
     public static final int PAN_COOLDOWN_TICKS = 10;
 
+    /**
+     * The rest of the junk swings like a fist, a point or three harder at best. Never
+     * below a fist: there is no way to drop an item, so junk that hit softer would
+     * leave you worse off than empty-handed.
+     */
+    public static final int JUNK_RANGE = 1;
+    public static final int JUNK_COOLDOWN_TICKS = 10;
+    public static final int SPOON_DAMAGE = FIST_DAMAGE;
+    public static final int DOLL_DAMAGE = FIST_DAMAGE;
+    public static final int CUP_DAMAGE = FIST_DAMAGE + 1;
+    public static final int RECORDER_DAMAGE = FIST_DAMAGE + 2;
+    public static final int REGISTER_DAMAGE = FIST_DAMAGE + 3;
+
     // --- Loot ---------------------------------------------------------------
 
     /**
-     * What a new room rolls, out of 100: one item or nothing. Most rooms are bare so
-     * that loot means travelling, and a real weapon is a lucky find — about one room in
-     * ten, a pistol one in twenty-five. Starting values, not playtested.
+     * What a new room rolls, out of 100: one item or nothing. A little over half the
+     * rooms hold something, mostly junk; a real weapon (knife, bat, crossbow, pistol)
+     * turns up about one room in eight, a pistol one in a hundred. Starting values,
+     * not playtested.
      */
-    public static final int LOOT_WEIGHT_NOTHING = 60;
-    public static final int LOOT_WEIGHT_SPOON = 10;
-    public static final int LOOT_WEIGHT_PAN = 10;
-    public static final int LOOT_WEIGHT_MEDKIT = 10;
-    public static final int LOOT_WEIGHT_KNIFE = 6;
-    public static final int LOOT_WEIGHT_PISTOL = 4;
+    public static final int LOOT_WEIGHT_NOTHING = 45;
+    public static final int LOOT_WEIGHT_SPOON = 6;
+    public static final int LOOT_WEIGHT_DOLL = 6;
+    public static final int LOOT_WEIGHT_CUP = 6;
+    public static final int LOOT_WEIGHT_RECORDER = 6;
+    public static final int LOOT_WEIGHT_REGISTER = 6;
+    public static final int LOOT_WEIGHT_PAN = 5;
+    public static final int LOOT_WEIGHT_MEDKIT = 8;
+    public static final int LOOT_WEIGHT_KNIFE = 5;
+    public static final int LOOT_WEIGHT_BAT = 4;
+    public static final int LOOT_WEIGHT_CROSSBOW = 2;
+    public static final int LOOT_WEIGHT_PISTOL = 1;
 
     /**
      * A room rolls again after 30s in all with nobody in it and nothing on its floor.

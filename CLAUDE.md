@@ -37,7 +37,8 @@ V1 must include:
 - Item pickup
 - One-item inventory
 - Item swapping
-- Knife, Pistol, Medkit, plus junk: Pan (weak melee) and Spoon (useless)
+- Bare-hand attack; Knife, Bat, Pistol, Crossbow, Medkit; junk: Pan (weak melee),
+  Spoon, Cup, Doll, Recorder, Register (fist-strength)
 - Cabinets and bushes
 - Score
 - Game result persistence
@@ -55,7 +56,7 @@ V1 must NOT include:
 
 Do not expand V1 scope without an explicit decision.
 
-### Five decided exceptions
+### Six decided exceptions
 
 These override the wording an earlier draft of this document used. Each was decided
 deliberately; do not reverse one without saying so first.
@@ -65,7 +66,8 @@ deliberately; do not reverse one without saying so first.
 | "No persistent world" | V1 **is** a persistent world: no rounds, no winner, no shrinking zone | What is forbidden is writing world state to the DB, not the persistent-world model |
 | "No FOV / fog of war" | Global visibility **except bushes**, which are one-way | Bushes are the only concealment that hides you while you can still act |
 | "Fast projectiles" with speed, travel and collision | Shots resolve **instantly** along a line; `•` is a 100ms flourish | A moving entity adds tunnelling and interpolation for no gameplay gain at this tile size |
-| "Knife, Pistol, Medkit" as the whole item set | Spawns also roll **nothing**, a **Pan** (weak melee) or a **Spoon** (does nothing) | A real weapon should be a lucky find, as in *Battle Royale*; junk still fills the one slot |
+| "Knife, Pistol, Medkit" as the whole item set | Also a **Bat** and **Crossbow**, and school-trip **junk** (Pan, Spoon, Cup, Doll, Recorder, Register); spawns often roll **nothing** | A real weapon should be a lucky find, as in *Battle Royale*; junk is for laughs, mostly on the death screen |
+| A only with an item | **Empty hands punch** (5 damage); junk never hits softer than a fist | There is no drop action, so junk weaker than a fist would trap its holder |
 | "Reload" in the V1 list | **No reload.** A pistol comes with 6 rounds and the last shot uses it up | A gun is a lucky find, not a permanent upgrade; reload may return with an ammo system |
 
 ---
@@ -114,8 +116,8 @@ Bushes conceal but do not stop bullets. You can move and attack from inside one.
 
 ## 4. Controls
 
-**A** performs the equipped item's primary action: Knife attacks, Pistol fires,
-Medkit heals.
+**A** performs the equipped item's primary action: melee items and empty hands
+attack, Pistol and Crossbow fire, Medkit heals.
 
 **B** performs the contextual interaction: pick up, swap, take a door. Bushes and
 cabinets are walked into and out of, never pressed.

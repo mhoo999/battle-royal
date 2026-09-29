@@ -63,7 +63,7 @@ public final class ItemSpawns {
         }
         List<Pos> spawns = room.map().itemSpawns();
         Pos spawn = spawns.get(random.nextInt(spawns.size()));
-        room.placeItem(spawn, new Item(ids.get(), kind, GameConstants.PISTOL_MAGAZINE));
+        room.placeItem(spawn, new Item(ids.get(), kind, Weapons.startingAmmo(kind)));
     }
 
     /** One row of the loot table. A null kind is a roll that comes up empty. */
@@ -73,9 +73,15 @@ public final class ItemSpawns {
     private static final List<Weight> TABLE = List.of(
             new Weight(null, GameConstants.LOOT_WEIGHT_NOTHING),
             new Weight(ItemKind.SPOON, GameConstants.LOOT_WEIGHT_SPOON),
+            new Weight(ItemKind.DOLL, GameConstants.LOOT_WEIGHT_DOLL),
+            new Weight(ItemKind.CUP, GameConstants.LOOT_WEIGHT_CUP),
+            new Weight(ItemKind.RECORDER, GameConstants.LOOT_WEIGHT_RECORDER),
+            new Weight(ItemKind.REGISTER, GameConstants.LOOT_WEIGHT_REGISTER),
             new Weight(ItemKind.PAN, GameConstants.LOOT_WEIGHT_PAN),
             new Weight(ItemKind.MEDKIT, GameConstants.LOOT_WEIGHT_MEDKIT),
             new Weight(ItemKind.KNIFE, GameConstants.LOOT_WEIGHT_KNIFE),
+            new Weight(ItemKind.BAT, GameConstants.LOOT_WEIGHT_BAT),
+            new Weight(ItemKind.CROSSBOW, GameConstants.LOOT_WEIGHT_CROSSBOW),
             new Weight(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL));
 
     static final int TOTAL_WEIGHT = TABLE.stream().mapToInt(Weight::weight).sum();
