@@ -88,7 +88,7 @@ WS inbound thread              Game loop thread (20Hz)
 | WebSocket | raw `TextWebSocketHandler` + Jackson | STOMP는 per-player 필터링에 오버헤드 |
 | DB | H2 (file) → Postgres/RDS | 로컬 개발 마찰 최소화 |
 | 프론트 | `resources/static` 순수 HTML/CSS/JS | 빌드 스텝 없음. CSS Grid 15x15 |
-| e2e | Playwright (`e2e/`) | 2 BrowserContext 동시 제어 |
+| e2e | Node 내장 WebSocket (`e2e/smoke-two-sockets.mjs`) | 의존성 없음. 화면은 브라우저 수동 확인 |
 
 프론트엔드에 빌드 스텝을 도입하지 않는다. 게임 보드는 `<pre>` 하나가 아니라
 **CSS Grid + 개별 셀**로 렌더한다.

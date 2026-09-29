@@ -76,6 +76,12 @@ None in flight. Bare hands, new weapons and junk done; next is the browser check
 - [x] Doors lead to the facing wall 98% of the time (was 90%): the encounter bias only
       picks occupied rooms whose facing door is free, and runs at 40%.
 
+Step 7 browser walk (2026-09-29): lobby top 10 shown; `socket.close()` showed
+"연결 끊김 — 재접속 중 (1/15)" and came back on the same room and tile; a socket player
+killed the browser player with fists ("'hunter2'의 주먹에 맞고"); 처음으로 showed "⋮" then
+"65 rankcheck 7" highlighted. Not exercised: a death landing inside the top 10.
+`.claude/skills/game-testing` rewritten around the smoke suite and a browser walk.
+
 Weapons and junk: `./gradlew test` 172 passing. Smoke 5/5; the combat check now
 always runs, with bare hands (hp 100 -> 95). Browser: empty-handed A reads 공격, death
 wording checked for fist/cup/doll/bat/crossbow/register, no console errors. Not seen
@@ -120,17 +126,12 @@ errors.
 
 ## In Progress
 
-Nothing. Step 7 is code complete; the browser walk of the reconnect status line and
-the lobby ranking is still to do by eye.
+Nothing.
 
 ## Next
 
-1. Browser check: lobby shows the top 10; after a death your row is highlighted, or
-   appears under "⋮" with its rank when outside the top 10 (needs 11+ results);
-   kill the network briefly and see "재접속 중 (n/15)" then recovery.
-2. Playwright suite: `.claude/skills/game-testing` describes `e2e/` Playwright tests
-   that do not exist. Either write them or change the skill to point at the smoke
-   script plus the manual two-tab walk.
+1. Reconnect after a page reload (token in `sessionStorage`).
+2. AWS deployment — tracked in `docs/AWS_DEPLOYMENT.md`.
 
 ## Known Issues
 

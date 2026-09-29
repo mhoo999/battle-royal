@@ -110,7 +110,8 @@ Bomb · 복잡한 애니메이션 · 랭킹 실시간 갱신 · 대규모 맵 ·
 10. A가 부시에 진입 → B 화면에서 사라짐 → A는 B를 계속 봄
 11. A가 캐비닛에 진입 → B 화면에서 사라짐 → B가 캐비닛 공격 시 A 피격
 
-자동화는 `e2e/two-player.spec.ts`에 있다.
+자동화는 `e2e/smoke-two-sockets.mjs`(소켓 수준)이고, 화면은 `.claude/skills/game-testing`의
+브라우저 절차로 확인한다. Playwright 스위트는 없다.
 
 ---
 

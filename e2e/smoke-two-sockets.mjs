@@ -8,8 +8,8 @@
  * starting room offers something and prints SKIP otherwise. The combat check needs
  * nothing: A strikes with bare hands.
  *
- * Uses Node's built-in WebSocket (Node 18+), so it runs with no dependencies. The
- * browser-level suite lives in two-player.spec.ts; this one isolates the server.
+ * Uses Node's built-in WebSocket (Node 18+), so it runs with no dependencies. It
+ * isolates the server; the browser walk in .claude/skills/game-testing covers rendering.
  *
  *   node e2e/smoke-two-sockets.mjs
  */
