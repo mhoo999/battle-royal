@@ -14,13 +14,13 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 2 (보안 그룹) 시작 전.
+**현재 단계:** Phase 3 (RDS) 시작 전.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
-Free plan이다.
+Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg-web 참조.
 
-**다음 한 걸음:** Phase 2 — 보안 그룹 `battle-royal-web`, `battle-royal-db`.
+**다음 한 걸음:** Phase 3 — RDS `battle-royal-db` 생성 (보안 그룹 default 빼고 sg-db만).
 
 > **크레딧 주의:** EC2 + RDS + IPv4를 24시간 켜 두면 월 $25 안팎이 크레딧에서
 > 빠진다. $120이면 약 4~5개월로, 183일보다 먼저 바닥날 수 있다. Free plan은 크레딧이
@@ -84,8 +84,8 @@ Free plan이다.
 | 프리 티어 종류 (크레딧 / 12개월) | 크레딧 방식 Free plan. 2026-10-02 기준 $120, 183일 남음 (약 2027-04-03 종료) |
 | 리전 | ap-northeast-2 |
 | 예산 알림 이름 / 금액 | battle-royal-monthly / $5 (월간 비용 예산) |
-| 보안 그룹 sg-web ID | |
-| 보안 그룹 sg-db ID | |
+| 보안 그룹 sg-web ID | sg-0494364a03526622b (`battle-royal-web`) |
+| 보안 그룹 sg-db ID | sg-0a8511e0c3c9f0f86 (`battle-royal-db`) |
 | RDS 식별자 | battle-royal-db |
 | RDS 엔드포인트 | |
 | RDS 초기 DB 이름 | battleroyal |
@@ -102,7 +102,7 @@ Free plan이다.
 
 - [x] **Phase 0** 로컬 리허설 (운영 프로필 + MySQL + Nginx + 브라우저)
 - [x] **Phase 1** 계정 준비: 루트 MFA, 관리자 사용자, 예산 알림 (2026-10-02)
-- [ ] **Phase 2** 보안 그룹 두 개
+- [x] **Phase 2** 보안 그룹 두 개 (2026-10-02)
 - [ ] **Phase 3** RDS MySQL 생성
 - [ ] **Phase 4** EC2 생성 + 탄력적 IP
 - [ ] **Phase 5** 서버 준비 (Java, Nginx, MySQL 클라이언트, 사용자·디렉터리)
