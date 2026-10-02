@@ -14,16 +14,19 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 6 (DB 사용자) 시작 전.
+**현재 단계:** Phase 8 (동작 확인) 진행 중.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
 Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg-web 참조.
 Phase 3: RDS MySQL **8.4** 생성(8.0은 Extended Support 과금, §9). Phase 4: EC2와 탄력적
 IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지, `battleroyal`
-사용자, EC2 → RDS 3306 OPEN.
+사용자, EC2 → RDS 3306 OPEN. Phase 6: 앱 사용자 `battleroyal`(8개 권한, MySQL 8.4.11),
+`mariadb105` 클라이언트가 `--ssl`로 8.4에 정상 접속. Phase 7: systemd + Nginx, 첫 배포.
+Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-console` 404,
+`/api/ranking`이 RDS의 결과 행을 읽음.
 
-**다음 한 걸음:** Phase 6 — RDS에 앱 전용 DB 사용자 `battleroyal` 만들기.
+**다음 한 걸음:** Phase 8 나머지 — 브라우저 두 대(휴대폰 LTE), 새로고침 복귀, 재부팅 내성.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
@@ -100,8 +103,8 @@ IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지
 | EC2 인스턴스 유형 | t3.micro, Amazon Linux 2023 x86_64, gp3 10 GiB |
 | 키 페어 이름 (파일은 로컬 어디에) | battle-royal (`%USERPROFILE%\.ssh\battle-royal.pem`, 저장소 밖) |
 | 탄력적 IP | 54.116.237.112 |
-| 접속 URL | |
-| 최초 배포 일시 / 커밋 | |
+| 접속 URL | http://54.116.237.112/ |
+| 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (그 뒤 커밋은 문서뿐) |
 
 ---
 
@@ -113,8 +116,8 @@ IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지
 - [x] **Phase 3** RDS MySQL 생성 (2026-10-02, 8.4)
 - [x] **Phase 4** EC2 생성 + 탄력적 IP (2026-10-02)
 - [x] **Phase 5** 서버 준비 (Java, Nginx, MySQL 클라이언트, 사용자·디렉터리) (2026-10-03)
-- [ ] **Phase 6** DB 사용자 만들기
-- [ ] **Phase 7** 첫 배포 (jar, env, systemd, Nginx)
+- [x] **Phase 6** DB 사용자 만들기 (2026-10-03)
+- [x] **Phase 7** 첫 배포 (jar, env, systemd, Nginx) (2026-10-03)
 - [ ] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB)
 - [ ] **Phase 9** 재배포 절차 한 번 연습
 - [ ] (선택) 도메인 + HTTPS
