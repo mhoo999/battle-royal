@@ -14,15 +14,16 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 4 (EC2) SSH 접속 확인 중.
+**현재 단계:** Phase 6 (DB 사용자) 시작 전.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
 Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg-web 참조.
 Phase 3: RDS MySQL **8.4** 생성(8.0은 Extended Support 과금, §9). Phase 4: EC2와 탄력적
-IP 생성.
+IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지, `battleroyal`
+사용자, EC2 → RDS 3306 OPEN.
 
-**다음 한 걸음:** Phase 4 SSH 접속 확인 → Phase 5 서버 준비.
+**다음 한 걸음:** Phase 6 — RDS에 앱 전용 DB 사용자 `battleroyal` 만들기.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
@@ -110,8 +111,8 @@ IP 생성.
 - [x] **Phase 1** 계정 준비: 루트 MFA, 관리자 사용자, 예산 알림 (2026-10-02)
 - [x] **Phase 2** 보안 그룹 두 개 (2026-10-02)
 - [x] **Phase 3** RDS MySQL 생성 (2026-10-02, 8.4)
-- [ ] **Phase 4** EC2 생성 + 탄력적 IP
-- [ ] **Phase 5** 서버 준비 (Java, Nginx, MySQL 클라이언트, 사용자·디렉터리)
+- [x] **Phase 4** EC2 생성 + 탄력적 IP (2026-10-02)
+- [x] **Phase 5** 서버 준비 (Java, Nginx, MySQL 클라이언트, 사용자·디렉터리) (2026-10-03)
 - [ ] **Phase 6** DB 사용자 만들기
 - [ ] **Phase 7** 첫 배포 (jar, env, systemd, Nginx)
 - [ ] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB)
@@ -519,6 +520,7 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 | 날짜 | 증상 | 원인 | 해결 |
 |---|---|---|---|
 | 2026-10-02 | RDS 생성 화면: `mysql-8.0.46 reached RDS end of standard support on Jul 31, 2026 and requires engine lifecycle support` | 문서를 쓸 때 8.0을 골랐는데 그사이 표준 지원이 끝났다. EOL 버전을 새로 만들면 Extended Support(vCPU 시간당 과금)가 강제된다 | 8.4로 생성. Phase 6에서 `caching_sha2_password`와 `mariadb105` 클라이언트 호환을 확인할 것 |
+| 2026-10-02 | SSH `Connection timed out`. 같은 IP에서 80번은 즉시 거부(인스턴스까지 닿음), github.com:22는 열림 | sg-web의 "my ssh" 규칙 Type이 SSH가 아니라 **HTTPS(443)**로 저장됨. Source IP는 맞았다 | Type을 SSH로 수정. 포트별로 시험해 회선 문제와 규칙 문제를 갈랐다. 콘솔 목록보다 인스턴스 **Security 탭**의 실제 규칙을 볼 것 |
 | 2026-09-29 | (로컬 리허설) Nginx 뒤에서 **브라우저만** WebSocket 403. Node smoke는 통과 | Spring의 same-origin 검사는 Origin과 "앱이 보기에 자기 주소"를 비교한다. Tomcat은 `X-Forwarded-Proto`만 있으면 포트를 80으로 가정한다. Node는 Origin을 안 보내서 검사를 안 탔다 | Nginx에서 `Host $http_host`, `X-Forwarded-Port $server_port` 전달 |
 
 ### 자주 만날 문제
