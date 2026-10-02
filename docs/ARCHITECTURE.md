@@ -25,7 +25,7 @@ com.example.battleroyal
 │   GameConstants, MovementRules, VisibilityRules, ActionResolver,
 │   RoomSimulator, CombatRules(raycast 포함), ScoreRules
 ├── game/map/      MapTemplate + 템플릿 문자열 상수
-├── game/loop/     GameLoopService, RoomRegistry (할로 규칙), RoomBroadcaster, DeathListener
+├── game/loop/     GameLoopService, RoomRegistry (토러스 월드), RoomBroadcaster, DeathListener
 ├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)
 ├── web/           SessionController, RankingController, GuestSessionService
 ├── persistence/   GameResult 엔티티 + repository, ResultRecorder
@@ -63,7 +63,7 @@ WS inbound thread              Game loop thread (20Hz)
                                  dirty·이벤트 있는 방만 스냅샷 -> per-player 필터 -> send
                                  이벤트 drain -> 대상별 send (SHOT 방 전체, HIT 공격자, YOU_DIED 사망자)
                                       |
-                                 시체 제거 -> 할로 GC -> 섬 연결
+                                 시체 제거 -> 월드 크기 맞춤 (fitWorld)
 ```
 
 **큐는 `RoomRegistry`에 하나뿐이다. 방별 큐가 아니다.** 루프 스레드가 하나라 방별

@@ -6,6 +6,7 @@ import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.rule.GameConstants;
+import com.example.battleroyal.game.rule.WorldSize;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -45,13 +46,11 @@ class RoomRegistryTest {
 
     /**
      * The housekeeping the game loop runs after every tick. Tests that skip it drift
-     * from the live server, which is exactly how the world was able to split into
-     * islands without a single unit test noticing.
+     * from the live server.
      */
     private static void settle(RoomRegistry registry) {
         registry.reapDead();
-        registry.collectRooms();
-        registry.connectIslands();
+        registry.fitWorld();
     }
 
     private static Set<Room> reachableFrom(Room start) {
@@ -88,7 +87,7 @@ class RoomRegistryTest {
         RoomRegistry registry = withPlayers("a");
 
         assertNotNull(registry.roomOf("a"));
-        assertEquals(1, registry.roomCount());
+        assertEquals(9, registry.roomCount());
     }
 
     @Test
@@ -210,104 +209,201 @@ class RoomRegistryTest {
         assertEquals(GameConstants.SCORE_ROOM_ENTER, registry.player("a").score());
     }
 
-    // --- The room cap -----------------------------------------------------
+    // --- World size -------------------------------------------------------
 
     @Test
     void theWorldGrowsWithHowManyPeopleArePlaying() {
-        assertEquals(4 * GameConstants.ROOMS_PER_PLAYER,
-                withPlayers("a", "b", "c", "d").roomCap());
-        assertEquals(6 * GameConstants.ROOMS_PER_PLAYER,
-                withPlayers("a", "b", "c", "d", "e", "f").roomCap());
+        assertEquals(new WorldSize.Grid(3, 3), withPlayers("a").grid());
+        assertEquals(new WorldSize.Grid(3, 3), withPlayers("a", "b").grid());
+        assertEquals(new WorldSize.Grid(4, 4), withPlayers("a", "b", "c").grid());
+        assertEquals(new WorldSize.Grid(6, 5),
+                withPlayers("a", "b", "c", "d", "e").grid());
+        assertEquals(9, withPlayers("a").roomCount());
     }
 
     @Test
     void aLonePlayerStillGetsAWorldWorthWalkingAround() {
-        assertEquals(GameConstants.MIN_ROOMS, withPlayers("a").roomCap());
-        assertTrue(GameConstants.MIN_ROOMS >= 4,
-                "two rooms to bounce between reads as the game being broken");
-    }
-
-    @Test
-    void wanderingNeverGrowsTheWorldPastTheCap() {
-        RoomRegistry registry = withPlayers("a", "b");
-
-        for (int i = 0; i < 40; i++) {
-            takeDoor(registry, "a", LOOP[i % LOOP.length], i * 10L);
-            settle(registry);
-            assertTrue(registry.roomCount() <= registry.roomCap(),
-                    "room " + registry.roomCount() + " exceeds cap " + registry.roomCap());
+        RoomRegistry registry = withPlayers("a");
+        for (Room room : registry.rooms()) {
+            assertEquals(4, room.neighbours().stream().distinct().count(),
+                    "east and west leading to the same room reads as the game being "
+                            + "broken, which is why no side is shorter than three");
         }
     }
 
-    /**
-     * The whole point of the cap. On an unbounded coordinate grid this was a
-     * two-dimensional random walk: a third of simulated pairs never met at all.
-     *
-     * <p>Doors are chosen at random rather than in a fixed rotation. A rigid cycle can
-     * close on itself even in a connected world, which is a property of the route and
-     * not of the map; a player who kept seeing the same rooms would try a different
-     * door.
-     */
-    /**
-     * Leaving by the top wall should land you at the bottom one. The graph cannot
-     * always manage it: a facing door may already be spoken for, and a saturated world
-     * opens one-way passages. But it should be the rule, not the exception.
-     */
     @Test
-    void mostDoorsLeadToTheFacingWall() {
-        int transits = 0;
-        int facing = 0;
-        for (long seed = 0; seed < 60; seed++) {
-            RoomRegistry registry = withPlayers(seed, "a", "b");
-            Random walk = new Random(seed * 31 + 7);
-            for (int i = 0; i < 20; i++) {
-                Direction side = LOOP[walk.nextInt(LOOP.length)];
-                Room before = registry.roomOf("a");
-                takeDoor(registry, "a", side, i * 10L);
-                settle(registry);
-                Room after = registry.roomOf("a");
-                if (after == before) {
-                    continue;
-                }
-                transits++;
-                if (after.linkedRoom(side.opposite()) == before) {
-                    facing++;
+    void growingLeavesEveryoneWhereTheyWere() {
+        RoomRegistry registry = withPlayers("a", "b");
+        Room room = registry.roomOf("a");
+        var pos = registry.player("a").pos();
+
+        registry.requestJoin("c", "c");
+        registry.processPending(10);
+        settle(registry);
+
+        assertEquals(new WorldSize.Grid(4, 4), registry.grid());
+        assertSame(room, registry.roomOf("a"));
+        assertEquals(pos, registry.player("a").pos());
+    }
+
+    @Test
+    void oneLeavingPlayerDoesNotShrinkAWorldTheNextJoinWouldRegrow() {
+        RoomRegistry registry = withPlayers("a", "b", "c");
+
+        registry.requestLeave("c");
+        registry.processPending(10);
+        settle(registry);
+
+        assertEquals(new WorldSize.Grid(4, 4), registry.grid(),
+                "a world that flips size on every login re-rolls its edge rooms");
+    }
+
+    @Test
+    void theWorldShrinksOnceTheRoomsItDropsAreEmpty() {
+        RoomRegistry registry = withPlayers("a", "b", "c");
+        registry.requestLeave("b");
+        registry.requestLeave("c");
+        registry.processPending(10);
+        settle(registry);
+
+        // A may be standing in a room the smaller world has no place for. It shrinks
+        // only once they walk back in; nobody is ever moved by a resize.
+        Random walk = new Random(3);
+        for (int i = 0; i < 40 && registry.roomCount() > 9; i++) {
+            assertTrue(registry.rooms().contains(registry.roomOf("a")));
+            takeDoor(registry, "a", LOOP[walk.nextInt(LOOP.length)], 20L + i * 10L);
+            settle(registry);
+        }
+
+        assertEquals(new WorldSize.Grid(3, 3), registry.grid());
+        assertTrue(registry.rooms().contains(registry.roomOf("a")));
+        for (Room room : registry.rooms()) {
+            for (Room neighbour : room.neighbours()) {
+                assertTrue(registry.rooms().contains(neighbour),
+                        "a door into a dropped room would lead nowhere");
+            }
+        }
+    }
+
+    @Test
+    void wanderingNeverResizesTheWorld() {
+        RoomRegistry registry = withPlayers("a", "b");
+        int rooms = registry.roomCount();
+
+        Random walk = new Random(9);
+        for (int i = 0; i < 40; i++) {
+            takeDoor(registry, "a", LOOP[walk.nextInt(LOOP.length)], i * 10L);
+            settle(registry);
+            assertEquals(rooms, registry.roomCount());
+        }
+    }
+
+    // --- Geography --------------------------------------------------------
+
+    @Test
+    void everyDoorLeadsToTheFacingWall() {
+        RoomRegistry registry = withPlayers("a", "b", "c");
+
+        for (Room room : registry.rooms()) {
+            for (Direction side : Direction.values()) {
+                Room next = room.linkedRoom(side);
+                assertNotNull(next, room.id() + " " + side + " leads nowhere");
+                assertSame(room, next.linkedRoom(side.opposite()),
+                        "leaving by the top wall has to land you at the bottom one");
+            }
+        }
+    }
+
+    @Test
+    void walkingOffTheEdgeOfTheWorldComesBackRound() {
+        RoomRegistry registry = withPlayers("a");
+        Room start = registry.roomOf("a");
+
+        for (int i = 0; i < registry.grid().columns(); i++) {
+            takeDoor(registry, "a", Direction.RIGHT, i * 10L);
+            settle(registry);
+        }
+        assertSame(start, registry.roomOf("a"), "east all the way round");
+
+        for (int i = 0; i < registry.grid().rows(); i++) {
+            takeDoor(registry, "a", Direction.UP, 100 + i * 10L);
+            settle(registry);
+        }
+        assertSame(start, registry.roomOf("a"), "north all the way round");
+    }
+
+    @Test
+    void goingRoundASquareReturnsToWhereYouStarted() {
+        RoomRegistry registry = withPlayers("a");
+        Room start = registry.roomOf("a");
+
+        for (int i = 0; i < LOOP.length; i++) {
+            takeDoor(registry, "a", LOOP[i], i * 10L);
+            settle(registry);
+        }
+
+        assertSame(start, registry.roomOf("a"), "a map you can learn");
+    }
+
+    @Test
+    void neighboursNeverShareALayout() {
+        for (long seed = 0; seed < 20; seed++) {
+            RoomRegistry registry = withPlayers(seed, "a", "b", "c");
+            for (Room room : registry.rooms()) {
+                for (Room neighbour : room.neighbours()) {
+                    assertNotSame(room.map(), neighbour.map(),
+                            "seed " + seed + ": a twin next door looks like walking back "
+                                    + "into the room you left");
                 }
             }
         }
-        int percent = 100 * facing / transits;
-        // Measured 98% with a facing-only encounter bias, against 89% before it.
-        assertTrue(percent >= 95, percent + "% of transits arrived at the facing wall");
     }
 
     @Test
-    void twoPlayersWanderingRunIntoEachOtherQuickly() {
-        int worstCase = 0;
-        int total = 0;
-        int trials = 60;
+    void aFreshLoginStartsWithNobodyNextDoor() {
+        for (long seed = 0; seed < 20; seed++) {
+            RoomRegistry registry = withPlayers(seed, "a", "b");
+            assertFalse(registry.roomOf("a").neighbours().contains(registry.roomOf("b")),
+                    "seed " + seed + ": the first door of the game should be a gamble");
+        }
+    }
 
+    /**
+     * The design target: meeting somebody after four or five doors, with time to loot
+     * on the way. Both players wander, one door at a time in no fixed order, which is
+     * how the numbers in {@link GameConstants#ROOMS_PER_OTHER_PLAYER} were simulated.
+     */
+    @Test
+    void twoWanderersMeetAfterAFewDoors() {
+        int trials = 200;
+        int total = 0;
         for (long seed = 0; seed < trials; seed++) {
             RoomRegistry registry = withPlayers(seed, "a", "b");
             Random walk = new Random(seed * 31 + 7);
 
-            int transits = 0;
-            while (transits < 40 && registry.roomOf("a") != registry.roomOf("b")) {
-                takeDoor(registry, "a", LOOP[walk.nextInt(LOOP.length)], transits * 10L);
+            int doors = 0;
+            long tick = 0;
+            while (doors < 200 && registry.roomOf("a") != registry.roomOf("b")) {
+                String who = walk.nextBoolean() ? "a" : "b";
+                takeDoor(registry, who, LOOP[walk.nextInt(LOOP.length)], tick);
                 settle(registry);
-                transits++;
+                tick += 10;
+                if (who.equals("a")) {
+                    doors++;
+                }
             }
             assertSame(registry.roomOf("b"), registry.roomOf("a"),
-                    "seed " + seed + ": still apart after " + transits + " doors");
-            worstCase = Math.max(worstCase, transits);
-            total += transits;
+                    "seed " + seed + ": still apart after " + doors + " doors");
+            total += doors;
         }
 
-        int average = total / trials;
-        assertTrue(average <= 3,
-                "averaged " + average + " door transits to meet; wandering should "
-                        + "converge on company, not merely avoid diverging from it");
-        assertTrue(worstCase <= 18,
-                "worst case took " + worstCase + " door transits, which is a long walk");
+        double average = (double) total / trials;
+        // Measured 5.3 average, 36 worst. A little above the free simulation's 4.4,
+        // because a fresh login starts with nobody next door.
+        assertTrue(average >= 3.0,
+                "averaged " + average + " doors: too soon to have looted anything");
+        assertTrue(average <= 6.0,
+                "averaged " + average + " doors: wandering should find company");
     }
 
     @Test
@@ -319,44 +415,7 @@ class RoomRegistryTest {
             takeDoor(registry, "a", LOOP[walk.nextInt(LOOP.length)], i * 10L);
             settle(registry);
             assertEquals(registry.roomCount(), reachableFrom(registry.roomOf("a")).size(),
-                    "every room must stay walkable from every other; a capped world is "
-                            + "no use if it breaks into islands");
-        }
-    }
-
-    /**
-     * Every passage has to be walkable in both directions. One-way links exist, for a
-     * world that has run out of spare doorways, but a door whose destination has no way
-     * back strands the player and leaves them arriving in the middle of a room with no
-     * doorway to stand beside.
-     */
-    @Test
-    void everyDoorHasAWayBack() {
-        RoomRegistry registry = withPlayers("a", "b");
-        Random walk = new Random(5);
-
-        for (int i = 0; i < 60; i++) {
-            takeDoor(registry, "a", LOOP[walk.nextInt(LOOP.length)], i * 10L);
-            settle(registry);
-
-            for (Room room : registry.rooms()) {
-                for (Direction side : Direction.values()) {
-                    Room target = room.linkedRoom(side);
-                    if (target == null) {
-                        continue;
-                    }
-                    boolean leadsBack = false;
-                    for (Direction back : Direction.values()) {
-                        if (target.linkedRoom(back) == room) {
-                            leadsBack = true;
-                            break;
-                        }
-                    }
-                    assertTrue(leadsBack,
-                            room.id() + " " + side + " -> " + target.id()
-                                    + " with no way back");
-                }
-            }
+                    "every room must stay walkable from every other");
         }
     }
 
@@ -476,42 +535,17 @@ class RoomRegistryTest {
     }
 
     @Test
-    void emptyRoomsDoNotKeepEachOtherAlive() {
-        RoomRegistry registry = withPlayers("a");
-        takeDoor(registry, "a", Direction.RIGHT, 10);
-        takeDoor(registry, "a", Direction.UP, 20);
-        takeDoor(registry, "a", Direction.DOWN, 30);
+    void anEmptyWorldKeepsItsSmallestShape() {
+        RoomRegistry registry = withPlayers("a", "b", "c");
 
         registry.requestLeave("a");
+        registry.requestLeave("b");
+        registry.requestLeave("c");
         registry.processPending(30);
         settle(registry);
 
-        assertEquals(0, registry.roomCount(),
-                "liveness is computed outward from players, so a chain of empty "
-                        + "neighbours cannot pin itself in memory");
-    }
-
-    @Test
-    void discardingARoomAlsoDropsTheDoorsPointingAtIt() {
-        RoomRegistry registry = withPlayers("a");
-
-        // Walk far enough that the starting room is no longer anyone's neighbour.
-        Room origin = registry.roomOf("a");
-        for (int i = 0; i < 6 && registry.rooms().contains(origin); i++) {
-            takeDoor(registry, "a", LOOP[i % LOOP.length], i * 10L);
-            settle(registry);
-        }
-
-        if (registry.rooms().contains(origin)) {
-            return; // A small world folded straight back; nothing was discarded.
-        }
-        for (Room room : registry.rooms()) {
-            for (Direction side : Direction.values()) {
-                assertNotSame(origin, room.linkedRoom(side),
-                        "a link to a discarded room would keep it alive through the "
-                                + "back door");
-            }
-        }
+        assertEquals(new WorldSize.Grid(3, 3), registry.grid(),
+                "nine rooms are cheap, and their loot keeps growing for the next visitor");
     }
 
     @Test

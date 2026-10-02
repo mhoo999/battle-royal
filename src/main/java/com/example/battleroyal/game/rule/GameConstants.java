@@ -153,60 +153,46 @@ public final class GameConstants {
     /**
      * Minimum ticks between two room-entry score awards: 30s.
      *
-     * <p>The first-visit set alone does not close the exploit. Because empty rooms
-     * outside the halo are discarded, a three-room cycle keeps generating genuinely
-     * new rooms, which would pay out roughly every five seconds. Capping the rate
-     * makes cycle length irrelevant.
+     * <p>The first-visit set alone does not close the exploit. Every room a resize adds
+     * is genuinely new, and a fresh world of nine rooms would otherwise pay out its
+     * whole tour in under a minute. Capping the rate keeps exploring worth a trickle,
+     * not a jackpot.
      */
     public static final int ROOM_SCORE_RATE_CAP_TICKS = 600;
 
     // --- World ------------------------------------------------------------
 
     /**
-     * Rooms allowed to exist per player online.
+     * The world is never narrower than this many rooms a side.
      *
-     * <p>This is what makes people find each other. With an unbounded world, doors
-     * always led somewhere new and locating another player was a two-dimensional random
-     * walk: a third of simulated pairs never met at all. Capping the world forces doors
-     * to fold back into it, so wandering converges on company instead of diverging from
-     * it. Two rooms each leaves room to explore without the world going quiet.
+     * <p>Three is the least for which east and west lead to different rooms. Below it a
+     * lone player bounces between the same pair, which reads as the game being broken.
      */
-    public static final int ROOMS_PER_PLAYER = 2;
+    public static final int MIN_WORLD_SIDE = 3;
 
     /**
-     * Floor on the world size regardless of population.
+     * World rooms per player other than yourself; see {@link WorldSize}.
      *
-     * <p>Without it a lone player gets a two-room world and spends the whole session
-     * bouncing between the same pair, which reads as the game being broken rather than
-     * as the world being small.
-     */
-    public static final int MIN_ROOMS = 4;
-
-    /**
-     * Chance that a newly opened door leads straight to someone, out of 100.
-     *
-     * <p>The room cap alone already guarantees people meet, but it takes its time about
-     * it. The bias only picks rooms whose facing door is free, so doors keep leading
-     * to the opposite wall. Measured over sixty seeded pairs, each wandering at random
-     * until they met, with the share of transits arriving at the facing wall:
+     * <p>The design target is meeting somebody after four or five doors, with time to
+     * loot on the way. Simulated with everyone wandering at random, one door at a time
+     * in no fixed order, doors one player takes before sharing a room (average / 90th
+     * percentile):
      *
      * <pre>
-     *   bias   average doors   worst   facing wall
-     *    30%        3.0          14        98%
-     *    40%        2.8          14        98%
-     *    50%        2.2          11        99%
-     *   (30%, any occupied room, the old rule: 3.0 average, 14 worst, 89% facing)
+     *   players   grid   doors
+     *      2      3x3    4.4 / 10
+     *      3      4x4    4.8 / 11
+     *      4      5x5    5.3 / 13
+     *      5      6x5    4.8 / 11
+     *      6      6x6    4.8 / 11
      * </pre>
      *
-     * <p>Forty matches or beats the old rule on every column and sits on the design
-     * target of about three doors. Fifty meets sooner, but then half of all new doors
-     * open onto somebody, and opening a door stops being a gamble.
-     *
-     * <p>These numbers are reproducible run to run only since door order stopped
-     * depending on a per-JVM hash salt (see {@code GridMap}); earlier figures were
-     * one salt's luck.
+     * <p>Players who never walk straight back meet a little sooner (3.9 for two on 3x3).
+     * An unbounded grid was tried before any of this and failed: a third of simulated
+     * pairs never met at all. What makes a grid work is that it wraps and is sized to
+     * the population.
      */
-    public static final int ENCOUNTER_BIAS_PERCENT = 40;
+    public static final int ROOMS_PER_OTHER_PLAYER = 7;
 
     // --- Session ----------------------------------------------------------
 

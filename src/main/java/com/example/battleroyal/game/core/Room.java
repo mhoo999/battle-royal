@@ -16,12 +16,12 @@ import java.util.Map;
  * which is why none of these collections are concurrent. Inbound commands cross
  * threads at {@code RoomRegistry}, not here. See docs/ARCHITECTURE.md.
  *
- * <p>Rooms are never written to the database. They exist only while somebody is in
- * them or next door.
+ * <p>Rooms are never written to the database. They live in server memory for as long
+ * as the world is big enough to hold them.
  *
- * <p>Doors are links to other rooms rather than positions on a grid. A link is made
- * the first time someone opens that door and is remembered in both directions
- * afterwards, so walking back takes you where you came from and a pursuer can follow.
+ * <p>Doors are links to the neighbouring rooms. The registry lays rooms out on a torus
+ * and wires every door, so the east door always leads to the room whose west door
+ * leads back, and a pursuer can follow.
  */
 public final class Room {
 
@@ -46,51 +46,18 @@ public final class Room {
 
     // --- Doors ------------------------------------------------------------
 
-    /** The room behind this wall's door, or null if that door has never been opened. */
+    /** The room behind this wall's door, or null if the room has not been wired up. */
     public Room linkedRoom(Direction side) {
         return links.get(side);
     }
 
-    public boolean doorIsFree(Direction side) {
-        return !links.containsKey(side);
-    }
-
-    /**
-     * Joins two rooms through a pair of doors, both ways at once. A one-way link would
-     * mean walking back put you somewhere new, which reads as the world reshuffling
-     * behind you.
-     *
-     * <p>The two sides need not be opposites. Rooms form a graph, not a grid, so when
-     * the natural facing door is already spoken for any free door will do.
-     */
+    /** Joins two rooms through a pair of doors, both ways at once. */
     public void link(Direction side, Room other, Direction otherSide) {
         links.put(side, other);
         other.links.put(otherSide, this);
     }
 
-    /**
-     * Points a door at a room without claiming a door on the other side.
-     *
-     * <p>For a world that has run out of free doorways. The return trip still works,
-     * because the target already has a door aimed back here; it is simply not the
-     * mirror of the one you walked through. Growing the world instead would make the
-     * room cap meaningless, and the cap is what makes players find each other.
-     */
-    public void linkOneWay(Direction side, Room other) {
-        links.put(side, other);
-    }
-
-    public java.util.Set<Direction> freeDoors() {
-        java.util.Set<Direction> free = new java.util.LinkedHashSet<>();
-        for (Direction side : map.doors().keySet()) {
-            if (!links.containsKey(side)) {
-                free.add(side);
-            }
-        }
-        return free;
-    }
-
-    /** Drops every link into and out of this room, for when it is discarded. */
+    /** Drops every link into and out of this room, for a resize or a discard. */
     public void unlinkAll() {
         for (Room neighbour : links.values()) {
             neighbour.links.values().removeIf(room -> room == this);

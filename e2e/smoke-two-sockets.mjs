@@ -137,8 +137,7 @@ const DOOR_POS = {
 
 /**
  * Which wall the player is standing against. Arrivals land just inside the door they
- * came through, which is normally the facing wall but not guaranteed: if that door was
- * already spoken for the server falls back to another one.
+ * came through, which is always the facing wall.
  */
 function arrivalSide(snapshot) {
   const { x, y } = snapshot.self;
@@ -227,24 +226,27 @@ async function main() {
   const moved = a.latest().roomId;
   check(moved !== origin, 'the room changes', `${origin} -> ${moved}`);
 
-  // Arriving beside a door is the contract. Which wall it is is a preference: the
-  // server aims for the facing one and settles for another when that is taken, so
-  // asserting the wall would fail now and then by design.
+  // The world is a grid of rooms: leaving by the east door lands you at the west one.
   const cameInBy = arrivalSide(a.latest());
-  check(cameInBy !== null, 'A arrives beside a doorway, not adrift in the room',
-    `${cameInBy} wall${cameInBy === 'LEFT' ? '' : ' (facing door was taken)'}`);
-  check(await takeDoor(a, cameInBy ?? 'LEFT'), 'A walks back');
+  check(cameInBy === 'LEFT', 'A arrives at the facing wall', `${cameInBy} wall`);
+  check(await takeDoor(a, 'LEFT'), 'A walks back');
   check(a.latest().roomId === origin, 'walking back lands in the same room', origin);
 
-  // The world is capped by population, so wandering has to run into somebody. There
-  // are no coordinates to steer by; A simply tries doors.
+  // The world is a torus sized to the population, so a sweep finds everybody: walk
+  // east until the row comes round to where it started, then step south. The client
+  // is never told the grid size; the room ids are enough to notice the wrap.
   const target = b.latest().roomId;
-  const legs = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
   // A door that cannot be reached is skipped rather than ending the search: players
   // from an earlier run stand in the world for their 15s grace and can block a path.
   let transits = 0;
-  for (let attempt = 0; attempt < 30 && a.latest().roomId !== target; attempt++) {
-    if (await takeDoor(a, legs[attempt % legs.length])) transits++;
+  let rowStart = a.latest().roomId;
+  let rowDone = false;
+  for (let attempt = 0; attempt < 80 && a.latest().roomId !== target; attempt++) {
+    const side = rowDone ? 'DOWN' : 'RIGHT';
+    if (!(await takeDoor(a, side))) continue;
+    transits++;
+    if (side === 'DOWN') rowStart = a.latest().roomId;
+    rowDone = side === 'RIGHT' && a.latest().roomId === rowStart;
   }
   const met = a.latest().roomId === target;
   check(met, `A wanders into B after ${transits} door transits`,

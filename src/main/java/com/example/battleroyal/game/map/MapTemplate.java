@@ -111,7 +111,9 @@ public final class MapTemplate {
         require(map.itemSpawns().size() == REQUIRED_ITEM_SPAWNS,
                 name + ": expected " + REQUIRED_ITEM_SPAWNS + " item spawns, got "
                         + map.itemSpawns().size());
-        require(!map.doors().isEmpty(), name + ": room has no doors");
+        // The world is a grid of rooms, and every room is wired on all four sides.
+        require(map.doors().size() == Direction.values().length,
+                name + ": expected a door on every wall, got " + map.doors().keySet());
         require(map.bushRegionCount() >= 1, name + ": room has no bush");
     }
 

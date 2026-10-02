@@ -6,8 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Live on AWS at http://54.116.237.112/ (2026-10-03). Next: fix a bug and redeploy it
-(AWS Phase 9).
+Torus world done locally (2026-10-03), not yet deployed. Next: redeploy it to AWS
+(Phase 9).
 
 ## Completed
 
@@ -26,7 +26,7 @@ Live on AWS at http://54.116.237.112/ (2026-10-03). Next: fix a bug and redeploy
 - [x] `web` — GuestSessionService, SessionController
 - [x] Client — lobby, CSS Grid 15x15 renderer, D-pad + A/B, death overlay
 - [x] Movement: 150ms cooldown with a one-slot input buffer
-- [x] Rooms: linked graph, population-capped, always one connected piece
+- [x] Rooms: torus grid sized to the population (replaced the capped linked graph)
 - [x] Door transit, arriving just inside the door you came through
 - [x] Bush and cabinet visibility filtering
 - [x] `e2e/smoke-two-sockets.mjs` — dependency-free two-socket checks
@@ -85,8 +85,18 @@ Live on AWS at http://54.116.237.112/ (2026-10-03). Next: fix a bug and redeploy
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
-- [x] Doors lead to the facing wall 98% of the time (was 90%): the encounter bias only
-      picks occupied rooms whose facing door is free, and runs at 40%.
+- [x] Torus world (2026-10-03): rooms on a wrapping grid, 3x3 for 1–2 players and about
+      7 rooms per other player beyond (`WorldSize`). Doors always reach the facing wall;
+      no neighbours share a layout; a fresh login starts with nobody next door. Grows at
+      once, shrinks only when a newcomer would not regrow it and the dropped rooms are
+      empty. Replaced the encounter bias, one-way links, island bridging and room GC.
+      Fixes the reported "stuck in one room" loop.
+
+Torus: `./gradlew test` 182 passing (two wanderers on 3x3 meet after 5.3 doors on
+average). Smoke 3/3 in a row, with a row sweep instead of a fixed UP/RIGHT/DOWN/LEFT
+cycle (that only circles four rooms on a torus); the world grew to 6x5 with lingering
+players and shrank back. Browser: RIGHT x3 and UP x3 each came back to the start room,
+arriving beside the facing door every time; no console errors.
 
 Reload resume: browser — moved, reloaded, came back on room-1 (4,11) with the name
 and clock kept; a stored unknown token led to the lobby, name prefilled, message
@@ -146,8 +156,11 @@ Nothing.
 
 ## Next
 
-1. AWS Phase 9: fix a bug locally, then redeploy with the procedure in
+1. AWS Phase 9: redeploy the torus build with the procedure in
    `docs/AWS_DEPLOYMENT.md` §4 Phase 9 (keep `app.jar.prev` for rollback).
+3. Later, user's idea: two EC2 instances with rolling deploys that keep players. The
+   world lives in one JVM, so this needs a world handoff or rooms pinned to servers
+   (CLAUDE.md §10) — a design task of its own, not started.
 2. Not yet recorded: the server coming back on its own after `sudo reboot`.
 
 ## Known Issues
@@ -267,28 +280,24 @@ Nothing.
 - **Cabinets stop bullets and can be attacked blind.** The occupant is hidden and frozen,
   Medkit the one allowed action. No time limit, because being attackable is what keeps it
   honest.
-- **Rooms are a linked graph capped by population**, not an infinite coordinate grid. The
-  grid was tried: finding another player was a 2D random walk and a third of simulated
-  pairs never met at all. A cap forces doors to fold back into the world.
-- **The world is always one connected component.** Restored once per tick rather than
-  patched wherever a link is chosen — a fresh login opens an unlinked room, and
-  discarding rooms can cut a chain in half.
-- **A saturated world opens a one-way passage instead of growing.** Four rooms of four
-  doors saturate at eight links, after which every new door was creating a room and the
-  cap stopped meaning anything. One-way links are only allowed to a room that already
-  aims a door back here; chaining them otherwise strands the player with no way home and
-  no doorway to arrive beside. `everyDoorHasAWayBack` guards it.
-- **Newly opened doors lean 40% toward occupied rooms — only ones whose facing door
-  is free.** User's call (2026-09-29, option B): leaving by the top wall and arriving
-  at the top wall read as a bug. The old any-occupied-room bias made one link in ten
-  sideways (89% facing). Facing-only at 40%: 98% facing, 2.8 average, 14 worst — equal
-  or better than the old rule (3.0, 14) on every count. Measurements in
-  `GameConstants.ENCOUNTER_BIAS_PERCENT`; guarded by `mostDoorsLeadToTheFacingWall`.
-- **Door order no longer depends on a per-JVM hash salt.** `GridMap` stored doors with
-  `Map.copyOf`, whose iteration order is salted per JVM run, so `freeDoors()` order —
-  and the whole world graph — changed between runs. CI caught it: the encounter
-  worst-case test failed on unchanged code. Now an `EnumMap`; figures recorded before
-  this fix (2.3 average, 11 worst) were one salt's luck.
+- **The world is a torus sized to the population.** User's call (2026-10-03), after a
+  player reported being stuck in a loop: the capped linked graph (2 rooms a player,
+  minimum 4) folded back into 2–4 room cycles with no geography, and twin layouts made
+  them look like one room. Now rooms sit on a wrapping grid; doors are fixed, so a map
+  can be learned and a chase followed. Size: 3x3 for 1–2, then about 7 rooms per other
+  player (user asked for 1–2 → 3x3, 3–5 → 4x4 and left the rest to me; 4x4 for five
+  meets after 2.2 doors, too soon). User's target: meet after 4–5 doors, time to loot.
+  Simulated table in `GameConstants.ROOMS_PER_OTHER_PLAYER`.
+- **Resizes never move anyone.** Grow at once (before placing a newcomer); shrink only
+  when one more join would not regrow it and the rooms being dropped are empty. Edge
+  doors may lead somewhere new afterwards; rooms re-added later are new rooms.
+- **The unbounded coordinate grid stays rejected.** It was a 2D random walk: a third of
+  simulated pairs never met. What makes the torus work is that it wraps and is sized.
+- **Neighbours never share a layout**, so walking through a door never looks like
+  walking back into the room you left. Only checked on creation; a shrink can make
+  two old rooms neighbours.
+- **Door order no longer depends on a per-JVM hash salt.** `GridMap` stores doors in an
+  `EnumMap`; `Map.copyOf` iterated in a per-run salted order and changed the world.
 - **Arrival is just inside the door you came through**, not a random tile. A pursuer has
   to appear where their quarry did or a chase stops reading as one.
 - **No entry invulnerability.** A fresh login starts alone so it needs no shield, and on
@@ -324,18 +333,15 @@ Nothing.
   used identity-hash order and the encounter measurements swung between 10 and 16 door
   transits for identical code. Room iteration is now insertion-ordered throughout; if a
   number moves without a code change, suspect ordering first.
-- The socket suite asserts contracts, not preferences. Arrival is *beside a doorway*
-  (invariant); *which* wall is a preference the server may miss when the facing door is
-  taken. It also treats B walking into a bush as a correct outcome rather than a missing
+- The socket suite asserts arrival at the facing wall, and finds B with a row sweep:
+  east until the room id comes round, then south. It also treats B walking into a bush as a correct outcome rather than a missing
   update, because concealment removes B from A's view entirely.
 
 ## Tuning Candidates
 
 - 150ms movement once combat exists — Knife's 500ms cooldown needs melee to stay viable.
-- `ENCOUNTER_BIAS_PERCENT` 40 (facing-only): average 2.8 door transits, worst 14.
-  50% measures 2.2 / 11 / 99% facing, at the cost of doors opening onto people half
-  the time.
-- `ROOMS_PER_PLAYER` 2, `MIN_ROOMS` 4.
+- `ROOMS_PER_OTHER_PLAYER` 7: about 4–5 doors to meet in simulation. Real players loot,
+  fight and stand still, so watch whether meetings feel too rare or too frequent.
 - Loot weights and `LOOT_REGROW_TICKS` 600: a real weapon about one room in eight,
   a pistol one in a hundred. Watch whether fights are mostly fists and junk.
 - Fist 5 (20 blows). Whether bare-hand brawls drag on too long.

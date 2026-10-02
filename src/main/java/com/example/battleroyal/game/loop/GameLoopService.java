@@ -118,8 +118,7 @@ public class GameLoopService {
         // Removing the dead marks their room dirty, so the survivors see the body go
         // on the next tick.
         registry.reapDead();
-        registry.collectRooms();
-        registry.connectIslands();
+        registry.fitWorld();
     }
 
     private void notifyDeath(GameEvent.Died died) {

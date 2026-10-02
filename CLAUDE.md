@@ -350,9 +350,9 @@ Recorded in `progress.md` under Recent Decisions. Current standing decisions:
 - Persistent world: no rounds, no winner
 - 20Hz tick, 150ms move cooldown, one-slot input buffer, no client prediction
 - Shots resolve instantly along a line
-- Rooms are a linked graph, capped at `ROOMS_PER_PLAYER` per player, which is what
-  makes players find each other
-- The room graph is always one connected piece
+- Rooms sit on a torus sized to the population (`WorldSize`, about 7 rooms per other
+  player, at least 3x3); a door always leads to the neighbouring room's facing door
+- Meeting someone should take about 4–5 doors, leaving time to loot
 - Full room visibility except bushes
 - Enemy HP, item and ammo hidden
 - One-item inventory; a swap drops the previous item

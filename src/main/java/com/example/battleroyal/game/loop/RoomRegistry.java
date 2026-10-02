@@ -7,27 +7,25 @@ import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.core.TileType;
+import com.example.battleroyal.game.map.MapTemplate;
 import com.example.battleroyal.game.map.MapTemplates;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemSpawns;
 import com.example.battleroyal.game.rule.RoomSimulator;
 import com.example.battleroyal.game.rule.ScoreRules;
+import com.example.battleroyal.game.rule.WorldSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -39,12 +37,16 @@ import java.util.concurrent.atomic.AtomicLong;
  * three queues are concurrent; everything else here is touched by the loop thread
  * alone, so there are no locks anywhere in the simulation.
  *
- * <p>The world is deliberately small: {@link GameConstants#ROOMS_PER_PLAYER} rooms per
- * player and no more. An unbounded world was tried first and failed badly. Rooms laid
- * out on an infinite coordinate grid meant finding another player was a random walk in
- * two dimensions, which is null-recurrent: simulated over three thousand pairs, a third
- * never met at all and the slowest quarter took upwards of thirty minutes. Capping the
- * world means doors eventually have to lead back into it, and people collide.
+ * <p>Rooms sit on a torus sized to the population ({@link WorldSize}): leave by the east
+ * door and you arrive at the west door of the room to the east, and walking off the
+ * edge of the world brings you in at the other side. An unbounded world was tried first
+ * and failed badly: finding another player was a two-dimensional random walk, and a
+ * third of simulated pairs never met at all. A world that wraps and grows with its
+ * population keeps the walk short, and fixed geography lets a pursuer follow.
+ *
+ * <p>Iteration is insertion-ordered throughout. {@link Room} does not override
+ * {@code hashCode}, so a plain {@code HashSet} of rooms would iterate in identity-hash
+ * order and give a different answer on every JVM run.
  */
 @Component
 public class RoomRegistry {
@@ -57,6 +59,10 @@ public class RoomRegistry {
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
     private final Map<String, String> roomOfPlayer = new HashMap<>();
+
+    /** Rooms by position, {@code cells[row][column]}. */
+    private Room[][] cells = new Room[0][0];
+    private WorldSize.Grid grid = new WorldSize.Grid(0, 0);
 
     private final Queue<Command> commands = new ConcurrentLinkedQueue<>();
     private final Queue<JoinRequest> joins = new ConcurrentLinkedQueue<>();
@@ -73,17 +79,17 @@ public class RoomRegistry {
     }
 
     /**
-     * Seeded constructor so tests can pin room layout and destination choice. Items get
-     * a fixed seed of their own.
+     * Seeded constructor so tests can pin room layout and spawn choice. Items get a
+     * fixed seed of their own.
      */
     public RoomRegistry(Random random) {
         this(random, new Random(0));
     }
 
     /**
-     * Item rolls draw from their own source. Sharing one would shift every door choice
-     * whenever a spawn table changed, and the encounter measurements in
-     * {@link GameConstants#ENCOUNTER_BIAS_PERCENT} would move with it.
+     * Item rolls draw from their own source. Sharing one would shift every layout and
+     * spawn choice whenever a spawn table changed, and the encounter measurements in
+     * {@link GameConstants#ROOMS_PER_OTHER_PLAYER} would move with it.
      */
     public RoomRegistry(Random random, Random itemRandom) {
         this.random = random;
@@ -188,136 +194,98 @@ public class RoomRegistry {
         }
     }
 
-    /**
-     * Discards rooms nobody can reach any more: empty, and not next door to anyone.
-     *
-     * <p>Keeping the immediate neighbours is what makes turning around safe. Computed
-     * outward from occupied rooms rather than by asking rooms to keep each other alive,
-     * which would let a chain of empty rooms pin itself in memory forever.
-     */
-    public void collectRooms() {
-        Set<Room> keep = new LinkedHashSet<>();
-        for (Room room : rooms.values()) {
-            if (room.isEmpty()) {
-                continue;
-            }
-            keep.add(room);
-            keep.addAll(room.neighbours());
-        }
+    // --- World size -------------------------------------------------------
 
-        List<Room> discarded = rooms.values().stream()
-                .filter(room -> !keep.contains(room))
-                .toList();
-        for (Room room : discarded) {
-            room.unlinkAll();
-            rooms.remove(room.id());
+    /**
+     * Grows or shrinks the world to suit how many people are in it.
+     *
+     * <p>Growing happens at once, and on a join before the newcomer is placed, so a
+     * fresh login always has room to start alone. Shrinking waits on two things: a
+     * single newcomer must not be about to grow it straight back, and the rooms being
+     * dropped must be empty. Nobody is ever moved by a resize, though the doors on the
+     * edge of the world may lead somewhere new afterwards.
+     */
+    public void fitWorld() {
+        int population = roomOfPlayer.size();
+        WorldSize.Grid wanted = WorldSize.forPopulation(population);
+        if (wanted.area() > grid.area()) {
+            resize(wanted);
+        } else if (wanted.area() < grid.area()
+                && WorldSize.forPopulation(population + 1).area() < grid.area()
+                && outskirtsEmpty(wanted)) {
+            resize(wanted);
         }
     }
 
-    /**
-     * Keeps the world a single connected piece.
-     *
-     * <p>A capped world only forces encounters if you can actually walk the whole of
-     * it. Two things break that on their own: a fresh login opens a room with no doors
-     * linked to anything, and discarding rooms can cut a chain in half. Rather than
-     * patching each case where a link is chosen, the invariant is restored here, once
-     * per tick, after everything else has had its way with the graph.
-     */
-    public void connectIslands() {
-        List<Set<Room>> islands = components();
-        if (islands.size() <= 1) {
-            return;
-        }
-        Set<Room> mainland = islands.getFirst();
-        for (Set<Room> island : islands.subList(1, islands.size())) {
-            if (!bridge(mainland, island)) {
-                continue;
-            }
-            mainland.addAll(island);
-        }
+    public WorldSize.Grid grid() {
+        return grid;
     }
 
-    /**
-     * Groups the world into connected pieces.
-     *
-     * <p>Ordering is insertion-based throughout. {@link Room} does not override
-     * {@code hashCode}, so a plain {@code HashSet} would iterate in identity-hash order
-     * and give a different answer on every JVM run; the encounter tests measured
-     * anything between ten and sixteen door transits for identical code before this was
-     * pinned down.
-     */
-    private List<Set<Room>> components() {
-        Set<Room> seen = new LinkedHashSet<>();
-        List<Set<Room>> islands = new ArrayList<>();
-        for (Room start : rooms.values()) {
-            if (seen.contains(start)) {
-                continue;
-            }
-            Set<Room> island = new LinkedHashSet<>();
-            Deque<Room> frontier = new ArrayDeque<>();
-            frontier.add(start);
-            island.add(start);
-            while (!frontier.isEmpty()) {
-                Room room = frontier.removeFirst();
-                for (Room neighbour : room.neighbours()) {
-                    if (island.add(neighbour)) {
-                        frontier.addLast(neighbour);
-                    }
+    /** Whether every room outside {@code next} is empty, so it can be dropped. */
+    private boolean outskirtsEmpty(WorldSize.Grid next) {
+        for (int row = 0; row < grid.rows(); row++) {
+            for (int column = 0; column < grid.columns(); column++) {
+                if ((row >= next.rows() || column >= next.columns())
+                        && !cells[row][column].isEmpty()) {
+                    return false;
                 }
             }
-            seen.addAll(island);
-            islands.add(island);
         }
-        return islands;
-    }
-
-    /**
-     * Joins two groups of rooms through a pair of unused doors.
-     *
-     * <p>Empty rooms are preferred as the anchor. Bridging straight onto an occupied
-     * room would put every fresh login one door from somebody, which turns the first
-     * door of the game into a guaranteed fight rather than a gamble.
-     */
-    private boolean bridge(Set<Room> left, Set<Room> right) {
-        List<Room> anchors = new ArrayList<>(left);
-        anchors.removeIf(room -> room.freeDoors().isEmpty());
-        if (anchors.isEmpty()) {
-            return false;
-        }
-        List<Room> quiet = anchors.stream().filter(Room::isEmpty).toList();
-        Room from = pick(quiet.isEmpty() ? anchors : quiet);
-
-        List<Room> targets = new ArrayList<>(right);
-        targets.removeIf(room -> room.freeDoors().isEmpty());
-        if (targets.isEmpty()) {
-            return false;
-        }
-        List<Room> quietTargets = targets.stream().filter(Room::isEmpty).toList();
-        Room to = pick(quietTargets.isEmpty() ? targets : quietTargets);
-
-        linkPreferringFacingDoors(from, to);
         return true;
     }
 
     /**
-     * Joins two rooms through opposite walls when it can.
-     *
-     * <p>A bridge that grabs whichever doors happen to be free also spends the facing
-     * ones, and every later transit through that wall then has to arrive somewhere
-     * sideways. Pairing them up here keeps ordinary doors behaving like doors.
+     * Keeps the rooms that fit, drops the rest, fills the gaps and rewires every door.
+     * Sizes only ever step through {@link WorldSize#forPopulation}, so a grid either
+     * contains the next one or is contained by it.
      */
-    private void linkPreferringFacingDoors(Room from, Room to) {
-        List<Direction> facingPairs = from.freeDoors().stream()
-                .filter(side -> to.doorIsFree(side.opposite()))
-                .toList();
-        if (!facingPairs.isEmpty()) {
-            Direction side = pick(facingPairs);
-            from.link(side, to, side.opposite());
-            return;
+    private void resize(WorldSize.Grid next) {
+        Room[][] fresh = new Room[next.rows()][next.columns()];
+        for (int row = 0; row < grid.rows(); row++) {
+            for (int column = 0; column < grid.columns(); column++) {
+                Room room = cells[row][column];
+                if (row < next.rows() && column < next.columns()) {
+                    fresh[row][column] = room;
+                } else {
+                    room.unlinkAll();
+                    rooms.remove(room.id());
+                }
+            }
         }
-        from.link(pick(new ArrayList<>(from.freeDoors())), to,
-                pick(new ArrayList<>(to.freeDoors())));
+        WorldSize.Grid before = grid;
+        cells = fresh;
+        grid = next;
+        for (int row = 0; row < next.rows(); row++) {
+            for (int column = 0; column < next.columns(); column++) {
+                if (cells[row][column] == null) {
+                    cells[row][column] = createRoom(row, column);
+                }
+            }
+        }
+        wireDoors();
+        log.info("World {}x{} -> {}x{} for {} players", before.columns(), before.rows(),
+                next.columns(), next.rows(), roomOfPlayer.size());
     }
+
+    /** East to the next column's west, south to the next row's north, wrapping round. */
+    private void wireDoors() {
+        for (Room room : rooms.values()) {
+            room.unlinkAll();
+        }
+        for (int row = 0; row < grid.rows(); row++) {
+            for (int column = 0; column < grid.columns(); column++) {
+                Room room = cells[row][column];
+                room.link(Direction.RIGHT, cellAt(row, column + 1), Direction.LEFT);
+                room.link(Direction.DOWN, cellAt(row + 1, column), Direction.UP);
+            }
+        }
+    }
+
+    private Room cellAt(int row, int column) {
+        return cells[Math.floorMod(row, grid.rows())][Math.floorMod(column, grid.columns())];
+    }
+
+    // --- Lookups ----------------------------------------------------------
 
     public Collection<Room> rooms() {
         return rooms.values();
@@ -337,12 +305,6 @@ public class RoomRegistry {
         return rooms.size();
     }
 
-    /** Rooms allowed to exist right now, given how many people are playing. */
-    public int roomCap() {
-        return Math.max(GameConstants.MIN_ROOMS,
-                roomOfPlayer.size() * GameConstants.ROOMS_PER_PLAYER);
-    }
-
     // --- Arrivals and departures ------------------------------------------
 
     /**
@@ -358,7 +320,15 @@ public class RoomRegistry {
             roomOf(request.playerId()).markDirty();
             return;
         }
-        Room room = emptyRoom();
+        WorldSize.Grid wanted = WorldSize.forPopulation(roomOfPlayer.size() + 1);
+        if (wanted.area() > grid.area()) {
+            resize(wanted);
+        }
+        Room room = startingRoom();
+        if (room == null) {
+            log.warn("No empty room for {}", request.playerId());
+            return;
+        }
         Pos spawn = pickSpawn(room);
         if (spawn == null) {
             log.warn("No free tile in {} for {}", room.id(), request.playerId());
@@ -370,8 +340,8 @@ public class RoomRegistry {
         // Where you start is not somewhere you travelled to.
         player.visitRoom(room.id());
         place(player, room);
-        log.info("{} joined {} ({} rooms, cap {})",
-                request.playerId(), room.id(), rooms.size(), roomCap());
+        log.info("{} joined {} ({}x{} world)",
+                request.playerId(), room.id(), grid.columns(), grid.rows());
     }
 
     private void removePlayer(String playerId) {
@@ -385,13 +355,19 @@ public class RoomRegistry {
         }
     }
 
-    private Room emptyRoom() {
-        for (Room room : rooms.values()) {
-            if (room.isEmpty()) {
-                return room;
-            }
+    /**
+     * An empty room, preferably with nobody next door either, so that the first door of
+     * the game is a gamble rather than a guaranteed fight.
+     */
+    private Room startingRoom() {
+        List<Room> empty = rooms.values().stream().filter(Room::isEmpty).toList();
+        if (empty.isEmpty()) {
+            return null;
         }
-        return createRoom();
+        List<Room> quiet = empty.stream()
+                .filter(room -> room.neighbours().stream().allMatch(Room::isEmpty))
+                .toList();
+        return pick(quiet.isEmpty() ? empty : quiet);
     }
 
     // --- Doors ------------------------------------------------------------
@@ -405,10 +381,10 @@ public class RoomRegistry {
 
         Room target = from.linkedRoom(side);
         if (target == null) {
-            target = openDoor(from, side);
+            return;
         }
 
-        Pos entry = pickEntry(target, sideFacing(target, from));
+        Pos entry = pickEntry(target, side.opposite());
         if (entry == null) {
             return;
         }
@@ -425,103 +401,25 @@ public class RoomRegistry {
     }
 
     /**
-     * Decides where a door leads the first time it is opened, and wires it up.
-     *
-     * <p>Under the cap the world grows, which is what makes exploring worth anything.
-     * At the cap it has to fold back on itself, and that is what guarantees people run
-     * into each other.
+     * A room for the given cell, with a layout none of its known neighbours already use.
+     * Eight layouts on nine rooms must repeat somewhere, but a repeat next door makes
+     * walking through it look like walking back into the room you just left.
      */
-    private Room openDoor(Room from, Direction side) {
-        // Walking out of the east wall should put you at the next room's west wall, so
-        // rooms whose facing door is still free come first. Anything else and the way
-        // back would be a different door from the one you arrived at.
-        List<Room> facing = rooms.values().stream()
-                .filter(room -> room != from && room.doorIsFree(side.opposite()))
-                .toList();
-        List<Room> anyDoor = rooms.values().stream()
-                .filter(room -> room != from && !room.freeDoors().isEmpty())
-                .toList();
-        List<Room> candidates = facing.isEmpty() ? anyDoor : facing;
-
-        // Sometimes a door simply opens onto someone. Left purely to the cap, running
-        // into another player took about half a minute of walking.
-        //
-        // Only an occupied room whose facing door is free, so leaving by the top wall
-        // still lands you at the bottom one. Any occupied room used to do, and players
-        // noticed walking out of the wall they had just walked into: one link in ten
-        // came out sideways. The encounters that restriction costs are bought back by a
-        // higher bias; see ENCOUNTER_BIAS_PERCENT.
-        if (random.nextInt(100) < GameConstants.ENCOUNTER_BIAS_PERCENT) {
-            List<Room> occupiedFacing = facing.stream()
-                    .filter(room -> !room.isEmpty())
-                    .toList();
-            if (!occupiedFacing.isEmpty()) {
-                return attach(from, side, pick(occupiedFacing));
-            }
-        }
-
-        if (rooms.size() < roomCap()) {
-            return attach(from, side, createRoom());
-        }
-        if (!candidates.isEmpty()) {
-            return attach(from, side, pick(candidates));
-        }
-
-        // Every doorway in the world is spoken for. Open a one-way passage rather than
-        // growing past the cap; the cap is the reason wandering finds anyone at all.
-        //
-        // Only to a room that already has a door aimed back here. Chaining one-way links
-        // otherwise strands the player: there is no way home and, with no facing door to
-        // arrive at, they materialise in the middle of the room.
-        List<Room> canReturn = from.neighbours().stream()
-                .distinct()
-                .filter(room -> sideFacing(room, from) != null)
-                .toList();
-        if (!canReturn.isEmpty()) {
-            Room target = pick(canReturn);
-            from.linkOneWay(side, target);
-            return target;
-        }
-        return attach(from, side, createRoom());
-    }
-
-    /**
-     * Links {@code from} to {@code target}, preferring the door facing the way the
-     * player was walking so that leaving east arrives at a west wall.
-     */
-    private Room attach(Room from, Direction side, Room target) {
-        Direction facing = side.opposite();
-        if (target.doorIsFree(facing) && target.map().doorAt(facing) != null) {
-            from.link(side, target, facing);
-            return target;
-        }
-        List<Direction> free = new ArrayList<>(target.freeDoors());
-        if (!free.isEmpty()) {
-            from.link(side, target, pick(free));
-            return target;
-        }
-        // Callers only offer targets with a spare door, so this is belt and braces: a
-        // one-way link is safe here only because the target already leads back.
-        if (sideFacing(target, from) != null) {
-            from.linkOneWay(side, target);
-            return target;
-        }
-        return attach(from, side, createRoom());
-    }
-
-    /** Which of {@code room}'s doors leads back to {@code neighbour}. */
-    private Direction sideFacing(Room room, Room neighbour) {
+    private Room createRoom(int row, int column) {
+        List<GridMap> nextDoor = new ArrayList<>();
         for (Direction side : Direction.values()) {
-            if (room.linkedRoom(side) == neighbour) {
-                return side;
+            Room neighbour = cellAt(row + side.dy(), column + side.dx());
+            if (neighbour != null) {
+                nextDoor.add(neighbour.map());
             }
         }
-        return null;
-    }
+        List<MapTemplate> unlike = MapTemplates.ALL.stream()
+                .filter(template -> !nextDoor.contains(template.map()))
+                .toList();
+        MapTemplate template = pick(unlike.isEmpty() ? MapTemplates.ALL : unlike);
 
-    private Room createRoom() {
         String id = "room-" + roomSequence.incrementAndGet();
-        Room room = new Room(id, MapTemplates.random(random).map());
+        Room room = new Room(id, template.map());
         ItemSpawns.prime(room);
         rooms.put(id, room);
         return room;
@@ -566,7 +464,7 @@ public class RoomRegistry {
      * four doors and only one of you.
      */
     private Pos pickEntry(Room room, Direction arrivalSide) {
-        Pos door = arrivalSide == null ? null : room.map().doorAt(arrivalSide);
+        Pos door = room.map().doorAt(arrivalSide);
         if (door == null) {
             return pickSpawn(room);
         }

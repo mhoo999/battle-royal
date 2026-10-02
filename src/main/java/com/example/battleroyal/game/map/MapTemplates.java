@@ -160,9 +160,9 @@ public final class MapTemplates {
             "#######+#######");
 
     /**
-     * Rooms are regenerated whenever the halo discards and rebuilds them, so a player
-     * walking any distance sees a lot of rooms. Three layouts read as one repeating
-     * pair; eight is enough that a repeat feels like coincidence.
+     * Even the smallest world has nine rooms. Three layouts read as one repeating pair;
+     * with eight, and no room sharing a layout with its neighbours, a repeat feels like
+     * coincidence.
      */
     public static final List<MapTemplate> ALL = List.of(
             CROSSROADS, ALCOVES, PILLARS, CHAMBERS, ARENA, GALLERY, HOOK, QUARRY);
