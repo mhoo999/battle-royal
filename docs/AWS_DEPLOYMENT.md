@@ -14,7 +14,7 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 8 (동작 확인) 진행 중.
+**현재 단계:** Phase 9 (재배포 연습) 시작 전.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
@@ -24,9 +24,10 @@ IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지
 사용자, EC2 → RDS 3306 OPEN. Phase 6: 앱 사용자 `battleroyal`(8개 권한, MySQL 8.4.11),
 `mariadb105` 클라이언트가 `--ssl`로 8.4에 정상 접속. Phase 7: systemd + Nginx, 첫 배포.
 Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-console` 404,
-`/api/ranking`이 RDS의 결과 행을 읽음.
+`/api/ranking`이 RDS의 결과 행을 읽음. 사용자가 브라우저로 플레이 확인(2026-10-03).
 
-**다음 한 걸음:** Phase 8 나머지 — 브라우저 두 대(휴대폰 LTE), 새로고침 복귀, 재부팅 내성.
+**다음 한 걸음:** Phase 9 — 버그 하나를 고쳐 §4 Phase 9 절차로 재배포. 재부팅 내성
+(`sudo reboot` 후 자동 기동)은 아직 확인 기록이 없다.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
@@ -118,7 +119,7 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 - [x] **Phase 5** 서버 준비 (Java, Nginx, MySQL 클라이언트, 사용자·디렉터리) (2026-10-03)
 - [x] **Phase 6** DB 사용자 만들기 (2026-10-03)
 - [x] **Phase 7** 첫 배포 (jar, env, systemd, Nginx) (2026-10-03)
-- [ ] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB)
+- [x] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB) (2026-10-03)
 - [ ] **Phase 9** 재배포 절차 한 번 연습
 - [ ] (선택) 도메인 + HTTPS
 - [ ] (선택) SSH 대신 SSM, 배포 자동화

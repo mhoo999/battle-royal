@@ -6,7 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-None in flight. Bare hands, new weapons and junk done; next is the browser checks in Next.
+Live on AWS at http://54.116.237.112/ (2026-10-03). Next: fix a bug and redeploy it
+(AWS Phase 9).
 
 ## Completed
 
@@ -81,6 +82,9 @@ None in flight. Bare hands, new weapons and junk done; next is the browser check
       MySQL 8.0 + Docker Nginx + browser. `docs/AWS_DEPLOYMENT.md` written.
 - [x] A page reload resumes the same player (token in `sessionStorage`); a refused
       resume returns to the lobby with "이전 게임은 끝났습니다"
+- [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
+      Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
+      confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
 - [x] Doors lead to the facing wall 98% of the time (was 90%): the encounter bias only
       picks occupied rooms whose facing door is free, and runs at 40%.
 
@@ -142,8 +146,9 @@ Nothing.
 
 ## Next
 
-1. AWS deployment — Phase 1 onwards in `docs/AWS_DEPLOYMENT.md`, which carries its own
-   state. Console work is the user's; the doc says what to click and what to record.
+1. AWS Phase 9: fix a bug locally, then redeploy with the procedure in
+   `docs/AWS_DEPLOYMENT.md` §4 Phase 9 (keep `app.jar.prev` for rollback).
+2. Not yet recorded: the server coming back on its own after `sudo reboot`.
 
 ## Known Issues
 
@@ -155,7 +160,10 @@ Nothing.
 
 ## Recent Decisions
 
-- **AWS: one EC2 (jar + systemd behind Nginx) and RDS for MySQL 8.0.** No ALB, Redis
+- **RDS runs MySQL 8.4, not 8.0.** 8.0 left RDS standard support on 2026-07-31 and a
+  new 8.0 instance forces paid Extended Support. No code change; local rehearsal was
+  on 8.0.
+- **AWS: one EC2 (jar + systemd behind Nginx) and RDS for MySQL.** No ALB, Redis
   or containers. Rationale and rejected options in `docs/AWS_DEPLOYMENT.md` §6.
 - **Nginx must forward `Host $http_host` and `X-Forwarded-Port`.** Found in the local
   rehearsal: without them the browser's WebSocket handshake gets 403 from Spring's
