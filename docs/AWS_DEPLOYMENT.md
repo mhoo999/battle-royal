@@ -14,13 +14,19 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 3 (RDS) 시작 전.
+**현재 단계:** Phase 4 (EC2) SSH 접속 확인 중.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
 Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg-web 참조.
+Phase 3: RDS MySQL **8.4** 생성(8.0은 Extended Support 과금, §9). Phase 4: EC2와 탄력적
+IP 생성.
 
-**다음 한 걸음:** Phase 3 — RDS `battle-royal-db` 생성 (보안 그룹 default 빼고 sg-db만).
+**다음 한 걸음:** Phase 4 SSH 접속 확인 → Phase 5 서버 준비.
+
+> **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
+> `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
+> (`scp.exe`도 같은 폴더). Git Bash에서는 `ssh`가 바로 된다.
 
 > **크레딧 주의:** EC2 + RDS + IPv4를 24시간 켜 두면 월 $25 안팎이 크레딧에서
 > 빠진다. $120이면 약 4~5개월로, 183일보다 먼저 바닥날 수 있다. Free plan은 크레딧이
@@ -44,7 +50,7 @@ Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg
 └────────────────────────────────────────────┬─────────────────────────────────────┘
                                              │ MySQL :3306 (sg-web에서만 허용)
                                              ▼
-                               RDS for MySQL 8.0 (db.t4g.micro)
+                               RDS for MySQL 8.4 (db.t4g.micro)
                                퍼블릭 액세스 없음. game_result 테이블 하나
 ```
 
@@ -54,7 +60,7 @@ Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg
 | 서버 | EC2 1대, Amazon Linux 2023 | 게임 월드가 JVM 메모리에 있으므로 서버는 1대여야 한다(§CLAUDE.md 9) |
 | 실행 방식 | jar + systemd | Docker 없이도 재시작·부팅 시 자동 실행·로그가 해결된다. 한 대에는 이것으로 충분하다 |
 | 앞단 | Nginx | 앱을 127.0.0.1에만 열어 두고 인터넷은 Nginx만 마주한다. 나중에 HTTPS를 붙일 자리 |
-| DB | RDS for MySQL 8.0 | 결과·랭킹만 저장한다. 한국 Spring 채용에서 가장 흔한 조합 |
+| DB | RDS for MySQL 8.4 | 결과·랭킹만 저장한다. 한국 Spring 채용에서 가장 흔한 조합. 8.0은 표준 지원이 끝나 Extended Support 요금이 붙는다(§9) |
 | 네트워크 | 기본 VPC | 서브넷 설계는 서버가 여러 대가 될 때 한다. 대신 RDS는 퍼블릭 액세스를 끈다 |
 | 접속 | SSH (내 IP만 허용) | 가장 단순하다. 익숙해지면 SSM Session Manager로 바꿔 22번 포트를 닫는다(§8) |
 
@@ -87,12 +93,12 @@ Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg
 | 보안 그룹 sg-web ID | sg-0494364a03526622b (`battle-royal-web`) |
 | 보안 그룹 sg-db ID | sg-0a8511e0c3c9f0f86 (`battle-royal-db`) |
 | RDS 식별자 | battle-royal-db |
-| RDS 엔드포인트 | |
+| RDS 엔드포인트 | battle-royal-db.c1caasea602e.ap-northeast-2.rds.amazonaws.com (MySQL 8.4) |
 | RDS 초기 DB 이름 | battleroyal |
-| EC2 인스턴스 ID | |
-| EC2 인스턴스 유형 | |
-| 키 페어 이름 (파일은 로컬 어디에) | |
-| 탄력적 IP | |
+| EC2 인스턴스 ID | i-02d65fab4965cb3c4 (`battle-royal-server`) |
+| EC2 인스턴스 유형 | t3.micro, Amazon Linux 2023 x86_64, gp3 10 GiB |
+| 키 페어 이름 (파일은 로컬 어디에) | battle-royal (`%USERPROFILE%\.ssh\battle-royal.pem`, 저장소 밖) |
+| 탄력적 IP | 54.116.237.112 |
 | 접속 URL | |
 | 최초 배포 일시 / 커밋 | |
 
@@ -103,7 +109,7 @@ Free plan이다. Phase 2 (2026-10-02): 보안 그룹 두 개, sg-db 소스는 sg
 - [x] **Phase 0** 로컬 리허설 (운영 프로필 + MySQL + Nginx + 브라우저)
 - [x] **Phase 1** 계정 준비: 루트 MFA, 관리자 사용자, 예산 알림 (2026-10-02)
 - [x] **Phase 2** 보안 그룹 두 개 (2026-10-02)
-- [ ] **Phase 3** RDS MySQL 생성
+- [x] **Phase 3** RDS MySQL 생성 (2026-10-02, 8.4)
 - [ ] **Phase 4** EC2 생성 + 탄력적 IP
 - [ ] **Phase 5** 서버 준비 (Java, Nginx, MySQL 클라이언트, 사용자·디렉터리)
 - [ ] **Phase 6** DB 사용자 만들기
@@ -229,7 +235,7 @@ docker rm -f br-mysql     # 끝나면
 | 항목 | 값 | 메모 |
 |---|---|---|
 | 생성 방식 | **Standard create** | Easy create는 설정이 숨겨진다 |
-| Engine | **MySQL**, 버전 8.0.x 최신 | 로컬 리허설과 같은 메이저 버전 |
+| Engine | **MySQL**, 버전 **8.4.x** 최신, **RDS Extended Support 체크 해제** | 8.0은 2026-07-31 RDS 표준 지원 종료. 고르면 Extended Support 요금이 붙는다 |
 | Templates | **Free tier** (보이면) / 아니면 Dev/Test | Free tier는 단일 AZ, 소형 인스턴스로 제한된다 |
 | DB instance identifier | `battle-royal-db` | |
 | Master username | `admin` | 앱은 이걸 쓰지 않는다(Phase 6) |
@@ -250,7 +256,7 @@ docker rm -f br-mysql     # 끝나면
 완료 기준: Available, **Connectivity & security** 탭에서 **Endpoint** 확인, Publicly
 accessible = No, 보안 그룹 = sg-db. → §2에 엔드포인트 기록.
 
-> 문자 집합: MySQL 8.0의 기본은 `utf8mb4`라 한글 닉네임이 그대로 저장된다(리허설로
+> 문자 집합: MySQL 8.0/8.4의 기본은 `utf8mb4`라 한글 닉네임이 그대로 저장된다(리허설로
 > 확인). 파라미터 그룹을 따로 만들지 않는다.
 
 ---
@@ -464,6 +470,7 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 |---|---|---|---|
 | 2026-09-29 | EC2 1대 + RDS MySQL, ALB·Redis 없음 | 게임 월드가 한 JVM 메모리에 있다. 두 번째 서버가 필요할 때 다시 본다 | ECS/Fargate, Elastic Beanstalk |
 | 2026-09-29 | RDS for MySQL 8.0 | 결과·랭킹만 저장. 채용 시장에서 흔함 | PostgreSQL (드라이버와 URL만 바꾸면 된다) |
+| 2026-10-02 | MySQL 8.0 → **8.4** | 8.0은 RDS 표준 지원 종료(2026-07-31), 새로 만들면 Extended Support 과금. 8.4가 현재 LTS. Connector/J는 Boot가 관리하는 버전이라 코드 변경 없음. 로컬 리허설은 8.0으로만 했다 | 8.0 + Extended Support |
 | 2026-09-29 | jar + systemd, Docker 안 씀 | 한 대에 컨테이너 런타임은 옮길 것만 늘린다 | Docker Compose |
 | 2026-09-29 | Nginx 앞단, 앱은 127.0.0.1 | 8080을 인터넷에 열지 않는다. HTTPS 붙일 자리 | 앱을 80에 직접 |
 | 2026-09-29 | 기본 VPC, RDS 퍼블릭 액세스 끔 | 서버 한 대에 서브넷 설계는 과하다. DB는 여전히 인터넷에서 못 닿는다 | 커스텀 VPC + 프라이빗 서브넷 |
@@ -511,12 +518,14 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 
 | 날짜 | 증상 | 원인 | 해결 |
 |---|---|---|---|
+| 2026-10-02 | RDS 생성 화면: `mysql-8.0.46 reached RDS end of standard support on Jul 31, 2026 and requires engine lifecycle support` | 문서를 쓸 때 8.0을 골랐는데 그사이 표준 지원이 끝났다. EOL 버전을 새로 만들면 Extended Support(vCPU 시간당 과금)가 강제된다 | 8.4로 생성. Phase 6에서 `caching_sha2_password`와 `mariadb105` 클라이언트 호환을 확인할 것 |
 | 2026-09-29 | (로컬 리허설) Nginx 뒤에서 **브라우저만** WebSocket 403. Node smoke는 통과 | Spring의 same-origin 검사는 Origin과 "앱이 보기에 자기 주소"를 비교한다. Tomcat은 `X-Forwarded-Proto`만 있으면 포트를 80으로 가정한다. Node는 Origin을 안 보내서 검사를 안 탔다 | Nginx에서 `Host $http_host`, `X-Forwarded-Port $server_port` 전달 |
 
 ### 자주 만날 문제
 
 | 증상 | 먼저 볼 것 |
 |---|---|
+| PowerShell에서 `ssh`를 찾을 수 없음 | Windows OpenSSH 클라이언트 미설치. Git의 `C:\Program Files\Git\usr\bin\ssh.exe`를 쓰거나, 관리자 PowerShell에서 `Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0` |
 | SSH 타임아웃 | sg-web 22번이 **현재** 내 IP인지. 인스턴스가 Running인지 |
 | SSH `Permission denied (publickey)` | 사용자 이름 `ec2-user`, 키 파일, Windows 키 권한(icacls) |
 | RDS 접속이 멈춤 → 타임아웃 | sg-db 소스가 sg-web인지, EC2가 sg-web에 속해 있는지, 같은 VPC인지 |
