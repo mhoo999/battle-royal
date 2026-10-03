@@ -6,11 +6,10 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Continuous deployment live (2026-10-03): a push to `main` tests, then deploys to EC2.
-Live at https://battleroyale.site (2026-10-03), deployed on every push to `main`.
-RDS is viewable from Workbench over SSM port forwarding (`scripts/db-tunnel.cmd`,
-AWS_DEPLOYMENT §11). Everyday server commands: `docs/SERVER_COMMANDS.md`.
-Next: game bugs; see a broken jar roll back when the user picks the moment.
+V1 finishing line (2026-10-03). Live at https://battleroyale.site, deployed on every push
+to `main` (tests, then OIDC + S3 + SSM). Latest deploy: crate, FELL event, medkit rule,
+away-screen wording. Server commands: `docs/SERVER_COMMANDS.md`; DB: `scripts/db-tunnel.cmd`.
+Portfolio screenshots: `docs/images/README.md`, rule in CLAUDE.md §16.
 
 ## Completed
 
@@ -185,12 +184,26 @@ Nothing.
 
 ## Next
 
-1. Phase 10 leftover: a jar that does not start should roll back to `app.jar.prev`.
-   Not yet seen in production; it drops everyone, so the user picks the moment.
-3. Later, user's idea: two EC2 instances with rolling deploys that keep players. The
-   world lives in one JVM, so this needs a world handoff or rooms pinned to servers
-   (CLAUDE.md §10) — a design task of its own, not started.
-2. Not yet recorded: the server coming back on its own after `sudo reboot`.
+V1 is done when someone new can play ten minutes without being told how. Left:
+
+1. **Ranking cleanup.** The live ranking mixes test rows (smoke names `alpha`, `bravo`,
+   `reconnect`, `first`, `second`) with real play. Delete them (user confirms the list
+   first; deletes are permanent) and stop smoke runs against production from writing
+   results — proposed: nicknames starting with `~` are unranked, and smoke uses them.
+2. Real-phone check of the touch zones and held-move cadence (automation cannot measure
+   timers in a background tab); take the phone-over-HTTPS screenshot then.
+3. Friends' feedback as it comes.
+4. Rollback drill: a jar that does not start should go back to `app.jar.prev`. Drops
+   everyone, so the user picks the moment (auto mode refused to push a broken commit).
+5. Not yet recorded: the server coming back on its own after `sudo reboot`.
+6. Declare V1: tag `v1.0`, then plan V2 (user's idea: Tarkov-like stash, extraction,
+   accounts — conflicts with several V1 decisions, see the conversation summary below).
+7. Later: two EC2 instances with deploys that keep players. The world lives in one JVM,
+   so this needs a world handoff or rooms pinned to servers (CLAUDE.md §10).
+
+V2 notes so far: multi-slot raid inventory, extraction to a DB-backed stash, loss on
+death, accounts. Hard part is the boundary between in-memory raid state and the DB
+(no duplication on disconnect or restart). Not started; needs an explicit decision.
 
 ## Known Issues
 
