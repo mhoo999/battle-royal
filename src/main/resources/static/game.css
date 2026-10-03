@@ -592,7 +592,7 @@ header.hud-bar {
 }
 .trader-list button:disabled { opacity: 0.35; cursor: default; }
 /*
- * The hideout's front: a column of buttons over the sky, the hut and the moon left in
+ * The hideout's front: a column of buttons over the sky, the ruin and the moon left in
  * view below them. Solid, so they stand in front of the picture.
  */
 .hideout[data-page="home"] {
@@ -606,7 +606,7 @@ header.hud-bar {
   flex-direction: column;
   align-items: center;
   gap: 0.5em;
-  /* Sized by the picture, so a short frame gets a smaller window and the hut shows. */
+  /* Sized by the picture, so a short frame gets a smaller window and the ruin shows. */
   font-size: min(1rem, calc(var(--scene-h) / 60));
   width: min(calc(var(--scene-w) - 2.5rem), 16em);
   padding: 0.9em 0.9em 0.6em;
