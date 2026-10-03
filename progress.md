@@ -191,7 +191,7 @@ Nothing.
 V1 is done when someone new can play ten minutes without being told how. Left:
 
 2. Real-phone check of the touch zones and held-move cadence (automation cannot measure
-   timers in a background tab); take the phone-over-HTTPS screenshot then.
+   timers in a background tab). The live-site screenshot is taken (`~noriko`).
 3. Friends' feedback as it comes.
 4. Rollback drill: a jar that does not start should go back to `app.jar.prev`. Drops
    everyone, so the user picks the moment (auto mode refused to push a broken commit).
