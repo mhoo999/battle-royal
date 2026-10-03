@@ -15,7 +15,8 @@
 ## 0. 현재 상태
 
 **현재 단계:** Phase 10 (자동 배포) 동작 중 (2026-10-03). `main` push → 테스트 → 배포가
-자동으로 돈다. 남은 확인: 문서만 바뀐 push가 배포를 건너뛰는지, 깨진 jar가 롤백되는지.
+자동으로 돈다. 문서만 바뀐 push는 배포를 건너뜀(run 37083805188에서 확인). 남은 확인: 깨진
+jar가 `app.jar.prev`로 롤백되는지.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
@@ -29,7 +30,7 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase 10: 첫 자동 배포 `4e331af`
 (토러스 월드) 성공, SSM 명령 Success, 공인 IP smoke 전부 통과.
 
-**다음 한 걸음:** Phase 10 남은 확인 두 가지. 그다음 (선택) SSH 포트 닫기, HTTPS.
+**다음 한 걸음:** Phase 10 롤백 확인(접속자가 끊기니 사용자가 시점을 정함). 그다음 (선택) SSH 포트 닫기, HTTPS.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`

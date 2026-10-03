@@ -7,7 +7,8 @@ V1 Multiplayer Core
 ## Current Task
 
 Continuous deployment live (2026-10-03): a push to `main` tests, then deploys to EC2.
-The torus world is deployed. Next: confirm the docs-only skip and the rollback.
+The torus world is deployed; docs-only pushes skip the deploy (checked). Next: see
+a broken jar roll back.
 
 ## Completed
 
@@ -160,8 +161,8 @@ Nothing.
 
 ## Next
 
-1. Phase 10 leftovers in `docs/AWS_DEPLOYMENT.md`: a docs-only push should skip the
-   deploy; a jar that does not start should roll back to `app.jar.prev`.
+1. Phase 10 leftover: a jar that does not start should roll back to `app.jar.prev`.
+   Not yet seen in production; it drops everyone, so the user picks the moment.
 3. Later, user's idea: two EC2 instances with rolling deploys that keep players. The
    world lives in one JVM, so this needs a world handoff or rooms pinned to servers
    (CLAUDE.md §10) — a design task of its own, not started.
