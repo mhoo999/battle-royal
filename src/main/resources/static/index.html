@@ -56,7 +56,26 @@
     <span id="score">SCORE 0</span>
   </header>
 
-  <div id="board" role="img" aria-label="게임 화면"></div>
+  <div class="board-wrap">
+    <div id="board" role="img" aria-label="게임 화면"></div>
+    <section id="inv" class="inv" hidden aria-label="가방">
+      <header class="inv-head">
+        <span>가방</span>
+        <button id="inv-close" class="link-button" type="button">닫기 ✕</button>
+      </header>
+      <div class="inv-body">
+        <div id="inv-crate" class="inv-col crate-col" hidden>
+          <p class="inv-title">상자</p>
+          <ol id="crate-list" class="slots"></ol>
+        </div>
+        <div class="inv-col">
+          <p class="inv-title">인벤토리</p>
+          <ol id="inv-list" class="slots"></ol>
+        </div>
+      </div>
+      <p id="inv-hint" class="inv-hint"></p>
+    </section>
+  </div>
 
   <section class="hud-bar hud-status">
     <span class="label">HP</span>
@@ -65,6 +84,7 @@
     <span class="spacer"></span>
     <span class="label">ITEM</span>
     <span id="item">-</span>
+    <button id="bag" class="bag" type="button">가방</button>
   </section>
 
   <p id="state" class="state"></p>

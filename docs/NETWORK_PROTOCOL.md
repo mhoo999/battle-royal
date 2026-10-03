@@ -98,14 +98,20 @@ GET /ws/game?token=<uuid>
 { "type": "ACTION_A" }
 { "type": "ACTION_B" }                 // B를 누름
 { "type": "RELEASE_B" }                // B를 뗌 — 진행 중인 루팅 취소
+{ "type": "EQUIP", "slot": 1 }         // A가 쓸 칸 (V2)
+{ "type": "TAKE", "index": 0, "slot": 2 } // 열린 상자의 index번째를 slot으로; 차 있으면 맞바꿈 (V2)
+{ "type": "PUT", "slot": 2 }           // slot의 아이템을 열린 상자로 (V2)
+{ "type": "CLOSE" }                    // 열린 상자 닫기 (V2)
 ```
 
-이것이 전부다. 좌표, HP, 데미지, 인벤토리를 담은 메시지는 **존재하지 않아야 한다.**
+이것이 전부다. 좌표, HP, 데미지, 아이템을 담은 메시지는 **존재하지 않아야 한다.**
+`slot`/`index`는 **내 인벤토리와 내가 연 상자 안의 자리**일 뿐이고, 서버가 범위와 상자가
+열려 있는지(그 칸에 서 있는지)를 확인한다. 아이템 ID나 종류를 보내는 명령은 없다.
 `SET_POSITION`, `SET_HP`, `DEAL_DAMAGE` 같은 타입을 추가하지 않는다.
 
 알 수 없는 타입이나 형식 오류는 조용히 무시한다(연결을 끊지 않는다).
 
-메시지는 `{type, dir}` 형태로만 역직렬화한다. 따라서 `{"type":"MOVE","x":999,"y":999}`
+메시지는 `{type, dir, slot, index}` 형태로만 역직렬화한다. 따라서 `{"type":"MOVE","x":999,"y":999}`
 같은 프레임은 `x`/`y`가 **들어갈 자리가 없어서** 자동으로 버려진다.
 
 **쿨다운 중 도착한 커맨드는 큐잉되지 않고 버려진다.** 클라이언트는 이동 쿨다운(200ms)
@@ -129,6 +135,9 @@ GET /ws/game?token=<uuid>
   "self": {
     "id": "p1", "x": 10, "y": 7, "direction": "UP",
     "hp": 80, "item": "MEDKIT", "ammo": null,
+    "inventory": [ { "kind": "MEDKIT", "ammo": null }, null, { "kind": "PISTOL", "ammo": 4 } ],
+    "equipped": 0,
+    "crate": null,
     "concealment": "CABINET", "lootMsLeft": null, "invulnerable": false,
     "score": 420, "kills": 1,
     "actionA": "HEAL", "actionB": null
@@ -150,16 +159,22 @@ GET /ws/game?token=<uuid>
 `self.item`: `KNIFE | BAT | PISTOL | CROSSBOW | MEDKIT | PAN | SPOON | CUP | DOLL |
 RECORDER | REGISTER`, or null for empty hands. `YOU_DIED.weapon` is null for a
 bare-hand kill.
-**바닥 아이템은 위치만 보낸다. 종류는 누구에게도 보내지 않는다(결정).** 무엇인지는
-루팅이 끝나 손에 들어왔을 때 `self.item`으로 처음 안다. 클라가 그리지 않더라도
+
+**V2: 인벤토리 3칸.** `self.inventory`는 칸 순서대로 `{kind, ammo}` 또는 빈 칸 `null`,
+`self.equipped`는 A가 쓰는 칸, `self.item`/`self.ammo`는 장착 칸의 것이다.
+`self.crate`는 **내가 열어 둔 상자의 내용**(순서대로)이고, 열린 상자가 없으면 `null`이다.
+
+**바닥에는 상자(`items[]`)만 보낸다. 내용은 연 사람에게만, 그것도 `self.crate`로만
+보낸다(결정).** 상자를 열기 전에는 무엇이 들었는지 아무도 모른다. 클라가 그리지 않더라도
 전송하면 개발자 도구로 보이므로 필드 자체를 두지 않는다 — `SnapshotFilterTest`가
-`FloorItem`을 `id`/`x`/`y`로 고정한다. 들고 있는 아이템은 본인만 안다.
+`FloorItem`을 `id`/`x`/`y`로 고정하고, 상자 내용이 연 사람 말고는 가지 않는 것도 확인한다.
+`items[].id`는 상자의 ID다. 들고 있는 것은 본인만 안다.
 
 `actionA`/`actionB`는 서버가 계산한 현재 유효 행동 **토큰**이다. 표시 문구가 아니다.
 
 ```
 actionA   ATTACK | FIRE | HEAL | null
-actionB   PICKUP | SWAP | DOOR | null
+actionB   OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 ```
 
 캐비닛은 `MOVE`로 들어가고 나온다. B 토큰이 없다.

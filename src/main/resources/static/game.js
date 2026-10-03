@@ -36,7 +36,7 @@ const DEATH_VERB = {
 };
 const DEATH_VERB_DEFAULT = '에 당해';
 
-const B_LABEL = { PICKUP: '줍기', SWAP: '교체', DOOR: '이동' };
+const B_LABEL = { OPEN: '열기', CLOSE: '닫기', DOOR: '이동' };
 
 const KEY_DIR = {
   ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
@@ -72,6 +72,8 @@ const ui = {
   game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
   board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
+  bag: el('bag'), inv: el('inv'), invClose: el('inv-close'), invCrate: el('inv-crate'),
+  crateList: el('crate-list'), invList: el('inv-list'), invHint: el('inv-hint'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
@@ -229,7 +231,7 @@ function paintHud(snapshot) {
     ui.state.textContent = '캐비닛에 숨어 있음 — 옆이나 뒤로 움직이면 나감';
     ui.state.classList.add('hidden-cabinet');
   } else if (self.lootMsLeft !== null) {
-    ui.state.textContent = '줍는 중 — B를 떼거나 움직이면 취소';
+    ui.state.textContent = '여는 중 — B를 떼거나 움직이면 취소';
     ui.state.classList.add('looting');
   } else if (self.concealment === 'BUSH') {
     ui.state.textContent = '부시에 은폐 중 — 밖에서 보이지 않음';
@@ -311,6 +313,7 @@ function connect(token) {
       paint(message);
       paintHud(message);
       paintLoot(message.self);
+      paintBag(message.self);
     } else if (message.type === 'EVENT') {
       if (message.event === 'SHOT') showShot(message.path);
       else if (message.event === 'SWING') showSwing(message.from, message.to);
@@ -579,6 +582,9 @@ function enterGame(saved) {
   lastHp = null;
   flourishes = [];
   notice = null;
+  bagOpen = false;
+  selection = null;
+  crateWasOpen = false;
   ui.lobby.hidden = true;
   ui.dead.hidden = true;
   ui.game.hidden = false;
@@ -785,6 +791,10 @@ function wireInput() {
       return;
     }
     if (!playing()) return;
+    if (event.key === 'i' || event.key === 'I') setBag(!bagOpen);
+    if (event.key === '1' || event.key === '2' || event.key === '3') {
+      send({ type: 'EQUIP', slot: Number(event.key) - 1 });
+    }
     if (event.key === 'j' || event.key === 'J') actionA();
     if ((event.key === 'k' || event.key === 'K') && !event.repeat) pressB();
   });
@@ -808,10 +818,128 @@ function wireInput() {
   });
 }
 
+// --- Bag: inventory and crate ----------------------------------------------
+
+/*
+ * The bag window lies over the board. Three inventory slots, one of them equipped (the
+ * "e"), and the crate beside them while one is open. Pick something, then pick where
+ * it goes; the server checks every move and the next snapshot shows the result.
+ *
+ *   crate open, crate item picked   -> an inventory slot takes it (TAKE)
+ *   crate open, inventory item      -> the crate takes it (PUT); the same slot again equips
+ *   no crate                        -> tapping a slot equips it
+ */
+let bagOpen = false;
+let selection = null;      // { from: 'crate' | 'inv', index }
+let crateWasOpen = false;
+
+function slotText(slot) {
+  if (!slot) return '비어 있음';
+  const name = ITEM_LABEL[slot.kind] || slot.kind;
+  return slot.ammo === null || slot.ammo === undefined ? name : `${name} ${slot.ammo}`;
+}
+
+function slotButton(slot, from, index, equipped) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'slot' + (slot ? '' : ' empty')
+    + (selection && selection.from === from && selection.index === index ? ' selected' : '');
+  button.dataset.from = from;
+  button.dataset.index = String(index);
+  button.textContent = slotText(slot);
+  if (equipped) {
+    const badge = document.createElement('span');
+    badge.className = 'equip';
+    badge.textContent = 'e';
+    badge.setAttribute('aria-label', '장착');
+    button.appendChild(badge);
+  }
+  const li = document.createElement('li');
+  li.appendChild(button);
+  return li;
+}
+
+function paintBag(self) {
+  const crate = Array.isArray(self.crate) ? self.crate : null;
+  // Opening a crate pops the bag open; a crate shutting (moving away) drops a pick from it.
+  if (crate && !crateWasOpen) {
+    bagOpen = true;
+    selection = null;
+  }
+  if (!crate && selection && selection.from === 'crate') selection = null;
+  crateWasOpen = !!crate;
+  if (selection && selection.from === 'crate' && crate && selection.index >= crate.length) selection = null;
+
+  ui.bag.classList.toggle('open', bagOpen);
+  ui.inv.hidden = !bagOpen;
+  if (!bagOpen) return;
+
+  ui.invCrate.hidden = !crate;
+  ui.crateList.replaceChildren(...(crate || []).map((slot, i) => slotButton(slot, 'crate', i, false)));
+  ui.invList.replaceChildren(...self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
+
+  if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
+  else if (!selection) ui.invHint.textContent = '옮길 아이템을 고르세요';
+  else if (selection.from === 'crate') ui.invHint.textContent = '넣을 칸을 고르세요';
+  else ui.invHint.textContent = '상자를 누르면 넣기 · 한 번 더 누르면 장착';
+}
+
+function repaintBag() {
+  if (lastSnapshot) paintBag(lastSnapshot.self);
+}
+
+function setBag(open) {
+  bagOpen = open;
+  selection = null;
+  // Closing the window over an open crate closes the crate too.
+  if (!open && lastSnapshot && Array.isArray(lastSnapshot.self.crate)) send({ type: 'CLOSE' });
+  repaintBag();
+}
+
+function pickInBag(from, index) {
+  const crateOpen = lastSnapshot && Array.isArray(lastSnapshot.self.crate);
+  if (from === 'crate') {
+    if (selection && selection.from === 'inv') {
+      send({ type: 'PUT', slot: selection.index });
+      selection = null;
+    } else {
+      selection = { from: 'crate', index };
+    }
+  } else if (selection && selection.from === 'crate') {
+    send({ type: 'TAKE', index: selection.index, slot: index });
+    selection = null;
+  } else if (!crateOpen || (selection && selection.from === 'inv' && selection.index === index)) {
+    send({ type: 'EQUIP', slot: index });
+    selection = null;
+  } else {
+    selection = { from: 'inv', index };
+  }
+  repaintBag();
+}
+
+function wireBag() {
+  ui.bag.addEventListener('click', () => setBag(!bagOpen));
+  ui.invClose.addEventListener('click', () => setBag(false));
+  ui.inv.addEventListener('click', (event) => {
+    const button = event.target.closest('.slot');
+    if (button) {
+      pickInBag(button.dataset.from, Number(button.dataset.index));
+      return;
+    }
+    // Anywhere in the crate column takes a picked inventory item, not only its rows.
+    if (event.target.closest('.crate-col') && selection && selection.from === 'inv') {
+      send({ type: 'PUT', slot: selection.index });
+      selection = null;
+      repaintBag();
+    }
+  });
+}
+
 // --- Boot ----------------------------------------------------------------
 
 buildBoard();
 wireInput();
+wireBag();
 ui.lobbyForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (choosingNickname()) chooseNickname(ui.nickname.value.trim());

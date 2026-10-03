@@ -8,8 +8,9 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 
 **On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
 to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
-accounts — code done and tested locally (see Completed); waiting on the user's
-Google OAuth client to sign in for real, then step 2 (hideout and stash).
+Google sign-in works for real (user, local). Step 2 is half done: crates, the
+three-slot inventory and the bag window are in; next is the stash in the database,
+the hideout screen and the sortie record (which step 3's restart refund relies on).
 
 ## Completed
 
@@ -98,6 +99,13 @@ Google OAuth client to sign in for real, then step 2 (hideout and stash).
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] V2 crates and inventory (branch `v2`, 2026-10-03): the floor holds crates; B held
+      opens one for the opener alone; a bag window over the board (button, `I`) shows
+      the crate left and three inventory slots right; pick, then pick where it goes
+      (TAKE swaps into an occupied slot, PUT returns one, the same slot again equips);
+      `e` marks the equipped slot (`1` `2` `3`). A death drops everything in one crate.
+      216 tests, smoke opens and takes; browser checked.
+- [x] Lobby: Google and guest first, the name after; a named account starts in one tap.
 - [x] Nickname filter (branch `v2`, 2026-10-03, user's request): swearing, sexual
       words and posing as staff, for guests and accounts. List in
       `nickname-blocklist.txt`; names are normalized (spaces, symbols, digit swaps,

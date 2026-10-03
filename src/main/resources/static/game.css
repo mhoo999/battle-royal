@@ -416,6 +416,75 @@ header.hud-bar {
 .cell.fell  { color: var(--enemy); font-weight: bold; }
 
 /* Loot gauge: fills while B is held; the server decides when the item lands. */
+/*
+ * The bag: inventory, and the crate beside it when one is open. It lies over the board
+ * and nowhere else, so the controls below stay usable with it open; the game does not
+ * pause. Pick something, then pick where it goes.
+ */
+.board-wrap { position: relative; }
+.inv {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(11, 14, 15, 0.94);
+  border: 1px solid var(--line);
+}
+.inv[hidden] { display: none; }
+.inv-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+}
+.inv-body { display: flex; gap: 0.75rem; flex: 1; min-height: 0; }
+.inv-col { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.inv-col[hidden] { display: none; }
+.crate-col { cursor: pointer; }
+.inv-title { margin: 0; font-size: 0.7rem; letter-spacing: 0.2em; color: var(--dim); }
+.slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.slot {
+  position: relative;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--item);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.slot.empty { color: var(--dim); }
+.slot.selected { border-color: var(--self); background: rgba(127, 212, 193, 0.1); }
+/* The equipped slot: what A uses. */
+.slot .equip {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.3rem;
+  color: var(--self);
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+.inv-hint { margin: 0; min-height: 1.2em; font-size: 0.72rem; color: var(--dim); text-align: center; }
+.bag {
+  padding: 0.15rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.bag.open { border-color: var(--self); color: var(--self); }
+
 #loot {
   height: 4px;
   background: var(--line);

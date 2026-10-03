@@ -16,6 +16,7 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-03-live-https-phone.png` | 2026-10-03 | The live site over HTTPS at phone width, as `~noriko` (unranked), with a floor crate. The URL line on top is an added caption, not the browser's address bar | HTTPS, `~` names `099fc07` |
 | `2026-10-03-v2-lobby-google-sign-in.png` | 2026-10-03 | V2 lobby, signed out: guest name and START, and the new Google sign-in link (local, `v2` branch) | V2 step 1, accounts |
 | `2026-10-03-v2-lobby-entry.png` | 2026-10-03 | V2 lobby reworked at the user's request: Google sign-in and guest are the first choice; the name comes after | V2 step 1 |
+| `2026-10-03-v2-crate-and-inventory.png` | 2026-10-03 | V2 bag window over the board: an opened crate on the left, three inventory slots on the right with `e` on the equipped one, and the [가방] button | V2 step 2, crates and inventory |
 
 ## AWS (`aws/`)
 
