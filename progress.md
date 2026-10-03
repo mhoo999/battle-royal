@@ -7,16 +7,14 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 ## Current Task
 
 **On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
-to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
-Google sign-in works for real (user, local). Step 2 is done: crates, three-slot
-inventory, bag window, stash in the DB, hideout screen, sorties (set out / death loses /
-restart refunds). Step 3 is done: two private exits per trip, a compass, B held 5s to
-get out, the haul into the stash. Step 4 is done: trader (sell, buy), money, and the
-ranking by the value of what was found and brought out; the hideout has an ASCII hut
-under the moon behind it. That completes V2.0's loop (§7) except stash upgrades, which
-§7 puts in V2.1. MySQL 8.4 rehearsal done (2026-10-04, below). Next: add
-GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET to `/etc/battle-royal/env` on EC2 (user: it is a
-secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
+to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Steps 2–4 are
+done: crates, three-slot inventory, bag window, stash in the DB, sorties, two private
+exits and a compass, extraction, trader, money, ranking by haul; empty guns stay and
+reload from ammo bundles bought apart. The hideout (2026-10-04) opens like the title
+screen: block-letter HIDEOUT, a red 隠れ家 rule, big 창고 / 상점 / 섬으로 buttons, and an
+ASCII picture along the foot (a ruin in the woods cut out of a big moon), drawn by
+`tools/hideout-art.py`; 창고 and 상점 are pages of their own. MySQL 8.4 rehearsal
+passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
 
 ## Completed
 
@@ -277,14 +275,22 @@ Nothing.
 
 ## Next
 
-1. **V2 planning** — `docs/V2_PLAN.md`. The game becomes a real-time top-down
-   extraction: log in (Google) to a hideout, take gear onto the always-open island,
-   loot, and extract to keep it or die and lose it. Decided D1–D5 there; open questions
-   Q1–Q10, most urgent Q1 (what happens to gear in the island when a deploy restarts
-   the server). Do not build until those are settled.
-2. Left over from V1, whenever convenient: real-phone check of touch input; rollback
+1. **Google sign-in, for real (user, local).** Run locally with GOOGLE_CLIENT_ID /
+   GOOGLE_CLIENT_SECRET set and do one real round trip: sign in, pick a nickname, land in
+   the hideout, set out, extract, see the haul in the stash. Nothing has exercised the
+   real Google hop yet (tests use `oidcLogin`).
+2. **Production secrets (user).** Add GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET to
+   `/etc/battle-royal/env` on EC2, and the production redirect URI
+   (`https://<domain>/login/oauth2/code/google`) in the Google Cloud console.
+3. **Merge `v2` into `main` as v2.0 — ask first, it deploys.** Then on production:
+   `account` / `stash_item` / `sortie` created on RDS, smoke, a browser trip, a
+   screenshot. The lobby ranking starts empty (Known Issues).
+4. Hideout look, on a real phone: the art is sized from the viewport, never checked off
+   a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
+5. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-3. Later: two EC2 instances with deploys that keep players (world handoff or rooms
+6. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
+7. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.
 
