@@ -28,7 +28,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/me/nickname").authenticated()
+                        .requestMatchers("/api/me/nickname", "/api/hideout/**").authenticated()
                         .anyRequest().permitAll())
                 // An API call without a session gets 401, not a redirect to Google.
                 .exceptionHandling(errors -> errors.defaultAuthenticationEntryPointFor(

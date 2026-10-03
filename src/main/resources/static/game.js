@@ -74,6 +74,9 @@ const ui = {
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
   bag: el('bag'), inv: el('inv'), invClose: el('inv-close'), invCrate: el('inv-crate'),
   crateList: el('crate-list'), invList: el('inv-list'), invHint: el('inv-hint'),
+  hideout: el('hideout'), hideoutName: el('hideout-name'), stashList: el('stash-list'),
+  stashCount: el('stash-count'), loadoutList: el('loadout-list'), hideoutHint: el('hideout-hint'),
+  hideoutError: el('hideout-error'), setOut: el('set-out'), hideoutBack: el('hideout-back'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
@@ -546,8 +549,12 @@ async function chooseNickname(typed) {
 // --- Screens -------------------------------------------------------------
 
 async function beginSession(typed) {
-  // Signed in, the server plays the account's own nickname and needs nothing typed.
-  if (!me.signedIn && !typed) {
+  // A signed-in account sets out from the hideout instead.
+  if (me.signedIn) {
+    openHideout();
+    return;
+  }
+  if (!typed) {
     ui.lobbyError.textContent = '아이디를 입력하세요';
     return;
   }
@@ -557,7 +564,7 @@ async function beginSession(typed) {
     const response = await fetch('/api/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(me.signedIn ? {} : { nickname: typed }),
+      body: JSON.stringify({ nickname: typed }),
     });
     if (!response.ok) {
       ui.lobbyError.textContent = (await response.text()) || '시작할 수 없습니다';
@@ -935,11 +942,123 @@ function wireBag() {
   });
 }
 
+// --- Hideout ---------------------------------------------------------------
+
+/*
+ * A signed-in account's way onto the island. The stash on the left, three slots to
+ * carry out on the right: pick a stash item, then the slot it goes in; tap a filled
+ * slot to leave it at home. "섬으로" sets out with exactly that. Nothing taken out
+ * comes back except by extraction (step 3) or a server restart; dying loses it.
+ */
+let stash = [];             // [{ id, kind, ammo }]
+let loadout = [null, null, null];   // stash item ids
+let stashPick = null;       // a stash item id
+
+async function openHideout() {
+  ui.hideoutError.textContent = '';
+  ui.hideoutName.textContent = me.nickname ?? '';
+  stashPick = null;
+  loadout = [null, null, null];
+  try {
+    const response = await fetch('/api/hideout');
+    if (!response.ok) {
+      ui.lobbyError.textContent = (await response.text()) || '거점을 열 수 없습니다';
+      return;
+    }
+    const view = await response.json();
+    stash = view.stash;
+    ui.stashCount.textContent = `${stash.length}/${view.capacity}`;
+    ui.lobby.hidden = true;
+    ui.hideout.hidden = false;
+    paintHideout();
+  } catch (e) {
+    ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
+  }
+}
+
+function stashEntry(id) {
+  return stash.find((entry) => entry.id === id) || null;
+}
+
+function paintHideout() {
+  const carried = new Set(loadout.filter((id) => id !== null));
+  ui.stashList.replaceChildren(...stash.map((entry) => {
+    const li = slotButton(entry, 'stash', entry.id, false);
+    const button = li.firstChild;
+    button.classList.toggle('selected', stashPick === entry.id);
+    button.disabled = carried.has(entry.id);
+    return li;
+  }));
+  if (stash.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'inv-hint';
+    li.textContent = '비어 있다';
+    ui.stashList.replaceChildren(li);
+  }
+  ui.loadoutList.replaceChildren(...loadout.map((id, i) =>
+    slotButton(id === null ? null : stashEntry(id), 'loadout', i, i === 0)));
+  ui.hideoutHint.textContent = stash.length === 0
+    ? '첫 출발은 빈손이다. 탈출하면 가져온 것이 여기 쌓인다.'
+    : stashPick !== null ? '넣을 칸을 고르세요' : '창고에서 고른 뒤 칸을 고르세요 · 채운 칸을 누르면 빼기';
+}
+
+function pickInHideout(from, index) {
+  if (from === 'stash') {
+    stashPick = stashPick === index ? null : index;
+  } else if (stashPick !== null) {
+    loadout = loadout.map((id) => (id === stashPick ? null : id));
+    loadout[index] = stashPick;
+    stashPick = null;
+  } else {
+    loadout[index] = null;
+  }
+  paintHideout();
+}
+
+async function setOut() {
+  ui.hideoutError.textContent = '';
+  ui.setOut.disabled = true;
+  try {
+    const response = await fetch('/api/hideout/sortie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loadout }),
+    });
+    if (!response.ok) {
+      ui.hideoutError.textContent = (await response.text()) || '출발할 수 없습니다';
+      return;
+    }
+    const session = await response.json();
+    const saved = { token: session.token, nickname: session.nickname, startedAt: Date.now() };
+    saveSession(saved);
+    ui.hideout.hidden = true;
+    enterGame(saved);
+  } catch (e) {
+    ui.hideoutError.textContent = '서버에 연결할 수 없습니다';
+  } finally {
+    ui.setOut.disabled = false;
+  }
+}
+
+function wireHideout() {
+  ui.hideout.addEventListener('click', (event) => {
+    const button = event.target.closest('.slot');
+    if (!button || button.disabled) return;
+    pickInHideout(button.dataset.from, Number(button.dataset.index));
+  });
+  ui.setOut.addEventListener('click', setOut);
+  ui.hideoutBack.addEventListener('click', () => {
+    ui.hideout.hidden = true;
+    ui.lobby.hidden = false;
+  });
+}
+
 // --- Boot ----------------------------------------------------------------
 
 buildBoard();
 wireInput();
 wireBag();
+wireHideout();
 ui.lobbyForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (choosingNickname()) chooseNickname(ui.nickname.value.trim());

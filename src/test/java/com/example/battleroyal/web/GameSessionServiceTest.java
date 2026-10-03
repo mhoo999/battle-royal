@@ -52,7 +52,7 @@ class GameSessionServiceTest {
     void anAccountPlaysUnderItsOwnNickname() {
         GameSessionService sessions = new GameSessionService();
 
-        GameSession session = sessions.issueForAccount(7, "kang");
+        GameSession session = sessions.issueForAccount(7, "kang", java.util.List.of());
 
         assertEquals("kang", session.nickname());
         assertEquals(7L, session.accountId());

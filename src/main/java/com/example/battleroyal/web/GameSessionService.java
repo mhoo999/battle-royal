@@ -1,10 +1,14 @@
 package com.example.battleroyal.web;
 
 import com.example.battleroyal.game.core.GameEvent;
+import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.loop.DeathListener;
 import com.example.battleroyal.game.rule.GameConstants;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,8 +32,13 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 public class GameSessionService implements DeathListener {
 
-    /** @param accountId null for a guest */
-    public record GameSession(String token, String playerId, String nickname, Long accountId) {
+    /**
+     * @param accountId null for a guest
+     * @param loadout   what the player carries in, slot by slot (nulls for empty slots);
+     *                  empty for a guest, who always starts with nothing
+     */
+    public record GameSession(String token, String playerId, String nickname, Long accountId,
+                              List<Item> loadout) {
     }
 
     /** Thrown for a nickname {@link NicknamePolicy} refuses. The message is shown to the player. */
@@ -49,12 +58,15 @@ public class GameSessionService implements DeathListener {
             nickname = nickname.substring(GameConstants.UNRANKED_PREFIX.length()).trim();
         }
         NicknamePolicy.require(nickname);
-        return issue(GameConstants.UNRANKED_PREFIX + nickname, null);
+        return issue(GameConstants.UNRANKED_PREFIX + nickname, null, List.of());
     }
 
-    /** A signed-in account, under the nickname it chose. */
-    public GameSession issueForAccount(long accountId, String nickname) {
-        return issue(nickname, accountId);
+    /**
+     * A signed-in account setting out from the hideout, under the nickname it chose and
+     * carrying what it picked from the stash.
+     */
+    public GameSession issueForAccount(long accountId, String nickname, List<Item> loadout) {
+        return issue(nickname, accountId, loadout);
     }
 
     public GameSession resolve(String token) {
@@ -66,12 +78,13 @@ public class GameSessionService implements DeathListener {
         byToken.values().removeIf(session -> session.playerId().equals(died.playerId()));
     }
 
-    private GameSession issue(String nickname, Long accountId) {
+    private GameSession issue(String nickname, Long accountId, List<Item> loadout) {
         GameSession session = new GameSession(
                 UUID.randomUUID().toString(),
                 "p-" + playerSequence.incrementAndGet(),
                 nickname,
-                accountId);
+                accountId,
+                Collections.unmodifiableList(new ArrayList<>(loadout)));
         byToken.put(session.token(), session);
         return session;
     }

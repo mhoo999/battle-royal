@@ -58,6 +58,9 @@ public final class GameConstants {
      */
     public static final int CRATE_CAPACITY = 6;
 
+    /** Slots in a hideout stash: the plain box (V2 D10). Bigger boxes come later. */
+    public static final int STASH_CAPACITY = 10;
+
     /** Grace period after a socket drops before the player is killed: 15s. */
     public static final int DISCONNECT_GRACE_TICKS = 300;
 

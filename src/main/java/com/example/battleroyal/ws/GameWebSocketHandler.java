@@ -67,7 +67,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         sessions.register(guest.playerId(), sendSafe);
         // For a player still in the world, inside their grace period, this is a reconnect.
-        rooms.requestJoin(guest.playerId(), guest.nickname());
+        rooms.requestJoin(guest.playerId(), guest.nickname(), guest.loadout());
         log.info("Player {} ({}) connected", guest.playerId(), guest.nickname());
     }
 

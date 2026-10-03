@@ -587,6 +587,34 @@ class RoomRegistryTest {
     }
 
     @Test
+    void aJoinCarriesItsLoadoutIntoTheInventory() {
+        RoomRegistry registry = registry(1);
+        com.example.battleroyal.game.core.Item pistol =
+                new com.example.battleroyal.game.core.Item("s-1",
+                        com.example.battleroyal.game.core.ItemKind.PISTOL, 3);
+        registry.requestJoin("a", "a", java.util.Arrays.asList(null, pistol));
+
+        registry.processPending(0);
+
+        assertNull(registry.player("a").slot(0));
+        assertSame(pistol, registry.player("a").slot(1));
+    }
+
+    @Test
+    void aReconnectKeepsWhatThePlayerHoldsNow() {
+        RoomRegistry registry = withPlayers("a");
+        registry.requestDisconnect("a");
+        registry.processPending(1);
+
+        registry.requestJoin("a", "a", java.util.List.of(
+                new com.example.battleroyal.game.core.Item("s-9",
+                        com.example.battleroyal.game.core.ItemKind.PISTOL, 6)));
+        registry.processPending(2);
+
+        assertNull(registry.player("a").slot(0), "a stale loadout cannot refill a living player");
+    }
+
+    @Test
     void aJoinRemembersWhenThePlayerArrived() {
         RoomRegistry registry = registry(1);
         registry.requestJoin("a", "a");

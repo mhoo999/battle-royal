@@ -8,9 +8,10 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 
 **On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
 to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
-Google sign-in works for real (user, local). Step 2 is half done: crates, the
-three-slot inventory and the bag window are in; next is the stash in the database,
-the hideout screen and the sortie record (which step 3's restart refund relies on).
+Google sign-in works for real (user, local). Step 2 is done: crates, three-slot
+inventory, bag window, stash in the DB, hideout screen, sorties (set out / death loses /
+restart refunds). The stash can only fill once step 3 adds extraction, so the hideout
+has only been seen with simulated data. Next: step 3, exits, compass, extraction.
 
 ## Completed
 
@@ -99,6 +100,12 @@ the hideout screen and the sortie record (which step 3's restart refund relies o
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] V2 stash and hideout (branch `v2`, 2026-10-03): `stash_item` (STASH or OUT with a
+      sortie) and `sortie` (OUT, DIED, EXTRACTED, REFUNDED). Setting out locks the account
+      row and refuses a second open sortie; death deletes what was carried on its own
+      writer thread; start-up refunds sorties a stopped server left open (D6). Signed-in
+      START opens the hideout: pick from a 10-slot stash into 3 slots, then 섬으로.
+      `/api/session` is guests only now. 226 tests.
 - [x] V2 crates and inventory (branch `v2`, 2026-10-03): the floor holds crates; B held
       opens one for the opener alone; a bag window over the board (button, `I`) shows
       the crate left and three inventory slots right; pick, then pick where it goes

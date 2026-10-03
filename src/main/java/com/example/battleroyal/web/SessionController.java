@@ -1,6 +1,5 @@
 package com.example.battleroyal.web;
 
-import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.web.GameSessionService.GameSession;
 import com.example.battleroyal.web.GameSessionService.InvalidNicknameException;
 import org.springframework.http.HttpStatus;
@@ -14,9 +13,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The only thing standing between the lobby screen and the game: get a token, open a
- * socket. Signed in, the account's own nickname is used and the request body is
- * ignored; otherwise the body names a guest.
+ * Guests into the game: name in, token out, open a socket. A signed-in account does
+ * not come this way; it sets out from the hideout ({@code POST /api/hideout/sortie}).
  */
 @RestController
 @RequestMapping("/api/session")
@@ -28,6 +26,13 @@ public class SessionController {
     public record CreateResponse(String token, String playerId, String nickname) {
     }
 
+    /** Thrown when a signed-in account asks here instead of setting out from the hideout. */
+    public static class UseTheHideoutException extends RuntimeException {
+        public UseTheHideoutException() {
+            super("거점에서 출발하세요");
+        }
+    }
+
     /** Thrown when a signed-in account has not picked a nickname yet. */
     public static class NicknameRequiredException extends RuntimeException {
         public NicknameRequiredException() {
@@ -36,26 +41,19 @@ public class SessionController {
     }
 
     private final GameSessionService sessions;
-    private final AccountService accounts;
 
-    public SessionController(GameSessionService sessions, AccountService accounts) {
+    public SessionController(GameSessionService sessions) {
         this.sessions = sessions;
-        this.accounts = accounts;
     }
 
     @PostMapping
     public CreateResponse create(@AuthenticationPrincipal OidcUser user,
                                  @RequestBody(required = false) CreateRequest request) {
-        GameSession session;
         if (user != null) {
-            Account account = accounts.signIn(user.getSubject());
-            if (account.nickname() == null) {
-                throw new NicknameRequiredException();
-            }
-            session = sessions.issueForAccount(account.id(), account.nickname());
-        } else {
-            session = sessions.issueGuest(request == null ? null : request.nickname());
+            // An account sets out from the hideout, with whatever it chose to carry.
+            throw new UseTheHideoutException();
         }
+        GameSession session = sessions.issueGuest(request == null ? null : request.nickname());
         return new CreateResponse(session.token(), session.playerId(), session.nickname());
     }
 
@@ -65,9 +63,9 @@ public class SessionController {
         return e.getMessage();
     }
 
-    @ExceptionHandler(NicknameRequiredException.class)
+    @ExceptionHandler({NicknameRequiredException.class, UseTheHideoutException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
-    public String nicknameRequired(NicknameRequiredException e) {
+    public String conflict(RuntimeException e) {
         return e.getMessage();
     }
 }

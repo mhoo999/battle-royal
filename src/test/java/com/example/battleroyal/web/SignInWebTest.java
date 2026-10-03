@@ -63,6 +63,12 @@ class SignInWebTest {
     }
 
     @Test
+    void theHideoutNeedsASignIn() throws Exception {
+        mvc.perform(get("/api/hideout")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/hideout/sortie")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void choosingANicknameNeedsASignIn() throws Exception {
         mvc.perform(post("/api/me/nickname").contentType(MediaType.APPLICATION_JSON)
                         .content(nickname("kang")))
@@ -75,7 +81,7 @@ class SignInWebTest {
                 .andExpect(jsonPath("$.signedIn").value(true))
                 .andExpect(jsonPath("$.nickname").doesNotExist());
 
-        mvc.perform(post("/api/session").with(google("g-web-1")))
+        mvc.perform(post("/api/hideout/sortie").with(google("g-web-1")))
                 .andExpect(status().isConflict());
 
         mvc.perform(post("/api/me/nickname").with(google("g-web-1"))
@@ -83,11 +89,20 @@ class SignInWebTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").value("shuya"));
 
-        // The body is ignored once signed in: an account cannot play under another name.
+        // An account plays under its own name, and only by setting out from the hideout.
         mvc.perform(post("/api/session").with(google("g-web-1"))
                         .contentType(MediaType.APPLICATION_JSON).content(nickname("kiriyama")))
+                .andExpect(status().isConflict());
+        mvc.perform(get("/api/hideout").with(google("g-web-1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.capacity").value(10))
+                .andExpect(jsonPath("$.out").value(false));
+        mvc.perform(post("/api/hideout/sortie").with(google("g-web-1"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"loadout\":[]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").value("shuya"));
+        mvc.perform(post("/api/hideout/sortie").with(google("g-web-1")))
+                .andExpect(status().isConflict());
     }
 
     @Test

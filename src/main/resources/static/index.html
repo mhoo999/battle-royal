@@ -104,6 +104,25 @@
   </section>
 </main>
 
+<div id="hideout" class="overlay hideout" hidden>
+  <h2>거점</h2>
+  <p class="hideout-who"><span id="hideout-name"></span>의 창고</p>
+  <section class="hideout-body">
+    <div class="inv-col">
+      <p class="inv-title">창고 <span id="stash-count"></span></p>
+      <ol id="stash-list" class="slots stash"></ol>
+    </div>
+    <div class="inv-col">
+      <p class="inv-title">가져갈 것</p>
+      <ol id="loadout-list" class="slots"></ol>
+    </div>
+  </section>
+  <p id="hideout-hint" class="inv-hint"></p>
+  <p id="hideout-error" class="error" role="alert"></p>
+  <button id="set-out" type="button">섬으로</button>
+  <button id="hideout-back" class="link-button" type="button">뒤로</button>
+</div>
+
 <div id="dead" class="overlay" hidden>
   <h2>GAME OVER</h2>
   <p id="dead-cause" class="cause"></p>

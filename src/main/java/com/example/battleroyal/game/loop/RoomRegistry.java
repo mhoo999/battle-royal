@@ -3,6 +3,7 @@ package com.example.battleroyal.game.loop;
 import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Direction;
 import com.example.battleroyal.game.core.GridMap;
+import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
@@ -54,7 +55,8 @@ public class RoomRegistry {
     private static final Logger log = LoggerFactory.getLogger(RoomRegistry.class);
 
     /** A player asking to enter the world. Resolved on the next tick. */
-    public record JoinRequest(String playerId, String nickname) {
+    /** @param loadout what the player carries in, slot by slot; nulls are empty slots */
+    public record JoinRequest(String playerId, String nickname, List<Item> loadout) {
     }
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
@@ -103,7 +105,15 @@ public class RoomRegistry {
     }
 
     public void requestJoin(String playerId, String nickname) {
-        joins.add(new JoinRequest(playerId, nickname));
+        requestJoin(playerId, nickname, List.of());
+    }
+
+    /**
+     * A join carrying gear from the hideout. The loadout only fills a new player; a
+     * reconnect inside the grace period keeps whatever the player holds now.
+     */
+    public void requestJoin(String playerId, String nickname, List<Item> loadout) {
+        joins.add(new JoinRequest(playerId, nickname, loadout));
     }
 
     public void requestLeave(String playerId) {
@@ -337,6 +347,10 @@ public class RoomRegistry {
 
         Player player = new Player(request.playerId(), request.nickname(),
                 spawn, GameConstants.MAX_HP, nowTick);
+        List<Item> loadout = request.loadout();
+        for (int slot = 0; slot < Math.min(loadout.size(), Player.INVENTORY_SLOTS); slot++) {
+            player.setSlot(slot, loadout.get(slot));
+        }
         // Where you start is not somewhere you travelled to.
         player.visitRoom(room.id());
         place(player, room);
