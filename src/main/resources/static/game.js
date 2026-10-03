@@ -549,7 +549,11 @@ function showDisconnected() {
   forgetSession();
   sessionToken = null;
   lastResult = null;
-  ui.deadCause.textContent = '자고 있는 사이에 야생 동물에 당해 끔찍한 시체가 되었다.';
+  const corpse = document.createElement('em');
+  corpse.textContent = '끔찍한 시체';
+  ui.deadCause.replaceChildren(
+    '자고 있는 사이에 야생 동물에 당해', document.createElement('br'),
+    corpse, '가 되었다.');
   ui.deadRecord.hidden = true;
   ui.dead.hidden = false;
 }
