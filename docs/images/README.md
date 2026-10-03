@@ -18,6 +18,7 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-03-v2-lobby-entry.png` | 2026-10-03 | V2 lobby reworked at the user's request: Google sign-in and guest are the first choice; the name comes after | V2 step 1 |
 | `2026-10-03-v2-hideout-trader-hut.png` | 2026-10-03 | The hideout with the trader (a picked stash item's sell button, the stock with buy buttons greyed when unaffordable) and the ASCII hut-under-the-moon background. Staged: the hideout data was stubbed in the page, no Google sign-in | V2 step 4, trader; hideout art |
 | `2026-10-04-v2-hideout-moonlit-hut.png` | 2026-10-04 | The hideout background redrawn: snow peaks lit on the moon side, pine silhouettes, chimney smoke, a lit window spilling onto the ground. Staged: the hideout shown without sign-in | V2 hideout art redraw |
+| `2026-10-04-v2-hideout-mono-behind-buttons.png` | 2026-10-04 | The hideout picture in the title's one mint with its red offset on the moon and window, anchored to the foot so 섬으로 and 뒤로 stand in front of the hut. Staged: hideout data stubbed, no sign-in | V2 hideout art, mono |
 | `2026-10-03-v2-exit-compass.png` | 2026-10-03 | V2 compass above the board (`탈출구 ◎ 이 방 · ↓ 1`) and my own exit `◎` on the floor beside me | V2 step 3, exits and compass |
 | `2026-10-03-v2-extracting.png` | 2026-10-03 | Standing on the exit holding B: [B 탈출], "탈출 중 — B를 떼거나 움직이거나 맞으면 취소", the gauge starting | V2 step 3, extraction |
 | `2026-10-03-v2-extracted.png` | 2026-10-03 | The 탈출 성공 screen with the haul line and the record | V2 step 3, extraction |

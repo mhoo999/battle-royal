@@ -506,10 +506,11 @@ header.hud-bar {
 .hideout > :not(.hideout-art) { position: relative; z-index: 1; }
 
 /*
- * A shabby hut in the hills under a full moon, behind everything on the hideout, drawn
- * in the same block characters as the title. Generated, one class per layer: the
- * farther a ridge, the paler, and every peak is lit on the moon's side. Decoration
- * only, so it takes no clicks and scales with the screen.
+ * A shabby hut in the hills under a full moon, filling the hideout behind the panel, drawn
+ * like the title: block characters in the one mint, the moon and the lit window
+ * carrying the title's red offset. Generated; depth is only how dense the glyph is and
+ * how much moonlight its tier gets (t1 darkest, t5 the moon). Decoration only, so it
+ * takes no clicks and scales with the screen.
  */
 .hideout-art {
   position: fixed;
@@ -522,39 +523,23 @@ header.hud-bar {
    * that draws a backslash as a won sign and block characters at double width.
    */
   font-family: Consolas, "Courier New", monospace;
-  font-size: min(2.6vw, 12px);
+  /* 64 columns span the screen: the hut sits behind the buttons at the foot. */
+  font-size: min(2.8vw, 13px);
   line-height: 1;
   text-align: left;
-  color: var(--wall);
+  color: var(--self);
   pointer-events: none;
   user-select: none;
 }
-.hideout-art .star       { color: #4f6064; }
-.hideout-art .star-hi    { color: #9fb4b8; }
-.hideout-art .moon       { color: #f4e6bd; text-shadow: 0 0 0.8em rgba(240, 214, 150, 0.6); }
-.hideout-art .moon-shade { color: #d4c08f; }
-.hideout-art .halo       { color: rgba(229, 200, 130, 0.22); }
-.hideout-art .snow       { color: #d5e2e3; }
-.hideout-art .snow-shade { color: #8399a0; }
-.hideout-art .far        { color: #2a3b41; }
-.hideout-art .far-lit    { color: #3f565d; }
-.hideout-art .mid        { color: #1a282c; }
-.hideout-art .mid-lit    { color: #22353a; }
-.hideout-art .pine-far   { color: #142024; }
-.hideout-art .pine       { color: #070b0c; }
-.hideout-art .near       { color: #0e1619; }
-.hideout-art .roof       { color: #6b4a33; }
-.hideout-art .roof-shade { color: #4e3524; }
-.hideout-art .roof-edge  { color: #2d1f16; }
-.hideout-art .hut        { color: #4a3526; }
-.hideout-art .hut-shade  { color: #33241a; }
-.hideout-art .dark       { color: #090706; }
-.hideout-art .lit        { color: #ffc56b; text-shadow: 0 0 1em rgba(255, 180, 80, 0.9); }
-.hideout-art .lit-bar    { color: #8a5a2a; }
-.hideout-art .glow       { color: rgba(255, 180, 90, 0.26); }
-.hideout-art .smoke      { color: #56666b; }
-.hideout-art .grass      { color: #24423a; }
-.hideout-art .firefly    { color: #d8e88a; text-shadow: 0 0 0.6em rgba(216, 232, 138, 0.9); }
+.hideout-art i { font-style: normal; }
+.hideout-art .t1 { color: rgba(127, 212, 193, 0.07); }
+.hideout-art .t2 { color: rgba(127, 212, 193, 0.14); }
+.hideout-art .t3 { color: rgba(127, 212, 193, 0.24); }
+.hideout-art .t4 { color: rgba(127, 212, 193, 0.38); }
+.hideout-art .t5 {
+  color: rgba(127, 212, 193, 0.55);
+  text-shadow: 0.15em 0.15em 0 rgba(224, 108, 117, 0.3), 0 0 0.8em rgba(127, 212, 193, 0.3);
+}
 .hideout h2 { margin: 0; letter-spacing: 0.3em; }
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
@@ -605,7 +590,8 @@ header.hud-bar {
 #set-out {
   width: min(100%, 18rem);
   padding: 0.85rem 1rem;
-  background: transparent;
+  /* Solid, so it stands in front of the hut drawn behind it. */
+  background: var(--bg);
   border: 1px solid var(--self);
   border-radius: 2px;
   color: var(--self);
@@ -613,6 +599,7 @@ header.hud-bar {
   cursor: pointer;
 }
 #set-out:disabled { opacity: 0.4; cursor: default; }
+#hideout-back { background: var(--bg); padding: 0.25rem 0.75rem; }
 
 #loot {
   height: 4px;

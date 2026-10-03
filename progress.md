@@ -108,10 +108,12 @@ secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
 - [x] Ammo system (branch `v2`, 2026-10-03, user's call): an empty pistol/crossbow stays in
       hand (A does nothing); ROUNDS/BOLTS bundles take a slot, A=RELOAD fills the empty gun
       (RELOAD_TICKS 30); bundles spawn on the island; trader sells guns empty and ammo apart.
-      Hideout art redrawn again (2026-10-04) for contrast: lit snow peaks, a cratered moon,
-      pine silhouettes, chimney smoke, a lit window spilling onto the ground — one CSS class
-      per layer in `game.css`. Checked in the browser, screenshot
-      `2026-10-04-v2-hideout-moonlit-hut.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      Hideout art (2026-10-04, user: "too unlike the title, go mono, buttons in front"):
+      one mint like the title, depth by glyph density and five opacity tiers (`.t1`–`.t5`),
+      the title's red offset only on the moon and lit window; 64 columns across the foot of
+      the screen with sky above, so 섬으로/뒤로 (solid background) stand in front of the hut
+      and the moon sits in the trader list's empty middle. Screenshot
+      `2026-10-04-v2-hideout-mono-behind-buttons.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
       describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
