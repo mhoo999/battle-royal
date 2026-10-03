@@ -28,14 +28,17 @@
     마지막 기억은 수학여행을 가던 버스였다.<br>
     섬을 돌아다니며 필요한 물자를 확보하고, <em>생존하라</em>
   </p>
-  <form id="lobby-form" autocomplete="off">
-    <p id="account-name" class="account-name" hidden></p>
+  <div id="entry" class="entry">
+    <a id="google-login" class="entry-button google" href="/oauth2/authorization/google">Google로 로그인</a>
+    <button id="guest-entry" class="entry-button" type="button">게스트로 시작</button>
+  </div>
+  <form id="lobby-form" autocomplete="off" hidden>
     <input id="nickname" name="nickname" maxlength="12" placeholder="이름" aria-label="이름">
     <button id="start" type="submit">START</button>
   </form>
   <p id="lobby-error" class="error" role="alert"></p>
   <div class="account">
-    <a id="google-login" class="link-button" href="/oauth2/authorization/google">Google로 로그인</a>
+    <button id="back" class="link-button" type="button" hidden>뒤로</button>
     <form id="logout-form" method="post" action="/logout" hidden>
       <button class="link-button" type="submit">로그아웃</button>
     </form>

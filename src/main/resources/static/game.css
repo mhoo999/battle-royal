@@ -146,17 +146,29 @@ input, button {
 
 #start:active, #restart:active { background: rgba(127, 212, 193, 0.12); }
 
-/* Signed in: the account's nickname stands where the name field was. */
-.account-name {
-  margin: 0;
+/* The first choice: sign in with Google, or play a guest trial. */
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 18rem);
+}
+.entry-button {
+  display: block;
   padding: 0.85rem 1rem;
+  background: transparent;
   border: 1px solid var(--line);
   border-radius: 2px;
-  color: var(--self);
+  color: var(--ink);
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
   text-align: center;
-  letter-spacing: 0.2em;
+  text-decoration: none;
+  cursor: pointer;
 }
-.account-name[hidden], #nickname[hidden], #google-login[hidden], #logout-form[hidden] { display: none; }
+.entry-button.google { border-color: var(--self); color: var(--self); }
+.entry-button:active { background: rgba(127, 212, 193, 0.12); }
+.entry[hidden], #lobby-form[hidden], #nickname[hidden], #back[hidden], #logout-form[hidden] { display: none; }
 
 .account { margin-top: 0.25rem; }
 .link-button {

@@ -67,8 +67,8 @@ const el = (id) => document.getElementById(id);
 
 const ui = {
   lobby: el('lobby'), lobbyForm: el('lobby-form'), nickname: el('nickname'),
-  lobbyError: el('lobby-error'), accountName: el('account-name'), start: el('start'),
-  googleLogin: el('google-login'), logoutForm: el('logout-form'),
+  lobbyError: el('lobby-error'), start: el('start'), entry: el('entry'),
+  guestEntry: el('guest-entry'), back: el('back'), logoutForm: el('logout-form'),
   game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
   board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
@@ -477,11 +477,13 @@ function forgetSession() {
 // --- Account -------------------------------------------------------------
 
 /*
- * Who the browser is signed in as. Signed out, the lobby is the guest form plus the
- * Google button. Signed in without a nickname, the same form picks one. Signed in with
- * one, the name field gives way to the account's nickname.
+ * Who the browser is signed in as, and what the lobby shows for it:
+ *   signed out          Google and guest buttons; guest leads to the name form
+ *   signed in, no name  the name form picks the account's nickname, once
+ *   signed in, named    one button that starts as that nickname, no questions
  */
 let me = { signedIn: false, nickname: null };
+let guestChosen = false;
 
 async function loadMe() {
   try {
@@ -497,14 +499,16 @@ function choosingNickname() {
 
 function paintAccount() {
   const named = me.signedIn && !!me.nickname;
-  ui.accountName.hidden = !named;
-  ui.accountName.textContent = me.nickname ?? '';
+  const showForm = me.signedIn || guestChosen;
+  ui.entry.hidden = showForm;
+  ui.lobbyForm.hidden = !showForm;
   ui.nickname.hidden = named;
   ui.nickname.placeholder = choosingNickname() ? '닉네임 정하기' : '이름';
   ui.nickname.setAttribute('aria-label', ui.nickname.placeholder);
-  ui.start.textContent = choosingNickname() ? '확인' : 'START';
-  ui.googleLogin.hidden = me.signedIn;
+  ui.start.textContent = choosingNickname() ? '확인' : named ? `${me.nickname} · START` : 'START';
+  ui.back.hidden = !(guestChosen && !me.signedIn);
   ui.logoutForm.hidden = !me.signedIn;
+  if (showForm && !ui.nickname.hidden && !ui.lobby.hidden) ui.nickname.focus();
 }
 
 async function chooseNickname(typed) {
@@ -814,11 +818,11 @@ ui.lobbyForm.addEventListener('submit', (event) => {
   else beginSession(ui.nickname.value.trim());
 });
 ui.restart.addEventListener('click', restart);
+ui.guestEntry.addEventListener('click', () => { guestChosen = true; ui.lobbyError.textContent = ''; paintAccount(); });
+ui.back.addEventListener('click', () => { guestChosen = false; ui.lobbyError.textContent = ''; paintAccount(); });
 loadRanking();
 loadMe();
 const resumable = savedSession();
 if (resumable) {
   enterGame(resumable);
-} else {
-  ui.nickname.focus();
 }
