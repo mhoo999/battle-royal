@@ -3,6 +3,7 @@ package com.example.battleroyal.game.rule;
 import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.ActionB;
 import com.example.battleroyal.game.core.Direction;
+import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
@@ -57,11 +58,27 @@ public final class ActionResolver {
         if (player.inCabinet()) {
             return null;
         }
+        if (exitUnderfoot(room, player) != null) {
+            return ActionB.EXTRACT;
+        }
         if (doorSideFor(room, player) != null) {
             return ActionB.DOOR;
         }
         if (room.crateAt(player.pos()) != null) {
             return player.pos().equals(player.openCrateAt()) ? ActionB.CLOSE : ActionB.OPEN;
+        }
+        return null;
+    }
+
+    /**
+     * The player's own exit on the tile they stand on, or null. Somebody else's exit
+     * underfoot is plain floor: it does not exist for anyone but its owner.
+     */
+    public static Exit exitUnderfoot(Room room, Player player) {
+        for (Exit exit : player.exits()) {
+            if (exit.in(room) && exit.at().equals(player.pos())) {
+                return exit;
+            }
         }
         return null;
     }

@@ -346,11 +346,60 @@ async function main() {
   check(refused, 'a socket with an unknown token is refused');
 
   await reconnect();
+  await extraction();
 
   a.socket.close();
   b.socket.close();
   console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);
   process.exit(failures === 0 ? 0 : 1);
+}
+
+/**
+ * Follows the compass to the nearer exit, holds B on it for five seconds and is out:
+ * an EXTRACTED to the player, and the token is spent.
+ */
+async function extraction() {
+  const c = await openSession('~charlie');
+  const exits = c.latest().self.exits;
+  check(exits.length === 2 && exits.every((e) => Math.abs(e.dx) + Math.abs(e.dy) > 0),
+    'two exits, neither in the starting room', JSON.stringify(exits));
+  check(exits.every((e) => e.x === null), 'a far exit is a direction, not a tile');
+
+  const nearest = () => [...c.latest().self.exits]
+    .sort((p, q) => (Math.abs(p.dx) + Math.abs(p.dy)) - (Math.abs(q.dx) + Math.abs(q.dy)))[0];
+  for (let doors = 0; doors < 8; doors++) {
+    const exit = nearest();
+    if (exit.dx === 0 && exit.dy === 0) break;
+    const side = exit.dx > 0 ? 'RIGHT' : exit.dx < 0 ? 'LEFT' : exit.dy > 0 ? 'DOWN' : 'UP';
+    if (!(await takeDoor(c, side))) break;
+  }
+  const exit = nearest();
+  check(exit.dx === 0 && exit.dy === 0 && exit.x !== null,
+    'the compass leads to the room with the exit, and there it is a tile', JSON.stringify(exit));
+  if (exit.x === null) {
+    c.socket.close();
+    return;
+  }
+  check(await walkTo(c, exit), 'walks onto the exit');
+  check(c.latest().self.actionB === 'EXTRACT', 'B on your own exit is EXTRACT', c.latest().self.actionB);
+
+  c.send({ type: 'ACTION_B' });
+  const started = Date.now();
+  const deadline = started + 7000;
+  while (Date.now() < deadline && !c.events.some((e) => e.type === 'EXTRACTED')) await sleep(50);
+  const out = c.events.find((e) => e.type === 'EXTRACTED');
+  check(out !== undefined, 'holding B for five seconds gets you out',
+    `${((Date.now() - started) / 1000).toFixed(1)}s`);
+  check(out && Array.isArray(out.carried), 'with a list of what was carried', JSON.stringify(out));
+
+  const again = new WebSocket(`${WS}?token=${encodeURIComponent(c.session.token)}`);
+  const refused = await new Promise((resolve) => {
+    again.addEventListener('close', () => resolve(true), { once: true });
+    again.addEventListener('error', () => resolve(true), { once: true });
+    setTimeout(() => resolve(false), 2000);
+  });
+  check(refused, 'out is out: the token cannot come back onto the island');
+  c.socket.close();
 }
 
 /**

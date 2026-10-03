@@ -55,6 +55,7 @@
     <span id="clock">00:00</span>
     <span id="score">SCORE 0</span>
   </header>
+  <p id="compass" class="compass" aria-label="나침반"></p>
 
   <div class="board-wrap">
     <div id="board" role="img" aria-label="게임 화면"></div>
@@ -124,7 +125,7 @@
 </div>
 
 <div id="dead" class="overlay" hidden>
-  <h2>GAME OVER</h2>
+  <h2 id="dead-title">GAME OVER</h2>
   <p id="dead-cause" class="cause"></p>
   <section id="dead-record" class="record">
     <p class="record-title"><span id="dead-name"></span>의 생존기록</p>

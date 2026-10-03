@@ -1,6 +1,7 @@
 package com.example.battleroyal.ws;
 
 import com.example.battleroyal.game.core.Crate;
+import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
@@ -73,6 +74,10 @@ public class SnapshotFilter {
                 viewer.looting()
                         ? (int) (viewer.lootDoneTick() - tick) * GameConstants.TICK_MS
                         : null,
+                viewer.exits().stream().map(exit -> bearing(room, exit)).toList(),
+                viewer.extracting()
+                        ? (int) (viewer.extractDoneTick() - tick) * GameConstants.TICK_MS
+                        : null,
                 viewer.score(),
                 viewer.kills(),
                 ActionResolver.actionA(viewer),
@@ -83,6 +88,12 @@ public class SnapshotFilter {
     private static List<Snapshot.Slot> crate(Room room, Player viewer) {
         Crate open = RoomSimulator.openCrate(room, viewer);
         return open == null ? null : open.items().stream().map(SnapshotFilter::slot).toList();
+    }
+
+    private static Snapshot.Bearing bearing(Room room, Exit exit) {
+        boolean here = exit.in(room);
+        return new Snapshot.Bearing(exit.dx(), exit.dy(),
+                here ? exit.at().x() : null, here ? exit.at().y() : null);
     }
 
     /** Null in, null out: an empty slot stays a gap in the list. */

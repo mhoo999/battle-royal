@@ -29,6 +29,17 @@ class GameSessionServiceTest {
     }
 
     @Test
+    void gettingOutEndsTheTokenToo() {
+        GameSessionService sessions = new GameSessionService();
+        GameSession mine = sessions.issueGuest("me");
+
+        sessions.onExtracted(new GameEvent.Extracted(mine.playerId(), "~me", 0, 0, 0,
+                java.util.List.of()));
+
+        assertNull(sessions.resolve(mine.token()), "out is out: no way back onto the island");
+    }
+
+    @Test
     void aGuestAlwaysPlaysUnranked() {
         GameSessionService sessions = new GameSessionService();
 

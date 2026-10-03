@@ -42,6 +42,11 @@ public final class Player {
     private Direction bufferedMove;
     private long bufferedMoveExpiresTick;
 
+    private List<Exit> exits = List.of();
+    private Pos extractPos;
+    private long extractDoneTick;
+    private boolean extracted;
+
     private String lootItemId;
     private Pos lootPos;
     private long lootDoneTick;
@@ -289,6 +294,62 @@ public final class Player {
         String itemId = pos.equals(lootPos) ? lootItemId : null;
         cancelLoot();
         return itemId;
+    }
+
+    // --- Exits ------------------------------------------------------------
+
+    /** This player's exits, compass bearings included. Empty for a player given none. */
+    public List<Exit> exits() {
+        return exits;
+    }
+
+    public void setExits(List<Exit> exits) {
+        this.exits = List.copyOf(exits);
+    }
+
+    /**
+     * Starts holding B on an exit. Like a loot it is pinned to the tile: it completes
+     * only if the player is still standing there when time is up.
+     */
+    public void startExtract(long doneTick) {
+        this.extractPos = pos;
+        this.extractDoneTick = doneTick;
+    }
+
+    public boolean extracting() {
+        return extractPos != null;
+    }
+
+    /** Meaningful only while {@link #extracting()}. */
+    public long extractDoneTick() {
+        return extractDoneTick;
+    }
+
+    public void cancelExtract() {
+        this.extractPos = null;
+    }
+
+    /** Whether an extraction under way is due now, on the tile it started on. */
+    public boolean extractDue(long nowTick) {
+        return extractPos != null && nowTick >= extractDoneTick && pos.equals(extractPos);
+    }
+
+    /**
+     * Off the island. Still alive, but out of the game: no command reaches them and the
+     * registry takes them out of the world after this tick's broadcast.
+     */
+    public boolean extracted() {
+        return extracted;
+    }
+
+    public void markExtracted() {
+        this.extracted = true;
+        this.extractPos = null;
+    }
+
+    /** Still in play: alive and not yet gone through an exit. */
+    public boolean active() {
+        return alive && !extracted;
     }
 
     /**

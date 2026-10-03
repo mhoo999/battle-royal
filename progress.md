@@ -10,8 +10,9 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
 Google sign-in works for real (user, local). Step 2 is done: crates, three-slot
 inventory, bag window, stash in the DB, hideout screen, sorties (set out / death loses /
-restart refunds). The stash can only fill once step 3 adds extraction, so the hideout
-has only been seen with simulated data. Next: step 3, exits, compass, extraction.
+restart refunds). Step 3 is done: two private exits per trip, a compass, B held 5s to
+get out, the haul into the stash. Next: step 4, traders (sell price = value), buying,
+stash upgrades, extraction-value ranking.
 
 ## Completed
 
@@ -100,6 +101,14 @@ has only been seen with simulated data. Next: step 3, exits, compass, extraction
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] V2 exits, compass, extraction (branch `v2`, 2026-10-03): each new player gets two
+      exits 2 and 3 doors from the start room (capped by the island), on plain floor out of
+      door reach, private to them; `self.exits` carries torus bearings and the tile in its
+      own room (`◎`). B on your exit is EXTRACT, held 100 ticks, broken by moving, letting go
+      or a hit. `EXTRACTED` to that player; listeners (renamed `DepartureListener`) retire
+      the token, save the result, and settle the sortie: own gear home with its ammo, finds
+      added, gear left on the island deleted. Exits re-roll if a shrink drops their room.
+      Smoke walks a guest to an exit by compass and out (5.1s). 243 tests.
 - [x] V2 stash and hideout (branch `v2`, 2026-10-03): `stash_item` (STASH or OUT with a
       sortie) and `sortie` (OUT, DIED, EXTRACTED, REFUNDED). Setting out locks the account
       row and refuses a second open sortie; death deletes what was carried on its own
@@ -235,6 +244,15 @@ Nothing.
   tab; check it on a real phone.
 
 ## Recent Decisions
+
+- **A full stash still takes the whole haul (V2 step 3, temporary).** Losing loot at the
+  hideout door would punish the best trips, and there is no way to make room until step
+  4's traders. The count shows e.g. 11/10. Revisit with selling.
+- **Guests get exits and can extract**; they just have no stash. The portfolio visitor
+  should see the whole loop without a Google account.
+- **Known hole (V2 step 3):** an item one account put in a crate and another account
+  extracted with is a new row for the second; if the server restarts while the first is
+  still out, D6 refunds the first one's copy too. Needs a restart and two accounts.
 
 - **A game that ended while the socket was down says so, without a record.** The
   client cannot tell an expired grace (result saved) from a server restart (nothing

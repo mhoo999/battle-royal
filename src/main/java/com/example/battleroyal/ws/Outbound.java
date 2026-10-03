@@ -42,6 +42,23 @@ public final class Outbound {
                           String killer, ItemKind weapon) {
     }
 
+    /**
+     * {@code {"type":"EXTRACTED","score":..,"kills":..,"survivedSeconds":..,
+     * "carried":[{"kind":"PISTOL","ammo":4}]}}. Only ever sent to the player who got out.
+     */
+    public record Extracted(String type, int score, int kills, long survivedSeconds,
+                            List<Snapshot.Slot> carried) {
+    }
+
+    public static Extracted extracted(GameEvent.Extracted out) {
+        return new Extracted("EXTRACTED", out.score(), out.kills(),
+                out.survivedTicks() / GameConstants.TICKS_PER_SECOND,
+                out.carried().stream()
+                        .map(item -> new Snapshot.Slot(item.kind(),
+                                item.kind().usesAmmo() ? item.ammo() : null))
+                        .toList());
+    }
+
     public static Shot shot(GameEvent.Shot shot) {
         List<int[]> path = shot.path().stream()
                 .map(Outbound::coords)

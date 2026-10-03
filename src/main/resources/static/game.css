@@ -346,6 +346,7 @@ header.hud-bar {
 
 .state.hidden-bush { color: var(--bush); }
 .state.hidden-cabinet { color: var(--cabinet); }
+.state.extracting { color: var(--self); }
 
 #hud-name {
   color: var(--self);
@@ -414,6 +415,19 @@ header.hud-bar {
 .cell.swing { color: var(--shot); font-weight: bold; }
 /* Where somebody went down, for a second. */
 .cell.fell  { color: var(--enemy); font-weight: bold; }
+/* One of my own exits. Nobody else's board has it. */
+.cell.exit  { color: var(--self); font-weight: bold; }
+
+/* Where my exits lie, a needle and a count of rooms for each. */
+.compass {
+  min-height: 1.1em;
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  color: var(--self);
+  text-align: center;
+}
+.compass b { font-weight: normal; color: var(--dim); }
 
 /* Loot gauge: fills while B is held; the server decides when the item lands. */
 /*

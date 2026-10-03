@@ -2,7 +2,7 @@ package com.example.battleroyal.web;
 
 import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
-import com.example.battleroyal.game.loop.DeathListener;
+import com.example.battleroyal.game.loop.DepartureListener;
 import com.example.battleroyal.game.rule.GameConstants;
 import org.springframework.stereotype.Service;
 
@@ -27,10 +27,10 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>A token lives as long as the life it was issued for. It survives a dropped socket,
  * which is what lets a reconnect inside the grace period find the same player, and is
- * retired on death, so a reconnect after that cannot bring the player back.
+ * retired on death or extraction, so a reconnect after that cannot bring the player back.
  */
 @Service
-public class GameSessionService implements DeathListener {
+public class GameSessionService implements DepartureListener {
 
     /**
      * @param accountId null for a guest
@@ -75,7 +75,17 @@ public class GameSessionService implements DeathListener {
 
     @Override
     public void onDeath(GameEvent.Died died) {
-        byToken.values().removeIf(session -> session.playerId().equals(died.playerId()));
+        retire(died.playerId());
+    }
+
+    /** Out is as final as dead: the token cannot bring the player back onto the island. */
+    @Override
+    public void onExtracted(GameEvent.Extracted extracted) {
+        retire(extracted.playerId());
+    }
+
+    private void retire(String playerId) {
+        byToken.values().removeIf(session -> session.playerId().equals(playerId));
     }
 
     private GameSession issue(String nickname, Long accountId, List<Item> loadout) {

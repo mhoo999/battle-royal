@@ -12,5 +12,7 @@ public enum ActionB {
     OPEN,
     /** Close the crate this player has open. */
     CLOSE,
-    DOOR
+    DOOR,
+    /** Hold to leave the island through one of this player's own exits. */
+    EXTRACT
 }

@@ -144,6 +144,51 @@ class HideoutServiceTest {
         hideout.setOut(me, "shuya", List.of(cup.id()));
     }
 
+    private static GameEvent.Extracted extracted(String playerId, Item... carried) {
+        return new GameEvent.Extracted(playerId, "shuya", 0, 0, 0, List.of(carried));
+    }
+
+    @Test
+    void gettingOutBringsOwnGearHomeAddsWhatWasFoundAndLosesWhatWasLeft() {
+        StashItem pistol = stash(me, ItemKind.PISTOL, 6);
+        StashItem knife = stash(me, ItemKind.KNIFE, 0);
+        GameSession session = hideout.setOut(me, "shuya", List.of(pistol.id(), knife.id()));
+        Item firedTwice = new Item(pistol.gameItemId(), ItemKind.PISTOL, 4);
+        Item found = new Item("i-42", ItemKind.CROSSBOW, 1);
+
+        // The knife was left in a crate on the island.
+        hideout.onExtracted(extracted(session.playerId(), firedTwice, found));
+
+        StashItem home = items.findById(pistol.id()).orElseThrow();
+        assertEquals(StashItem.Location.STASH, home.location());
+        assertEquals(4, home.ammo(), "the rounds spent stay spent");
+        assertTrue(items.findById(knife.id()).isEmpty(), "left behind, so lost");
+        assertEquals(List.of(ItemKind.PISTOL, ItemKind.CROSSBOW), hideout.view(me).stash().stream()
+                .map(HideoutService.StashEntry::kind).toList());
+        assertEquals(Sortie.Outcome.EXTRACTED, sorties.findAll().getFirst().outcome());
+        assertFalse(hideout.view(me).out(), "free to set out again");
+    }
+
+    @Test
+    void aFullStashStillTakesEverythingBroughtOut() {
+        for (int i = 0; i < GameConstants.STASH_CAPACITY; i++) {
+            stash(me, ItemKind.CUP, 0);
+        }
+        GameSession session = hideout.setOut(me, "shuya", List.of());
+
+        hideout.onExtracted(extracted(session.playerId(), new Item("i-1", ItemKind.PISTOL, 6)));
+
+        assertEquals(GameConstants.STASH_CAPACITY + 1, hideout.view(me).stash().size());
+    }
+
+    @Test
+    void aGuestGettingOutTouchesNothing() {
+        hideout.onExtracted(extracted(sessions.issueGuest("kawada").playerId(),
+                new Item("i-1", ItemKind.PISTOL, 6)));
+
+        assertEquals(0, items.count());
+    }
+
     @Test
     void aServerThatStoppedMidTripHandsTheGearBackWhenItStarts() {
         StashItem pistol = stash(me, ItemKind.PISTOL, 2);

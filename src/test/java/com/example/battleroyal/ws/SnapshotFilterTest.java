@@ -2,6 +2,7 @@ package com.example.battleroyal.ws;
 
 import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.Command;
+import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
@@ -54,6 +55,26 @@ class SnapshotFilterTest {
         assertEquals(GameConstants.TICK_MS,
                 filter.forViewer(room, viewer, 100 + GameConstants.LOOT_TICKS - 1)
                         .self().lootMsLeft());
+    }
+
+    @Test
+    void theCompassIsForItsOwnerAndAnExitsTileShowsOnlyInItsRoom() throws Exception {
+        Room room = room();
+        Player viewer = at("v", OPEN);
+        viewer.setExits(List.of(new Exit("room-1", new Pos(2, 5), 0, 0),
+                new Exit("room-7", new Pos(4, 4), -1, 2)));
+        Player other = at("o", ALSO_OPEN);
+        room.add(viewer);
+        room.add(other);
+
+        List<Snapshot.Bearing> mine = filter.forViewer(room, viewer, 1).self().exits();
+        assertEquals(new Snapshot.Bearing(0, 0, 2, 5), mine.get(0));
+        assertEquals(new Snapshot.Bearing(-1, 2, null, null), mine.get(1),
+                "a direction to walk, not the tile of a room you are not in");
+
+        String theirs = new ObjectMapper().writeValueAsString(filter.forViewer(room, other, 1));
+        assertFalse(theirs.contains("\"dx\":-1"), "nobody else learns where your exits are");
+        assertTrue(filter.forViewer(room, other, 1).self().exits().isEmpty());
     }
 
     @Test

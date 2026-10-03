@@ -4,7 +4,7 @@ import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
-import com.example.battleroyal.game.loop.DeathListener;
+import com.example.battleroyal.game.loop.DepartureListener;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.persistence.AccountRepository;
 import com.example.battleroyal.persistence.Sortie;
@@ -24,6 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,21 +37,28 @@ import java.util.concurrent.TimeUnit;
 /**
  * The hideout: an account's stash, and setting out from it onto the island.
  *
- * <p>An item crosses between the database and the running game at three moments only,
+ * <p>An item crosses between the database and the running game at four moments only,
  * each one transaction (docs/V2_PLAN.md §5):
  * <ol>
  *   <li><b>Setting out.</b> The chosen stash items are marked out with a new sortie,
  *       under a lock on the account row, so one item cannot leave twice.</li>
  *   <li><b>Death.</b> The sortie is closed as died and the items it carried are
  *       deleted: lost, as the rules say. Written off the game loop thread.</li>
+ *   <li><b>Extraction.</b> The sortie is closed as extracted and what the player got
+ *       out with lands in the stash: their own gear goes back home, anything found
+ *       is added. Gear that went out and did not come back was left on the island and
+ *       is gone. Also off the loop thread.</li>
  *   <li><b>Start-up.</b> Any sortie still out belongs to a server that stopped
  *       mid-trip; its items go back to the stash (decision D6). Done at start rather
  *       than shutdown so a crash is handled the same way as a deploy.</li>
  * </ol>
- * Extraction, the fourth, comes with step 3.
+ *
+ * <p>A full stash still takes everything brought out. Losing loot at the door of the
+ * hideout would punish the best trips; until the traders of step 4 give a way to make
+ * room, the stash is let run over its capacity.
  */
 @Service
-public class HideoutService implements DeathListener {
+public class HideoutService implements DepartureListener {
 
     private static final Logger log = LoggerFactory.getLogger(HideoutService.class);
 
@@ -188,6 +196,43 @@ public class HideoutService implements DeathListener {
                 log.error("Could not close sortie {} as died", sortieId, e);
             }
         });
+    }
+
+    /** Called on the game loop thread, so the write goes to a thread of its own. */
+    @Override
+    public void onExtracted(GameEvent.Extracted extracted) {
+        Long sortieId = sortieOfPlayer.remove(extracted.playerId());
+        if (sortieId == null) {
+            return;     // a guest: nowhere to keep anything
+        }
+        List<Item> carried = extracted.carried();
+        writer.execute(() -> {
+            try {
+                tx.executeWithoutResult(status -> settle(sortieId, carried));
+            } catch (RuntimeException e) {
+                // Left out: the next start-up hands back what was taken out, at least.
+                log.error("Could not close sortie {} as extracted", sortieId, e);
+            }
+        });
+    }
+
+    private void settle(long sortieId, List<Item> carried) {
+        Sortie sortie = sorties.findById(sortieId).orElseThrow();
+        sortie.end(Sortie.Outcome.EXTRACTED, clock.instant());
+        Map<String, StashItem> wentOut = new HashMap<>();
+        for (StashItem item : items.findBySortieId(sortieId)) {
+            wentOut.put(item.gameItemId(), item);
+        }
+        for (Item item : carried) {
+            StashItem own = wentOut.remove(item.id());
+            if (own != null) {
+                own.bringBack(item.ammo());
+            } else {
+                items.save(new StashItem(sortie.accountId(), item.kind(), item.ammo()));
+            }
+        }
+        // Taken out and not brought back: left in a crate somewhere, so lost.
+        items.deleteAll(wentOut.values());
     }
 
     /** Gear carried by sorties a stopped server never closed goes home (D6). */

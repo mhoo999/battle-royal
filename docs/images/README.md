@@ -16,6 +16,9 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-03-live-https-phone.png` | 2026-10-03 | The live site over HTTPS at phone width, as `~noriko` (unranked), with a floor crate. The URL line on top is an added caption, not the browser's address bar | HTTPS, `~` names `099fc07` |
 | `2026-10-03-v2-lobby-google-sign-in.png` | 2026-10-03 | V2 lobby, signed out: guest name and START, and the new Google sign-in link (local, `v2` branch) | V2 step 1, accounts |
 | `2026-10-03-v2-lobby-entry.png` | 2026-10-03 | V2 lobby reworked at the user's request: Google sign-in and guest are the first choice; the name comes after | V2 step 1 |
+| `2026-10-03-v2-exit-compass.png` | 2026-10-03 | V2 compass above the board (`탈출구 ◎ 이 방 · ↓ 1`) and my own exit `◎` on the floor beside me | V2 step 3, exits and compass |
+| `2026-10-03-v2-extracting.png` | 2026-10-03 | Standing on the exit holding B: [B 탈출], "탈출 중 — B를 떼거나 움직이거나 맞으면 취소", the gauge starting | V2 step 3, extraction |
+| `2026-10-03-v2-extracted.png` | 2026-10-03 | The 탈출 성공 screen with the haul line and the record | V2 step 3, extraction |
 | `2026-10-03-v2-crate-and-inventory.png` | 2026-10-03 | V2 bag window over the board: an opened crate on the left, three inventory slots on the right with `e` on the equipped one, and the [가방] button | V2 step 2, crates and inventory |
 
 ## AWS (`aws/`)

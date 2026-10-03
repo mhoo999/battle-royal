@@ -54,6 +54,21 @@ public sealed interface GameEvent {
     }
 
     /**
+     * To the player who got out, with what they got out with. Like {@link Died} it ends
+     * a life and is its record; unlike a death nobody else is told, and the player
+     * simply leaves the room.
+     *
+     * @param carried what was in the inventory, in slot order, empty slots left out
+     */
+    record Extracted(String playerId, String nickname, int score, int kills,
+                     long survivedTicks, List<Item> carried) implements GameEvent {
+
+        public Extracted {
+            carried = List.copyOf(carried);
+        }
+    }
+
+    /**
      * That somebody fell, and where, for the people who could see them fall. Without it
      * a death in front of you was only a body missing from the next snapshot.
      *

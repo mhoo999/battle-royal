@@ -50,6 +50,8 @@ public record Snapshot(
             List<Slot> crate,
             Concealment concealment,
             Integer lootMsLeft,
+            List<Bearing> exits,
+            Integer extractMsLeft,
             int score,
             int kills,
             ActionA actionA,
@@ -65,6 +67,21 @@ public record Snapshot(
     public record Slot(
             ItemKind kind,
             Integer ammo
+    ) {
+    }
+
+    /**
+     * The compass needle for one of the viewer's own exits: how many rooms east and
+     * south it lies, the shorter way round, and its tile once the viewer is in its room.
+     * Only ever inside {@link Self}; nobody learns where anyone else's exits are (D9).
+     *
+     * @param x null unless the exit is in this room
+     */
+    public record Bearing(
+            int dx,
+            int dy,
+            Integer x,
+            Integer y
     ) {
     }
 

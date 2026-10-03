@@ -36,7 +36,7 @@ const DEATH_VERB = {
 };
 const DEATH_VERB_DEFAULT = '에 당해';
 
-const B_LABEL = { OPEN: '열기', CLOSE: '닫기', DOOR: '이동' };
+const B_LABEL = { OPEN: '열기', CLOSE: '닫기', DOOR: '이동', EXTRACT: '탈출' };
 
 const KEY_DIR = {
   ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
@@ -81,7 +81,7 @@ const ui = {
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
   deadRecord: el('dead-record'),
-  restart: el('restart'),
+  restart: el('restart'), deadTitle: el('dead-title'), compass: el('compass'),
   loot: el('loot'), lootFill: el('loot-fill'),
   ranking: el('ranking'), rankingList: el('ranking-list'),
 };
@@ -129,6 +129,14 @@ function paint(snapshot) {
     // out by looting it.
     cell.classList.add('has-item');
     cell.textContent = '';
+  }
+
+  // My own exits, under anything standing on them. Only ever in my snapshot.
+  for (const exit of snapshot.self.exits) {
+    if (exit.x === null) continue;
+    const cell = cells[exit.y * GRID + exit.x];
+    cell.classList.add('exit');
+    cell.textContent = '◎';
   }
 
   for (const other of snapshot.players) {
@@ -233,6 +241,9 @@ function paintHud(snapshot) {
   } else if (self.concealment === 'CABINET') {
     ui.state.textContent = '캐비닛에 숨어 있음 — 옆이나 뒤로 움직이면 나감';
     ui.state.classList.add('hidden-cabinet');
+  } else if (self.extractMsLeft !== null) {
+    ui.state.textContent = '탈출 중 — B를 떼거나 움직이거나 맞으면 취소';
+    ui.state.classList.add('extracting');
   } else if (self.lootMsLeft !== null) {
     ui.state.textContent = '여는 중 — B를 떼거나 움직이면 취소';
     ui.state.classList.add('looting');
@@ -250,7 +261,8 @@ function paintHud(snapshot) {
  * begins rather than on every snapshot that arrives during one.
  */
 function paintLoot(self) {
-  const left = self.lootMsLeft;
+  // Getting out fills the same gauge as opening a crate, only for longer.
+  const left = self.lootMsLeft ?? self.extractMsLeft;
   if (left === null || left === undefined) {
     ui.loot.hidden = true;
     ui.lootFill.style.transition = 'none';
@@ -264,6 +276,30 @@ function paintLoot(self) {
   void ui.lootFill.offsetWidth;
   ui.lootFill.style.transition = `width ${left}ms linear`;
   ui.lootFill.style.width = '100%';
+}
+
+/*
+ * A needle per exit: eight ways, from how many rooms east and south it lies, and how
+ * many doors away. In its own room an exit is the ◎ on the board instead.
+ */
+function needle(dx, dy) {
+  const col = Math.sign(dx) + 1;
+  const row = Math.sign(dy) + 1;
+  return [['↖', '↑', '↗'], ['←', '◎', '→'], ['↙', '↓', '↘']][row][col];
+}
+
+function paintCompass(self) {
+  if (self.exits.length === 0) {
+    ui.compass.textContent = '';
+    return;
+  }
+  const parts = self.exits.map((exit) => {
+    const doors = Math.abs(exit.dx) + Math.abs(exit.dy);
+    return doors === 0 ? '◎ 이 방' : `${needle(exit.dx, exit.dy)} ${doors}`;
+  });
+  const label = document.createElement('b');
+  label.textContent = '탈출구 ';
+  ui.compass.replaceChildren(label, parts.join('  ·  '));
 }
 
 function setAction(button, letter, label, idleLabel = null) {
@@ -316,6 +352,7 @@ function connect(token) {
       paint(message);
       paintHud(message);
       paintLoot(message.self);
+      paintCompass(message.self);
       paintBag(message.self);
     } else if (message.type === 'EVENT') {
       if (message.event === 'SHOT') showShot(message.path);
@@ -324,6 +361,8 @@ function connect(token) {
       else if (message.event === 'FELL') showFell(message.at);
     } else if (message.type === 'YOU_DIED') {
       showDeath(message);
+    } else if (message.type === 'EXTRACTED') {
+      showExtracted(message);
     }
   });
 
@@ -614,13 +653,36 @@ function showDeath(message) {
   lastResult = nickname.startsWith('~')
     ? null
     : { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
+  ui.deadTitle.textContent = 'GAME OVER';
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
+  showRecord(message);
+}
+
+/* The record under either ending. */
+function showRecord(message) {
   ui.deadName.textContent = nickname;
   ui.deadScore.textContent = message.score;
   ui.deadKills.textContent = message.kills;
   ui.deadTime.textContent = (message.survivedSeconds ?? Math.round((Date.now() - startedAt) / 1000)) + 's';
   ui.deadRecord.hidden = false;
+  ui.restart.textContent = me.signedIn ? '거점으로' : '처음으로';
   ui.dead.hidden = false;
+}
+
+/* Out through an exit, with what was carried. An account's haul is in the stash now. */
+function showExtracted(message) {
+  stopClock();
+  forgetSession();
+  lastResult = nickname.startsWith('~')
+    ? null
+    : { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
+  ui.deadTitle.textContent = '탈출 성공';
+  const haul = message.carried.map(slotText).join(', ');
+  const kept = me.signedIn ? ' 창고로 옮겼다.' : '';
+  ui.deadCause.textContent = haul
+    ? `섬을 빠져나왔다. 가져온 것: ${haul}.${kept}`
+    : '섬을 빠져나왔다. 빈손이다.';
+  showRecord(message);
 }
 
 /*
@@ -638,7 +700,9 @@ function showDisconnected() {
   ui.deadCause.replaceChildren(
     '자고 있는 사이에 야생 동물에 당해', document.createElement('br'),
     corpse, '가 되었다.');
+  ui.deadTitle.textContent = 'GAME OVER';
   ui.deadRecord.hidden = true;
+  ui.restart.textContent = me.signedIn ? '거점으로' : '처음으로';
   ui.dead.hidden = false;
 }
 
@@ -948,7 +1012,7 @@ function wireBag() {
  * A signed-in account's way onto the island. The stash on the left, three slots to
  * carry out on the right: pick a stash item, then the slot it goes in; tap a filled
  * slot to leave it at home. "섬으로" sets out with exactly that. Nothing taken out
- * comes back except by extraction (step 3) or a server restart; dying loses it.
+ * comes back except by extraction or a server restart; dying loses it.
  */
 let stash = [];             // [{ id, kind, ammo }]
 let loadout = [null, null, null];   // stash item ids
@@ -1064,7 +1128,11 @@ ui.lobbyForm.addEventListener('submit', (event) => {
   if (choosingNickname()) chooseNickname(ui.nickname.value.trim());
   else beginSession(ui.nickname.value.trim());
 });
-ui.restart.addEventListener('click', restart);
+ui.restart.addEventListener('click', () => {
+  restart();
+  // An account's next trip starts from the hideout, which shows what came home.
+  if (me.signedIn) openHideout();
+});
 ui.guestEntry.addEventListener('click', () => { guestChosen = true; ui.lobbyError.textContent = ''; paintAccount(); });
 ui.back.addEventListener('click', () => { guestChosen = false; ui.lobbyError.textContent = ''; paintAccount(); });
 loadRanking();

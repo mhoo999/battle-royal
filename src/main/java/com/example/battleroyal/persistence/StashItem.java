@@ -95,6 +95,12 @@ public class StashItem {
         this.sortieId = null;
     }
 
+    /** Home through an exit, with however many rounds it has left. */
+    public void bringBack(int ammo) {
+        bringBack();
+        this.ammo = ammo;
+    }
+
     /** The id this item has in the game while it is out. */
     public String gameItemId() {
         return "s-" + id;

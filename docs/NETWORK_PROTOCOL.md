@@ -154,6 +154,8 @@ GET /ws/game?token=<uuid>
     "equipped": 0,
     "crate": null,
     "concealment": "CABINET", "lootMsLeft": null, "invulnerable": false,
+    "exits": [ { "dx": 0, "dy": 0, "x": 2, "y": 5 }, { "dx": -1, "dy": 2, "x": null, "y": null } ],
+    "extractMsLeft": null,
     "score": 420, "kills": 1,
     "actionA": "HEAL", "actionB": null
   },
@@ -169,6 +171,13 @@ GET /ws/game?token=<uuid>
 `lootMsLeft`는 루팅 중일 때 남은 ms, 아니면 `null`이다. 클라는 루팅이 새로 시작될
 때만 게이지를 0에서 이 시간에 걸쳐 채운다. 완료 판정은 서버가 한다.
 다른 플레이어가 루팅 중인지는 보내지 않는다.
+
+**V2: 탈출구와 나침반(D3, D9).** `self.exits`는 내 탈출구마다 하나씩, 지금 방에서 그
+탈출구가 있는 방까지 **토러스 최단 변위**(`dx` 동쪽+, `dy` 남쪽+, 방 단위)다. 그 방에
+들어와 있을 때만(`dx`=`dy`=0) `x`/`y`에 타일을 준다 — 클라는 거기에 `◎`를 그린다.
+`extractMsLeft`는 탈출 중일 때 남은 ms(`lootMsLeft`와 같은 방식). **남의 탈출구는 어떤
+형태로도 보내지 않는다** — `Self`에만 있고 `Other`에는 필드가 없다(`SnapshotFilterTest`).
+게스트도 탈출구를 받는다. 창고가 없을 뿐이다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
 `self.item`: `KNIFE | BAT | PISTOL | CROSSBOW | MEDKIT | PAN | SPOON | CUP | DOLL |
@@ -189,7 +198,7 @@ bare-hand kill.
 
 ```
 actionA   ATTACK | FIRE | HEAL | null
-actionB   OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
+actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 ```
 
 캐비닛은 `MOVE`로 들어가고 나온다. B 토큰이 없다.
@@ -229,6 +238,7 @@ actionB   OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 | `SWING` | 방 안의 모든 플레이어 (`from` 공격자 타일, `to` 휘두른 타일) |
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
+| `EXTRACTED` | 탈출한 사람만 (V2) |
 | `FELL` | 사망 순간 사망자를 볼 수 있었던 같은 방 사람 (사망자 제외) |
 
 이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE` 이벤트는
@@ -247,6 +257,18 @@ actionB   OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 `killer`/`weapon`은 **사망자에게만** 간다. 살아 있는 동안 숨겨지는 정보(상대 무기)지만
 이 시점에 받는 사람은 이미 탈락했다. 처치자가 없는 사망(향후 끊김 타임아웃)이면 둘 다
 `null`. 문장은 클라가 만든다 — 서버는 무기 코드만 보낸다.
+
+### `EXTRACTED` (V2)
+
+```json
+{ "type": "EXTRACTED", "score": 15, "kills": 0, "survivedSeconds": 58,
+  "carried": [ { "kind": "PISTOL", "ammo": 4 }, { "kind": "CUP", "ammo": null } ] }
+```
+
+탈출구에서 B를 5초 누른 사람에게만. `carried`는 가지고 나온 것(칸 순서, 빈 칸 제외)이다.
+`YOU_DIED`처럼 그 목숨의 끝이다: 토큰은 폐기되고(다시 붙으면 거부), 결과가 저장되며
+(`~` 이름 제외), 계정이면 가져온 것이 창고에 들어간다. 다른 사람은 다음 스냅샷에서
+그 사람이 사라지는 것으로만 안다.
 
 ---
 

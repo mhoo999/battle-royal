@@ -1,5 +1,7 @@
 package com.example.battleroyal.game.rule;
 
+import java.util.List;
+
 /**
  * Every tunable number in the game, in one place.
  *
@@ -51,6 +53,19 @@ public final class GameConstants {
      * over, so looting under fire is a commitment rather than a free action.
      */
     public static final int LOOT_TICKS = 10;
+
+    /**
+     * Time to get out through an exit: 5s with B held (D7). Moving, letting go or being
+     * hit starts it over, which makes the way out the most dangerous moment of a trip.
+     */
+    public static final int EXTRACT_TICKS = 100;
+
+    /**
+     * How many rooms away, counted in doors, each of a player's exits lies from the room
+     * they start in (D8): one near, one farther. A world too small for a distance gets
+     * its farthest room instead.
+     */
+    public static final List<Integer> EXIT_DISTANCES = List.of(2, 3);
 
     /**
      * Most items a crate holds. A death leaves at most a full inventory, and putting

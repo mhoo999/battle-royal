@@ -47,7 +47,7 @@ public final class RoomSimulator {
      */
     public static DoorTransit apply(Room room, Command command, long nowTick) {
         Player player = room.player(command.playerId());
-        if (player == null || !player.alive()) {
+        if (player == null || !player.active()) {
             return null;
         }
         switch (command) {
@@ -57,8 +57,9 @@ public final class RoomSimulator {
                 return actionB(room, player, nowTick);
             }
             case Command.ReleaseB ignored -> {
-                if (player.looting()) {
+                if (player.looting() || player.extracting()) {
                     player.cancelLoot();
+                    player.cancelExtract();
                     room.markDirty();
                 }
             }
@@ -76,10 +77,13 @@ public final class RoomSimulator {
      */
     public static void tick(Room room, long nowTick) {
         for (Player player : room.players()) {
-            if (!player.alive()) {
+            if (!player.active()) {
                 continue;
             }
             finishLoot(room, player, nowTick);
+            if (finishExtract(room, player, nowTick)) {
+                continue;
+            }
             if (ScoreRules.accrueSurvival(player)) {
                 room.markDirty();
             }
@@ -124,10 +128,11 @@ public final class RoomSimulator {
         player.face(outcome.facing());
         if (outcome.moved()) {
             player.moveTo(outcome.pos());
-            // Stepping off the crate starts the loot over and shuts it; turning on the
-            // spot does neither.
+            // Stepping off the crate starts the loot over and shuts it, and stepping off
+            // an exit starts the way out over; turning on the spot does none of these.
             player.cancelLoot();
             player.closeCrate();
+            player.cancelExtract();
         }
         // A blocked input still spends the cooldown; that is what makes walls and other
         // players cost you time rather than being free to probe.
@@ -157,6 +162,7 @@ public final class RoomSimulator {
             player.setInCabinet(true);
             player.cancelLoot();
             player.closeCrate();
+            player.cancelExtract();
             player.setNextCabinetToggleTick(
                     nowTick + GameConstants.CABINET_TOGGLE_COOLDOWN_TICKS);
             room.markDirty();
@@ -250,6 +256,11 @@ public final class RoomSimulator {
         }
         Player victim = trace.victim();
         room.emit(new GameEvent.Hit(attacker.id()));
+        // A hit knocks you off the way out, whatever it does to your health.
+        if (victim.extracting()) {
+            victim.cancelExtract();
+            room.markDirty();
+        }
         attacker.addScore(GameConstants.SCORE_HIT);
         if (victim.takeDamage(blow.damage())) {
             attacker.addScore(GameConstants.SCORE_KILL);
@@ -263,7 +274,7 @@ public final class RoomSimulator {
      * dropped and result recorded, but with nobody to credit.
      */
     public static void abandon(Room room, Player player, long nowTick) {
-        if (!player.alive()) {
+        if (!player.active()) {
             return;
         }
         player.takeDamage(player.hp());
@@ -289,6 +300,7 @@ public final class RoomSimulator {
 
         victim.setInCabinet(false);
         victim.cancelLoot();
+        victim.cancelExtract();
         victim.closeCrate();
         victim.clearBufferedMove();
         // Everything they carried, in one crate: a body is worth searching.
@@ -348,8 +360,40 @@ public final class RoomSimulator {
             }
             case OPEN -> startLoot(room, player, nowTick);
             case CLOSE -> closeCrate(room, player);
+            case EXTRACT -> startExtract(room, player, nowTick);
         }
         return null;
+    }
+
+    // --- Exits ------------------------------------------------------------
+
+    /** Like a loot, pressing B again while already on the way out does not restart it. */
+    private static void startExtract(Room room, Player player, long nowTick) {
+        if (player.extracting()) {
+            return;
+        }
+        player.closeCrate();
+        player.startExtract(nowTick + GameConstants.EXTRACT_TICKS);
+        room.markDirty();
+    }
+
+    /**
+     * Five seconds held without moving or being hit: the player is out, with everything
+     * they carry. They stay in the room until the registry takes them away after this
+     * tick's broadcast, so their last snapshot and the news reach them first.
+     *
+     * @return true when the player got out this tick
+     */
+    private static boolean finishExtract(Room room, Player player, long nowTick) {
+        if (!player.extractDue(nowTick)) {
+            return false;
+        }
+        List<Item> carried = player.dropAll();
+        player.markExtracted();
+        room.emit(new GameEvent.Extracted(player.id(), player.nickname(), player.score(),
+                player.kills(), nowTick - player.joinedTick(), carried));
+        room.markDirty();
+        return true;
     }
 
     /** Pressing B again while already looting does not restart the clock. */

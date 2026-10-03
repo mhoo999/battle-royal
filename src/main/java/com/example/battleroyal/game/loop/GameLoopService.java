@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -31,17 +32,17 @@ public class GameLoopService {
 
     private final RoomRegistry registry;
     private final RoomBroadcaster broadcaster;
-    private final List<DeathListener> deathListeners;
+    private final List<DepartureListener> departureListeners;
 
     private volatile boolean running;
     private Thread thread;
     private volatile long tick;
 
     public GameLoopService(RoomRegistry registry, RoomBroadcaster broadcaster,
-                           List<DeathListener> deathListeners) {
+                           List<DepartureListener> departureListeners) {
         this.registry = registry;
         this.broadcaster = broadcaster;
-        this.deathListeners = deathListeners;
+        this.departureListeners = departureListeners;
     }
 
     public long tick() {
@@ -110,24 +111,26 @@ public class GameLoopService {
             }
             for (GameEvent event : events) {
                 if (event instanceof GameEvent.Died died) {
-                    notifyDeath(died);
+                    tell(died.playerId(), listener -> listener.onDeath(died));
+                } else if (event instanceof GameEvent.Extracted extracted) {
+                    tell(extracted.playerId(), listener -> listener.onExtracted(extracted));
                 }
             }
         }
 
-        // Removing the dead marks their room dirty, so the survivors see the body go
-        // on the next tick.
+        // Removing the dead and the departed marks their room dirty, so the others see
+        // them go on the next tick.
         registry.reapDead();
         registry.fitWorld();
     }
 
-    private void notifyDeath(GameEvent.Died died) {
-        for (DeathListener listener : deathListeners) {
+    private void tell(String playerId, Consumer<DepartureListener> call) {
+        for (DepartureListener listener : departureListeners) {
             try {
-                listener.onDeath(died);
+                call.accept(listener);
             } catch (RuntimeException e) {
                 // A failed save must not cost the rest of the tick.
-                log.error("Death listener failed for {}", died.playerId(), e);
+                log.error("Departure listener failed for {}", playerId, e);
             }
         }
     }
