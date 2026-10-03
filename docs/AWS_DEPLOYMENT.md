@@ -105,6 +105,9 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 | EC2 인스턴스 유형 | t3.micro, Amazon Linux 2023 x86_64, gp3 10 GiB |
 | 키 페어 이름 (파일은 로컬 어디에) | battle-royal (`%USERPROFILE%\.ssh\battle-royal.pem`, 저장소 밖) |
 | 탄력적 IP | 54.116.237.112 |
+| 배포 버킷 | battle-royal-deploy-495791792486 (lifecycle `expire-releases`, 14일) |
+| GitHub 배포 역할 | `deploy` (arn:aws:iam::495791792486:role/deploy, 인라인 정책 `deploy`) |
+| EC2 인스턴스 역할 | battle-royal-ec2 (AmazonSSMManagedInstanceCore + `read-releases`) |
 | 접속 URL | http://54.116.237.112/ |
 | 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (그 뒤 커밋은 문서뿐) |
 
@@ -504,7 +507,7 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 - **IAM → Identity providers → Add provider** → **OpenID Connect**
 - Provider URL `https://token.actions.githubusercontent.com`, Audience `sts.amazonaws.com`
 
-**③ GitHub용 역할 `battle-royal-github-deploy`**
+**③ GitHub용 역할 `battle-royal-github-deploy`** (실제로는 `deploy`로 만듦, §2)
 - **IAM → Roles → Create role** → **Web identity** → 위 공급자, Audience
   `sts.amazonaws.com`, GitHub organization `mhoo999`, repository `battle-royal`,
   branch `main`
