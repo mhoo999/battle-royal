@@ -91,6 +91,13 @@ Next: game bugs; see a broken jar roll back when the user picks the moment.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] A death is seen (2026-10-03): `FELL` event with the tile only, to whoever could
+      see the victim at the moment of death (worked out before the cabinet flag is
+      cleared, since the dead are invisible to `canSee`). Client: ✕ on the tile for 1s,
+      "누군가 쓰러졌다" for 2s. Smoke now finishes B off with fists (~10s) to check it.
+- [x] Medkit not offered at full HP, so it cannot be wasted; A shows 치료 greyed.
+      User's call (2026-10-03). No first-play controls guide: the buttons already
+      say what they do (user).
 - [x] Floor items drawn as a crate (2026-10-03), not `$`: a player said `$` read as
       money. CSS-drawn outline and strap, so it cannot pass for a cabinet's ■ and looks
       the same in every font; it dims under a player standing on it.
@@ -187,9 +194,6 @@ Nothing.
 
 ## Known Issues
 
-- No `DEAD` event; others learn of a death when the body leaves the next snapshot.
-- A Medkit at full HP is spent for nothing. An "only when hurt" rule was tried and
-  reverted: not in the docs, and `SnapshotFilterTest` expects `HEAL` at full HP.
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
   needs a restart, and Chrome caches `game.js`/`game.css`: fetch them with
   `cache: 'reload'` (or hard-reload) before testing a client change. Background tabs

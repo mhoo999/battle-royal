@@ -26,6 +26,10 @@ public final class Outbound {
     public record Swing(String type, String event, int[] from, int[] to) {
     }
 
+    /** {@code {"type":"EVENT","event":"FELL","at":[x,y]}}. Where, never who. */
+    public record Fell(String type, String event, int[] at) {
+    }
+
     /** {@code {"type":"EVENT","event":"HIT"}}. No target, no damage, no outcome. */
     public record Hit(String type, String event) {
     }
@@ -47,6 +51,10 @@ public final class Outbound {
 
     public static Swing swing(GameEvent.Swing swing) {
         return new Swing("EVENT", "SWING", coords(swing.from()), coords(swing.to()));
+    }
+
+    public static Fell fell(GameEvent.Fell fell) {
+        return new Fell("EVENT", "FELL", coords(fell.at()));
     }
 
     public static Hit hit() {

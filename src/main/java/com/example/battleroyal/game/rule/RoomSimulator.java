@@ -14,6 +14,7 @@ import com.example.battleroyal.game.core.Room;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -269,6 +270,15 @@ public final class RoomSimulator {
      * @param killer null when nobody killed them
      */
     private static void die(Room room, Player victim, Player killer, long nowTick) {
+        // Before the cabinet flag is cleared: a body pulled out of hiding was not seen.
+        List<String> witnesses = room.players().stream()
+                .filter(other -> other != victim && other.alive())
+                .filter(other -> VisibilityRules.visibleAt(room.map(), other.pos(),
+                        victim.pos(), victim.inCabinet()))
+                .map(Player::id)
+                .toList();
+        room.emit(new GameEvent.Fell(victim.pos(), witnesses));
+
         victim.setInCabinet(false);
         victim.cancelLoot();
         victim.clearBufferedMove();

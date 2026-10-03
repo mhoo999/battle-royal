@@ -43,6 +43,15 @@ class OutboundTest {
     }
 
     @Test
+    void aFallSaysWhereAndNeverWho() {
+        GameEvent.Fell fell = new GameEvent.Fell(new Pos(8, 1), List.of("k", "b"));
+
+        assertEquals("{\"type\":\"EVENT\",\"event\":\"FELL\",\"at\":[8,1]}",
+                mapper.writeValueAsString(Outbound.fell(fell)),
+                "the witnesses are who to tell, not what to tell them");
+    }
+
+    @Test
     void theResultReportsSurvivalInSeconds() {
         GameEvent.Died died = new GameEvent.Died("p1", "me", 420, 2,
                 95L * GameConstants.TICKS_PER_SECOND + 7, "kang", ItemKind.PISTOL);

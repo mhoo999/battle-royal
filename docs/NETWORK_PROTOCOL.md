@@ -155,7 +155,7 @@ actionB   PICKUP | SWAP | DOOR | null
 ```json
 { "type": "EVENT", "event": "SHOT", "path": [[10,7],[10,6],[10,5]] }
 { "type": "EVENT", "event": "HIT" }
-{ "type": "EVENT", "event": "DEAD",        "playerId": "p2" }
+{ "type": "EVENT", "event": "FELL",        "at": [8,1] }
 { "type": "EVENT", "event": "PICKUP",      "itemId": "i-31" }
 { "type": "EVENT", "event": "ROOM_CHANGE", "roomId": "room-08" }
 ```
@@ -169,12 +169,20 @@ actionB   PICKUP | SWAP | DOOR | null
 `HIT`은 **명중 사실만** 담는다. 대상 ID, HP, 생사 여부를 넣지 않는다.
 `OutboundTest`가 이 형태를 고정한다.
 
+`FELL`은 **누군가 그 칸에서 쓰러졌다는 사실과 위치만** 담는다. 누구인지는 넣지 않는다.
+받는 사람은 **죽기 직전 그 사람을 볼 수 있었던 같은 방 사람**이고, 서버가 사망 순간
+(캐비닛 플래그를 지우기 전)에 정해 둔다. 부시나 캐비닛 안에서 죽으면 밖에서는 아무도
+받지 않는다 — 그 죽음이 이전보다 더 드러나지 않는다. 클라는 그 칸에 ✕를 1초,
+상태줄에 "누군가 쓰러졌다"를 2초 띄운다. (예전 초안의 `DEAD`+`playerId`는 누가 죽었는지
+알려 줘서 쓰지 않는다.)
+
 | 이벤트 | 받는 사람 |
 |---|---|
 | `SHOT` | 방 안의 모든 플레이어 (사수를 못 보는 사람 포함 — 그것이 노출이다) |
 | `SWING` | 방 안의 모든 플레이어 (`from` 공격자 타일, `to` 휘두른 타일) |
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
+| `FELL` | 사망 순간 사망자를 볼 수 있었던 같은 방 사람 (사망자 제외) |
 
 이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE` 이벤트는
 아직 보내지 않는다 — 스냅샷 변화로 충분해서 필요해질 때 추가한다. `DEAD` 이벤트는 아직 없다 —

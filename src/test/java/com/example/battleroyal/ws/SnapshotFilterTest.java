@@ -112,12 +112,24 @@ class SnapshotFilterTest {
         Room room = room();
         Player viewer = at("viewer", OPEN);
         viewer.hold(new Item("i-2", ItemKind.MEDKIT, 0));
+        viewer.takeDamage(10);
         room.add(viewer);
 
         Snapshot.Self self = filter.forViewer(room, viewer, 100).self();
 
         assertNull(self.ammo());
         assertEquals(ActionA.HEAL, self.actionA());
+    }
+
+    @Test
+    void aMedkitIsNotOfferedAtFullHealth() {
+        Room room = room();
+        Player viewer = at("viewer", OPEN);
+        viewer.hold(new Item("i-2", ItemKind.MEDKIT, 0));
+        room.add(viewer);
+
+        assertNull(filter.forViewer(room, viewer, 100).self().actionA(),
+                "healing nothing would only throw the medkit away");
     }
 
     @Test

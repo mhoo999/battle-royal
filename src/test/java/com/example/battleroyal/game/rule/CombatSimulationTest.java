@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -407,6 +408,18 @@ class CombatSimulationTest {
     }
 
     @Test
+    void aMedkitIsNeitherOfferedNorSpentAtFullHealth() {
+        Room room = room();
+        Player player = put(room, "p", new Pos(1, 1), Direction.UP, ItemKind.MEDKIT);
+
+        pressA(room, player, 0);
+
+        assertNull(ActionResolver.actionA(player));
+        assertTrue(player.hasItem(), "a press at full health must not waste it");
+        assertEquals(0, player.nextActionTick());
+    }
+
+    @Test
     void healingIsTheOneThingACabinetAllows() {
         Room room = room();
         Player healer = put(room, "h", new Pos(9, 4), Direction.UP, ItemKind.MEDKIT);
@@ -421,6 +434,62 @@ class CombatSimulationTest {
         assertEquals(FULL - 60 + GameConstants.MEDKIT_HEAL, healer.hp());
         assertEquals(GameConstants.PISTOL_MAGAZINE, gunner.heldItem().ammo(),
                 "no shooting from a cabinet");
+    }
+
+    // --- Falling ------------------------------------------------------------
+
+    private static GameEvent.Fell fell(Room room) {
+        return room.drainEvents().stream()
+                .filter(GameEvent.Fell.class::isInstance)
+                .map(GameEvent.Fell.class::cast)
+                .findFirst().orElseThrow();
+    }
+
+    @Test
+    void aDeathInTheOpenIsSeenByEveryoneElseInTheRoom() {
+        Room room = room();
+        Player killer = put(room, "k", new Pos(7, 1), Direction.RIGHT, null);
+        Player victim = put(room, "v", new Pos(8, 1), Direction.LEFT, null);
+        put(room, "b", new Pos(12, 12), Direction.UP, null);
+        victim.takeDamage(FULL - 1);
+        room.drainEvents();
+
+        pressA(room, killer, 0);
+
+        GameEvent.Fell fell = fell(room);
+        assertEquals(new Pos(8, 1), fell.at());
+        assertEquals(Set.of("k", "b"), Set.copyOf(fell.witnessIds()),
+                "the dead do not watch themselves fall");
+    }
+
+    @Test
+    void aDeathInABushIsSeenOnlyFromInsideIt() {
+        Room room = room();
+        Player killer = put(room, "k", new Pos(3, 3), Direction.RIGHT, null);
+        Player victim = put(room, "v", new Pos(4, 3), Direction.LEFT, null);
+        put(room, "b", new Pos(12, 12), Direction.UP, null);
+        victim.takeDamage(FULL - 1);
+        room.drainEvents();
+
+        pressA(room, killer, 0);
+
+        assertEquals(List.of("k"), fell(room).witnessIds(),
+                "outside the bush nobody saw it, so nobody is told");
+    }
+
+    @Test
+    void aDeathInACabinetIsSeenByNobody() {
+        Room room = room();
+        Player killer = put(room, "k", new Pos(8, 4), Direction.RIGHT, ItemKind.KNIFE);
+        Player victim = put(room, "v", new Pos(9, 4), Direction.LEFT, null);
+        victim.setInCabinet(true);
+        victim.takeDamage(FULL - 1);
+        room.drainEvents();
+
+        pressA(room, killer, 0);
+
+        assertTrue(fell(room).witnessIds().isEmpty(),
+                "counted before the body leaves the cabinet, not after");
     }
 
     @Test

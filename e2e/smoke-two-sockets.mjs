@@ -1,7 +1,7 @@
 /*
  * Server-side checks for the world contract: separate arrival rooms, doors that lead
  * somewhere stable, replication between players who share a room, item pickup, combat
- * events and who receives them, and a server that ignores anything the client asserts
+ * events and who receives them (including a kill), and a server that ignores anything the client asserts
  * about itself.
  *
  * A room holds one item at most and often none, so the pickup check runs only when B's
@@ -413,6 +413,32 @@ async function combat(a, b) {
     check(bSwing.from[0] === self.x && bSwing.from[1] === self.y
         && bSwing.to[0] === bAt.x && bSwing.to[1] === bAt.y,
       'the swing runs from the attacker to the tile struck', JSON.stringify(bSwing));
+  }
+
+  // Finish B off. The victim gets their result; whoever saw it gets only that somebody
+  // fell, and where. A punch has a 500ms cooldown, so this takes about ten seconds.
+  a.events.length = 0;
+  b.events.length = 0;
+  const hidden = b.latest().self.concealment !== 'NONE';
+  for (let i = 0; i < 25 && !b.events.some((e) => e.type === 'YOU_DIED'); i++) {
+    a.send({ type: 'ACTION_A' });
+    await sleep(550);
+  }
+  const died = b.events.some((e) => e.type === 'YOU_DIED');
+  check(died, 'enough blows kill B');
+  if (died) {
+    const fell = a.events.find((e) => e.event === 'FELL');
+    if (hidden) {
+      // A bush B was standing in hides the fall from anyone outside it.
+      check(fell === undefined, 'a fall nobody could see is not announced', 'B was concealed');
+    } else {
+      check(fell !== undefined && fell.at[0] === bAt.x && fell.at[1] === bAt.y,
+        'the attacker is told B fell where B stood', JSON.stringify(fell));
+      check(fell !== undefined
+          && JSON.stringify(Object.keys(fell).sort()) === JSON.stringify(['at', 'event', 'type']),
+        'FELL says where, never who');
+    }
+    check(!b.events.some((e) => e.event === 'FELL'), 'the fallen are not told they fell');
   }
 }
 

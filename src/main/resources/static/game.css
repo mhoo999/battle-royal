@@ -370,6 +370,8 @@ header.hud-bar {
 /* A shot is a 100ms flourish over the tiles it crossed, not a moving entity. */
 .cell.shot  { color: var(--shot); }
 .cell.swing { color: var(--shot); font-weight: bold; }
+/* Where somebody went down, for a second. */
+.cell.fell  { color: var(--enemy); font-weight: bold; }
 
 /* Loot gauge: fills while B is held; the server decides when the item lands. */
 #loot {
@@ -391,6 +393,7 @@ header.hud-bar {
 #board.hurt { outline: 2px solid var(--enemy); }
 #board.hit  { outline: 2px solid var(--shot); }
 .state.looting { color: var(--item); }
+.state.notice  { color: var(--enemy); }
 #hp-fill.hurt { background: var(--hp-low); }
 
 /* --- Controls ---------------------------------------------------------- */

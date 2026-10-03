@@ -56,6 +56,9 @@ const REPEAT_MS = 140;
 const SHOT_MS = 100;
 const SWING_MS = 150;
 const HIT_MS = 150;
+/* A fall: the ✕ where somebody went down, and the line under the board saying so. */
+const FELL_MS = 1000;
+const NOTICE_MS = 2000;
 
 /* The arc drawn on the tile a knife or pan swings at, curving the way it was swung. */
 const SWING_GLYPH = { UP: '⌒', DOWN: '⌣', LEFT: '(', RIGHT: ')' };
@@ -80,6 +83,7 @@ const ui = {
 const cells = [];
 let socket = null;
 let lastSnapshot = null;
+let notice = null;     // { text, until } a passing line that outranks the status line
 let flourishes = [];   // [{ marks: [{x, y, glyph, cls}], until }] shots and swings on screen
 let lastHp = null;
 let nickname = '';
@@ -179,6 +183,14 @@ function showSwing(from, to) {
   ], SWING_MS);
 }
 
+function showFell(at) {
+  const [x, y] = at;
+  showFlourish([{ x, y, glyph: '✕', cls: 'fell' }], FELL_MS);
+  notice = { text: '누군가 쓰러졌다', until: Date.now() + NOTICE_MS };
+  if (lastSnapshot) paintHud(lastSnapshot);
+  setTimeout(() => { if (lastSnapshot) paintHud(lastSnapshot); }, NOTICE_MS);
+}
+
 function blink(element, cls, ms) {
   element.classList.add(cls);
   setTimeout(() => element.classList.remove(cls), ms);
@@ -202,11 +214,17 @@ function paintHud(snapshot) {
     ? (ITEM_LABEL[self.item] || self.item) + (self.ammo === null ? '' : ' ' + self.ammo)
     : '-';
 
-  setAction(ui.btnA, 'A', A_LABEL[self.actionA]);
+  // A medkit at full health is not offered. Keep its name on the button, greyed, so
+  // the player sees why A is off rather than a bare dash.
+  const idleA = self.item === 'MEDKIT' ? A_LABEL.HEAL : null;
+  setAction(ui.btnA, 'A', A_LABEL[self.actionA], idleA);
   setAction(ui.btnB, 'B', B_LABEL[self.actionB]);
 
   ui.state.className = 'state';
-  if (self.concealment === 'CABINET') {
+  if (notice !== null && notice.until > Date.now()) {
+    ui.state.textContent = notice.text;
+    ui.state.classList.add('notice');
+  } else if (self.concealment === 'CABINET') {
     ui.state.textContent = '캐비닛에 숨어 있음 — 옆이나 뒤로 움직이면 나감';
     ui.state.classList.add('hidden-cabinet');
   } else if (self.lootMsLeft !== null) {
@@ -242,9 +260,9 @@ function paintLoot(self) {
   ui.lootFill.style.width = '100%';
 }
 
-function setAction(button, letter, label) {
+function setAction(button, letter, label, idleLabel = null) {
   button.querySelector('b').textContent = letter;
-  button.querySelector('small').textContent = label || '-';
+  button.querySelector('small').textContent = label || idleLabel || '-';
   button.disabled = !label;
 }
 
@@ -296,6 +314,7 @@ function connect(token) {
       if (message.event === 'SHOT') showShot(message.path);
       else if (message.event === 'SWING') showSwing(message.from, message.to);
       else if (message.event === 'HIT') blink(ui.board, 'hit', HIT_MS);
+      else if (message.event === 'FELL') showFell(message.at);
     } else if (message.type === 'YOU_DIED') {
       showDeath(message);
     }
@@ -491,6 +510,7 @@ function enterGame(saved) {
   lastSnapshot = null;
   lastHp = null;
   flourishes = [];
+  notice = null;
   ui.lobby.hidden = true;
   ui.dead.hidden = true;
   ui.game.hidden = false;

@@ -52,4 +52,20 @@ public sealed interface GameEvent {
     record Died(String playerId, String nickname, int score, int kills, long survivedTicks,
                 String killerNickname, ItemKind weapon) implements GameEvent {
     }
+
+    /**
+     * That somebody fell, and where, for the people who could see them fall. Without it
+     * a death in front of you was only a body missing from the next snapshot.
+     *
+     * <p>Witnesses are worked out at the moment of death, before the body leaves its
+     * cabinet, because the dead are invisible to every later question. Nobody else is
+     * told: a death in a bush or a cabinet gives away nothing more than it did before.
+     * Who it was is not said either.
+     */
+    record Fell(Pos at, List<String> witnessIds) implements GameEvent {
+
+        public Fell {
+            witnessIds = List.copyOf(witnessIds);
+        }
+    }
 }

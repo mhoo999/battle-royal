@@ -24,12 +24,13 @@ public final class ActionResolver {
 
     /**
      * A follows the held item, and empty hands punch. A gun in hand always has a round:
-     * the last shot uses it up.
+     * the last shot uses it up. A medkit does nothing at full health, so it is not
+     * offered then and cannot be wasted.
      */
     public static ActionA actionA(Player player) {
         if (player.hasItem() && player.heldItem().kind() == ItemKind.MEDKIT) {
             // Healing is the one action a cabinet allows.
-            return ActionA.HEAL;
+            return player.hp() < GameConstants.MAX_HP ? ActionA.HEAL : null;
         }
         if (player.inCabinet()) {
             // A cabinet is for surviving, not fighting.
