@@ -385,6 +385,28 @@ Avoid duplicating the same information across documents.
 
 ---
 
+### Screenshots for the portfolio
+
+The project doubles as a portfolio, so its visible progress is kept as pictures. When a
+change is visible — a new screen, a gameplay feature, a console step on AWS — save a
+screenshot as part of finishing it, not afterwards.
+
+- **Where:** `docs/images/game/` for the game, `docs/images/aws/` for infrastructure.
+  `docs/images/screenshot.png` is the one README shows.
+- **Name:** `YYYY-MM-DD-what-it-shows.png`, lower-case, hyphens
+  (`2026-10-03-floor-crate.png`). Never overwrite an older one: the series is the story.
+- **Index:** add a line to `docs/images/README.md` — file, date, what it shows, and the
+  commit or feature it belongs to.
+- **Size:** crop to what matters and keep each file under about 300 KB. Phone layouts at
+  390 px wide, desktop at the game's own width, not the whole monitor.
+- **Before committing, look at it.** Nothing that is not already written in
+  `docs/AWS_DEPLOYMENT.md`: no home IP, no passwords, tokens, keys, access keys or
+  session IDs, no billing details. Crop or blur them. Other people's nicknames from live play
+  are fine; nothing else about them is.
+
+The user may add their own console screenshots to `docs/images/aws/`; check them by the
+same rule before committing.
+
 ## 17. Important Rules
 
 Uncertain about a game rule: do not invent a mechanic. Name the ambiguity and ask.
