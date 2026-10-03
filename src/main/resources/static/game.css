@@ -506,9 +506,10 @@ header.hud-bar {
 .hideout > :not(.scene) { position: relative; z-index: 1; }
 
 /*
- * The hideout is a picture in a frame, like a game's ending screen: a hut on a hill
- * under a full moon, a student walking the path up to it. ASCII art in the classic
- * manner (tools/hideout-art.py): mountains, pines, hut and path as line drawing, only
+ * The hideout is a picture in a frame, like a game's ending screen: a ruin hidden in
+ * the island's woods under a full moon, a tarp strung over a bedroll, barbed wire cut
+ * where the trail goes through, a student walking up to spend the night. ASCII art in the classic
+ * manner (tools/hideout-art.py): mountains, pines, ruin and trail as line drawing, only
  * the moon shaded with a density ramp, a lot of black left alone. One mint; depth is
  * five brightness tiers (t1 darkest). 64 x 78 cells, sized to fit the screen whole.
  * Decoration only, so it takes no clicks.

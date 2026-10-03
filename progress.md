@@ -132,7 +132,13 @@ secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
       ASCII art is line drawing with a lot of black. `tools/hideout-art.py` now draws
       64x78: 45-degree mountains with snow, tiered pines, hut/smoke/path/student from
       hand-made pieces, only the moon shaded with a character ramp; tiers t1-t5 retuned
-      for thin lines. Screenshot `2026-10-04-v2-hideout-ascii-art.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      for thin lines. Screenshot `2026-10-04-v2-hideout-ascii-art.png`.
+      Then (user: "a lived-in hut is not Battle Royale; a ruin, a makeshift shelter, and
+      in the trees, not out in the open") the hut became a ruin: broken concrete walls, a
+      tarp strung over a bedroll and a pack, no chimney smoke or lit window, the moon
+      the only light; a dim treeline behind and pines in front half over its walls, a
+      winding trail, barbed wire cut where the trail passes. Screenshot
+      `2026-10-04-v2-hideout-ruin-in-woods.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
       describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
