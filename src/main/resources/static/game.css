@@ -146,6 +146,44 @@ input, button {
 
 #start:active, #restart:active { background: rgba(127, 212, 193, 0.12); }
 
+/* The first choice: sign in with Google, or play a guest trial. */
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 18rem);
+}
+.entry-button {
+  display: block;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.entry-button.google { border-color: var(--self); color: var(--self); }
+.entry-button:active { background: rgba(127, 212, 193, 0.12); }
+.entry[hidden], #lobby-form[hidden], #nickname[hidden], #back[hidden], #logout-form[hidden] { display: none; }
+
+.account { margin-top: 0.25rem; }
+.link-button {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.link-button:hover { color: var(--ink); }
+
 /* --- Ranking -------------------------------------------------------------- */
 
 .ranking[hidden] { display: none; }
@@ -308,6 +346,7 @@ header.hud-bar {
 
 .state.hidden-bush { color: var(--bush); }
 .state.hidden-cabinet { color: var(--cabinet); }
+.state.extracting { color: var(--self); }
 
 #hud-name {
   color: var(--self);
@@ -376,8 +415,197 @@ header.hud-bar {
 .cell.swing { color: var(--shot); font-weight: bold; }
 /* Where somebody went down, for a second. */
 .cell.fell  { color: var(--enemy); font-weight: bold; }
+/* One of my own exits. Nobody else's board has it. */
+.cell.exit  { color: var(--self); font-weight: bold; }
+
+/* Where my exits lie, a needle and a count of rooms for each. */
+.compass {
+  min-height: 1.1em;
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  color: var(--self);
+  text-align: center;
+}
+.compass b { font-weight: normal; color: var(--dim); }
 
 /* Loot gauge: fills while B is held; the server decides when the item lands. */
+/*
+ * The bag: inventory, and the crate beside it when one is open. It lies over the board
+ * and nowhere else, so the controls below stay usable with it open; the game does not
+ * pause. Pick something, then pick where it goes.
+ */
+.board-wrap { position: relative; }
+.inv {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(11, 14, 15, 0.94);
+  border: 1px solid var(--line);
+}
+.inv[hidden] { display: none; }
+.inv-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+}
+.inv-body { display: flex; gap: 0.75rem; flex: 1; min-height: 0; }
+.inv-col { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.inv-col[hidden] { display: none; }
+.crate-col { cursor: pointer; }
+.inv-title { margin: 0; font-size: 0.7rem; letter-spacing: 0.2em; color: var(--dim); }
+.slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.slot {
+  position: relative;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--item);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.slot.empty { color: var(--dim); }
+.slot.selected { border-color: var(--self); background: rgba(127, 212, 193, 0.1); }
+/* Already packed to carry out: still shown, greyed, so the stash keeps its order. */
+.slot:disabled { opacity: 0.35; cursor: default; }
+/* The equipped slot: what A uses. */
+.slot .equip {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.3rem;
+  color: var(--self);
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+.inv-hint { margin: 0; min-height: 1.2em; font-size: 0.72rem; color: var(--dim); text-align: center; }
+.bag {
+  padding: 0.15rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.bag.open { border-color: var(--self); color: var(--self); }
+
+/* The hideout: the stash on the left, what to carry out on the right. */
+.hideout { gap: 0.75rem; }
+.hideout > :not(.hideout-art) { position: relative; z-index: 1; }
+
+/*
+ * A shabby hut in the hills under a full moon, behind everything on the hideout, drawn
+ * in the same block characters as the title. Generated, one class per layer: the
+ * farther a ridge, the paler, and every peak is lit on the moon's side. Decoration
+ * only, so it takes no clicks and scales with the screen.
+ */
+.hideout-art {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  margin: 0;
+  /*
+   * Named outright: on a Korean page the generic monospace falls back to a Korean font
+   * that draws a backslash as a won sign and block characters at double width.
+   */
+  font-family: Consolas, "Courier New", monospace;
+  font-size: min(2.6vw, 12px);
+  line-height: 1;
+  text-align: left;
+  color: var(--wall);
+  pointer-events: none;
+  user-select: none;
+}
+.hideout-art .star      { color: #5d6f73; }
+.hideout-art .moon      { color: #f2e3b3; text-shadow: 0 0 0.6em rgba(229, 192, 123, 0.7); }
+.hideout-art .halo      { color: rgba(229, 192, 123, 0.28); }
+.hideout-art .snow      { color: #9fb1b4; }
+.hideout-art .far       { color: #3d5157; }
+.hideout-art .far-shade { color: #2a383c; }
+.hideout-art .mid       { color: #27383d; }
+.hideout-art .mid-shade { color: #1c292d; }
+.hideout-art .near      { color: #152024; }
+.hideout-art .tree      { color: #0e1618; }
+.hideout-art .hut       { color: #4a3a2e; }
+.hideout-art .hut-shade { color: #2c221b; }
+.hideout-art .dark      { color: #0b0e0f; }
+.hideout-art .lit       { color: #f0b860; text-shadow: 0 0 0.8em rgba(240, 184, 96, 0.8); }
+.hideout-art .glow      { color: rgba(216, 166, 87, 0.35); }
+.hideout-art .smoke     { color: #4d5c60; }
+.hideout-art .ground    { color: #11191b; }
+.hideout-art .grass     { color: var(--bush); }
+.hideout h2 { margin: 0; letter-spacing: 0.3em; }
+.hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
+.hideout-who span { color: var(--self); }
+.hideout-body { display: flex; gap: 0.75rem; width: min(100%, 24rem); }
+.slots.stash { max-height: 50vh; overflow-y: auto; }
+
+/* Money, and the haul the ranking counts. */
+.purse { margin: 0; font-size: 0.8rem; color: var(--dim); }
+.purse b { font-weight: normal; color: var(--item); font-variant-numeric: tabular-nums; }
+
+/* The trader: what a picked stash item fetches, and what is for sale. */
+.sell {
+  padding: 0.4rem 1rem;
+  background: transparent;
+  border: 1px solid var(--item);
+  border-radius: 2px;
+  color: var(--item);
+  cursor: pointer;
+}
+.sell[hidden] { display: none; }
+.trader { width: min(100%, 24rem); }
+.trader-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+.trader-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.trader-list .price { color: var(--item); font-variant-numeric: tabular-nums; }
+.trader-list button {
+  padding: 0.2rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.trader-list button:disabled { opacity: 0.35; cursor: default; }
+#set-out {
+  width: min(100%, 18rem);
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: 1px solid var(--self);
+  border-radius: 2px;
+  color: var(--self);
+  letter-spacing: 0.3em;
+  cursor: pointer;
+}
+#set-out:disabled { opacity: 0.4; cursor: default; }
+
 #loot {
   height: 4px;
   background: var(--line);

@@ -8,7 +8,11 @@ package com.example.battleroyal.game.core;
  * press B.
  */
 public enum ActionB {
-    PICKUP,
-    SWAP,
-    DOOR
+    /** Start opening the crate underfoot; held, like V1's loot. */
+    OPEN,
+    /** Close the crate this player has open. */
+    CLOSE,
+    DOOR,
+    /** Hold to leave the island through one of this player's own exits. */
+    EXTRACT
 }

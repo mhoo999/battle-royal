@@ -1,19 +1,27 @@
 package com.example.battleroyal.game.core;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
  * A player in the world. Mutable, and mutated only by the game loop thread.
  *
- * <p>Nothing here is sent to other clients as-is. {@code hp}, the held item and its
+ * <p>Nothing here is sent to other clients as-is. {@code hp}, the inventory and its
  * ammo are private state; see docs/NETWORK_PROTOCOL.md for what leaves the server.
+ *
+ * <p>The inventory is {@link #INVENTORY_SLOTS} slots, one of them equipped: A uses
+ * whatever is in the equipped slot, and an empty equipped slot is bare hands.
  *
  * <p>Bush concealment is derived from position rather than stored, so it cannot drift
  * out of sync with where the player actually is. Only the cabinet is a stored flag,
  * because a cabinet is entered with an explicit action.
  */
 public final class Player {
+
+    public static final int INVENTORY_SLOTS = 3;
 
     private final String id;
     private final String nickname;
@@ -22,7 +30,9 @@ public final class Player {
     private Direction facing = Direction.UP;
     private int hp;
     private boolean alive = true;
-    private Item heldItem;
+    private final Item[] slots = new Item[INVENTORY_SLOTS];
+    private int equipped;
+    private Pos openCrateAt;
     private boolean inCabinet;
 
     private long nextMoveTick;
@@ -31,6 +41,11 @@ public final class Player {
 
     private Direction bufferedMove;
     private long bufferedMoveExpiresTick;
+
+    private List<Exit> exits = List.of();
+    private Pos extractPos;
+    private long extractDoneTick;
+    private boolean extracted;
 
     private String lootItemId;
     private Pos lootPos;
@@ -105,26 +120,77 @@ public final class Player {
         hp = Math.min(maxHp, hp + amount);
     }
 
+    /** The equipped item, which is what A uses; null is bare hands. */
     public Item heldItem() {
-        return heldItem;
+        return slots[equipped];
     }
 
     public boolean hasItem() {
-        return heldItem != null;
+        return heldItem() != null;
     }
 
+    /** Puts an item in the equipped slot, replacing whatever was there. */
     public void hold(Item item) {
-        this.heldItem = item;
+        slots[equipped] = item;
     }
 
     /**
-     * Hands the held item back to the caller, which places it or, for a used-up medkit
-     * or pistol, lets it go.
+     * Takes the equipped item out of the inventory, for a used-up medkit or gun. The
+     * slot stays equipped and empty: bare hands until something else is chosen.
      */
     public Item releaseItem() {
-        Item released = heldItem;
-        heldItem = null;
+        Item released = slots[equipped];
+        slots[equipped] = null;
         return released;
+    }
+
+    public Item slot(int index) {
+        return slots[index];
+    }
+
+    /** Puts an item (or nothing) in a slot and hands back what was there. */
+    public Item setSlot(int index, Item item) {
+        Item previous = slots[index];
+        slots[index] = item;
+        return previous;
+    }
+
+    /** The slots in order, empty ones as null. A copy. */
+    public List<Item> inventory() {
+        return Arrays.asList(slots.clone());
+    }
+
+    public int equipped() {
+        return equipped;
+    }
+
+    public void equip(int index) {
+        this.equipped = index;
+    }
+
+    /** Empties every slot and hands back what was in them, for a death. */
+    public List<Item> dropAll() {
+        List<Item> carried = new ArrayList<>();
+        for (int i = 0; i < slots.length; i++) {
+            if (slots[i] != null) {
+                carried.add(slots[i]);
+                slots[i] = null;
+            }
+        }
+        return carried;
+    }
+
+    /** The tile of the crate this player has open, or null. */
+    public Pos openCrateAt() {
+        return openCrateAt;
+    }
+
+    public void openCrate(Pos at) {
+        this.openCrateAt = at;
+    }
+
+    public void closeCrate() {
+        this.openCrateAt = null;
     }
 
     public boolean inCabinet() {
@@ -194,8 +260,8 @@ public final class Player {
     }
 
     /**
-     * Starts taking the item on this tile. It lands in hand only if the player is
-     * still on the same tile, and the same item still lies there, when time is up.
+     * Starts opening the crate on this tile. It opens only if the player is still on
+     * the same tile, and the same crate still lies there, when time is up.
      */
     public void startLoot(String itemId, long doneTick) {
         this.lootItemId = itemId;
@@ -228,6 +294,62 @@ public final class Player {
         String itemId = pos.equals(lootPos) ? lootItemId : null;
         cancelLoot();
         return itemId;
+    }
+
+    // --- Exits ------------------------------------------------------------
+
+    /** This player's exits, compass bearings included. Empty for a player given none. */
+    public List<Exit> exits() {
+        return exits;
+    }
+
+    public void setExits(List<Exit> exits) {
+        this.exits = List.copyOf(exits);
+    }
+
+    /**
+     * Starts holding B on an exit. Like a loot it is pinned to the tile: it completes
+     * only if the player is still standing there when time is up.
+     */
+    public void startExtract(long doneTick) {
+        this.extractPos = pos;
+        this.extractDoneTick = doneTick;
+    }
+
+    public boolean extracting() {
+        return extractPos != null;
+    }
+
+    /** Meaningful only while {@link #extracting()}. */
+    public long extractDoneTick() {
+        return extractDoneTick;
+    }
+
+    public void cancelExtract() {
+        this.extractPos = null;
+    }
+
+    /** Whether an extraction under way is due now, on the tile it started on. */
+    public boolean extractDue(long nowTick) {
+        return extractPos != null && nowTick >= extractDoneTick && pos.equals(extractPos);
+    }
+
+    /**
+     * Off the island. Still alive, but out of the game: no command reaches them and the
+     * registry takes them out of the world after this tick's broadcast.
+     */
+    public boolean extracted() {
+        return extracted;
+    }
+
+    public void markExtracted() {
+        this.extracted = true;
+        this.extractPos = null;
+    }
+
+    /** Still in play: alive and not yet gone through an exit. */
+    public boolean active() {
+        return alive && !extracted;
     }
 
     /**

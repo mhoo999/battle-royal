@@ -42,9 +42,18 @@ public final class Item {
     }
 
     public void spendAmmo() {
-        if (ammo <= 0) {
-            throw new IllegalStateException("No ammo to spend on " + id);
+        spendAmmo(1);
+    }
+
+    /** Takes {@code count} rounds out: one fired, or several moved into a gun. */
+    public void spendAmmo(int count) {
+        if (count > ammo) {
+            throw new IllegalStateException("Not " + count + " rounds to spend on " + id);
         }
-        ammo--;
+        ammo -= count;
+    }
+
+    public void addAmmo(int count) {
+        ammo += count;
     }
 }

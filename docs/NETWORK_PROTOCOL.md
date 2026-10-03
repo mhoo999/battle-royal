@@ -15,33 +15,74 @@ per-player 필터링에는 raw `TextWebSocketHandler` + Jackson이 더 단순하
 ### `POST /api/session`
 
 ```json
-요청   { "nickname": "kang" }
-응답   { "token": "<uuid>", "playerId": "p-17" }
+요청   { "nickname": "kang" }                          게스트
+응답   { "token": "<uuid>", "playerId": "p-17", "nickname": "~kang" }
 ```
 
-닉네임은 trim 후 1~12자. 공백만인 값은 400. 중복은 허용한다.
+**게스트**(로그인 안 함): 닉네임은 trim 후 1~12자, 공백만이면 400. 서버가 앞에 `~`를
+붙여 **랭킹에 남지 않게** 한다(이미 붙어 있으면 다시 붙이지 않는다). 중복은 허용한다.
 
-### `GET /api/ranking?limit=20`
+**로그인한 계정**은 여기로 오지 않는다: 409 "거점에서 출발하세요". 거점에서 출발한다(아래).
+(V2 브랜치)
+
+### `GET /api/hideout`, `POST /api/hideout/sortie` (V2 브랜치, 로그인 필요 — 아니면 401)
 
 ```json
-[ { "nickname": "kang", "score": 1270, "kills": 3, "survivedSeconds": 412 } ]
+GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ],
+          "capacity": 10, "out": false, "money": 135, "haul": 165,
+          "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ] }
+POST  { "loadout": [ 11, null, 12 ] }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
-`GameResult`에 대한 top-N 쿼리다. 별도 Ranking 테이블은 두지 않는다.
-정렬은 점수 내림차순, 같으면 생존 시간이 긴 쪽, 그다음 먼저 끝난 쪽. `limit`은
-1~100으로 잘린다. 로비는 상위 10명을 보여준다.
+`loadout`은 칸 순서대로 창고 아이템 ID(빈 칸은 `null`), 최대 3칸. 응답 토큰으로 WebSocket에
+붙으면 그 아이템을 들고 섬에 들어가고, 첫 칸이 장착된다. 거부: 닉네임이 없으면 409, 이미
+섬에 나가 있으면 409 "이미 섬에 나가 있습니다", 남의 아이템·이미 나간 아이템·같은 아이템
+두 번·4칸 이상이면 400. 한국어 사유를 본문에 담는다.
 
-### `GET /api/ranking/rank?score=37&survivedSeconds=28`
+들고 나간 아이템은 섬에서 평범한 아이템이고 ID가 `s-<창고 ID>`다. 죽으면 잃는다(창고에서
+삭제). 서버가 재시작되면 들고 나간 것만 창고로 돌아온다(D6). 탈출하면 가져온 것이 창고에
+들어간다(`EXTRACTED` 참고).
+
+### `POST /api/hideout/sell`, `POST /api/hideout/buy` (V2 브랜치, 로그인 필요)
 
 ```json
-{ "rank": 25 }
+sell  { "itemId": 11 }     → 위의 GET과 같은 거점 화면
+buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 ```
 
-이 수치의 기록이 몇 위인지. 1 + (더 나은 기록 수)다 — 점수가 높거나, 같은 점수에
-더 오래 살았으면 더 나은 기록이다. 완전히 같은 기록은 같은 순위다. 이름이 아니라
-수치로 묻는 이유는 이름이 중복되기 때문이다. 클라는 방금 끝난 목숨(`YOU_DIED`)의
-수치로 묻고, 그 기록이 10위 밖이면 목록 아래에 `⋮`와 함께 붙인다. 저장이 끝나기
-전에 물어도 답이 같다.
+상인(D11). 창고 항목의 `price`가 상인이 사 주는 값이자 그 아이템의 가치이고, `trader`는
+상인이 파는 목록과 값이다. 값은 서버만 정한다(`ItemValues`). 팔면 그 아이템은 사라지고 돈이
+는다. 사면 돈이 줄고 탄약이 가득 찬 새 아이템이 창고에 들어온다. 거부는 409와 한국어 사유:
+창고에 없는(나가 있거나 남의) 아이템, 상인이 팔지 않는 물건, 돈 부족, 창고가 가득 참(사기만 —
+탈출은 가득 차도 다 들어온다).
+
+### `GET /api/me`, `POST /api/me/nickname` (V2 브랜치)
+
+```json
+GET   → { "signedIn": false, "nickname": null }       누구나
+POST  { "nickname": "shuya" } → { "signedIn": true, "nickname": "shuya" }   로그인 필요(아니면 401)
+```
+
+닉네임은 게스트와 계정 모두 `NicknamePolicy`를 거친다: 1~12자, 비속어·음란어·운영자 사칭 금지
+(400, 본문은 플레이어에게 그대로 보여 줄 한국어 사유). 구글 로그인은 `/oauth2/authorization/google`로 시작하고 `openid` 범위만 요청한다. 계정에는
+구글의 `sub`와 닉네임만 저장한다(이메일·이름 없음). 계정 닉네임은 1~12자, 계정끼리
+중복 불가(409), `~`로 시작할 수 없고(400), 한 번 정하면 바꾸지 않는다(409). 세션 쿠키는
+`SameSite=Lax`, 운영에서는 `Secure`. CSRF 토큰은 쓰지 않는다(`SecurityConfig` 주석).
+
+### `GET /api/ranking?limit=20` (V2: 가져온 가치)
+
+```json
+{ "top": [ { "rank": 1, "nickname": "shuya", "value": 1240 } ],
+  "me":  { "rank": 25, "nickname": "kawada", "value": 90 } }
+```
+
+계정별 **가져온 가치**(`haul`) 순위다(D5). 탈출할 때 섬에서 **주워 온 것**의 가치를 더한
+값이고, 창고에서 들고 나갔다 다시 들고 온 장비는 세지 않는다(같은 권총으로 들락날락하며
+쌓는 것을 막는다). 0인 계정은 없다. 같은 값은 같은 순위, 그다음 먼저 가입한 쪽이 위.
+`limit`은 1~100. `me`는 로그인한 사람 자신의 줄(어디에 있든), 아니면 `null`. 로비는 상위
+10명을 보이고, 내가 그 밖이면 `⋮` 아래에 내 줄을 붙인다. 게스트는 순위가 없다.
+V1의 점수 순위(`/api/ranking/rank`)는 없어졌다. 목숨마다의 기록(`GameResult`)은 계속
+저장한다.
 
 ---
 
@@ -81,14 +122,20 @@ GET /ws/game?token=<uuid>
 { "type": "ACTION_A" }
 { "type": "ACTION_B" }                 // B를 누름
 { "type": "RELEASE_B" }                // B를 뗌 — 진행 중인 루팅 취소
+{ "type": "EQUIP", "slot": 1 }         // A가 쓸 칸 (V2)
+{ "type": "TAKE", "index": 0, "slot": 2 } // 열린 상자의 index번째를 slot으로; 차 있으면 맞바꿈 (V2)
+{ "type": "PUT", "slot": 2 }           // slot의 아이템을 열린 상자로 (V2)
+{ "type": "CLOSE" }                    // 열린 상자 닫기 (V2)
 ```
 
-이것이 전부다. 좌표, HP, 데미지, 인벤토리를 담은 메시지는 **존재하지 않아야 한다.**
+이것이 전부다. 좌표, HP, 데미지, 아이템을 담은 메시지는 **존재하지 않아야 한다.**
+`slot`/`index`는 **내 인벤토리와 내가 연 상자 안의 자리**일 뿐이고, 서버가 범위와 상자가
+열려 있는지(그 칸에 서 있는지)를 확인한다. 아이템 ID나 종류를 보내는 명령은 없다.
 `SET_POSITION`, `SET_HP`, `DEAL_DAMAGE` 같은 타입을 추가하지 않는다.
 
 알 수 없는 타입이나 형식 오류는 조용히 무시한다(연결을 끊지 않는다).
 
-메시지는 `{type, dir}` 형태로만 역직렬화한다. 따라서 `{"type":"MOVE","x":999,"y":999}`
+메시지는 `{type, dir, slot, index}` 형태로만 역직렬화한다. 따라서 `{"type":"MOVE","x":999,"y":999}`
 같은 프레임은 `x`/`y`가 **들어갈 자리가 없어서** 자동으로 버려진다.
 
 **쿨다운 중 도착한 커맨드는 큐잉되지 않고 버려진다.** 클라이언트는 이동 쿨다운(200ms)
@@ -112,7 +159,12 @@ GET /ws/game?token=<uuid>
   "self": {
     "id": "p1", "x": 10, "y": 7, "direction": "UP",
     "hp": 80, "item": "MEDKIT", "ammo": null,
+    "inventory": [ { "kind": "MEDKIT", "ammo": null }, null, { "kind": "PISTOL", "ammo": 4 } ],
+    "equipped": 0,
+    "crate": null,
     "concealment": "CABINET", "lootMsLeft": null, "invulnerable": false,
+    "exits": [ { "dx": 0, "dy": 0, "x": 2, "y": 5 }, { "dx": -1, "dy": 2, "x": null, "y": null } ],
+    "extractMsLeft": null,
     "score": 420, "kills": 1,
     "actionA": "HEAL", "actionB": null
   },
@@ -128,21 +180,34 @@ GET /ws/game?token=<uuid>
 `lootMsLeft`는 루팅 중일 때 남은 ms, 아니면 `null`이다. 클라는 루팅이 새로 시작될
 때만 게이지를 0에서 이 시간에 걸쳐 채운다. 완료 판정은 서버가 한다.
 다른 플레이어가 루팅 중인지는 보내지 않는다.
+
+**V2: 탈출구와 나침반(D3, D9).** `self.exits`는 내 탈출구마다 하나씩, 지금 방에서 그
+탈출구가 있는 방까지 **토러스 최단 변위**(`dx` 동쪽+, `dy` 남쪽+, 방 단위)다. 그 방에
+들어와 있을 때만(`dx`=`dy`=0) `x`/`y`에 타일을 준다 — 클라는 거기에 `◎`를 그린다.
+`extractMsLeft`는 탈출 중일 때 남은 ms(`lootMsLeft`와 같은 방식). **남의 탈출구는 어떤
+형태로도 보내지 않는다** — `Self`에만 있고 `Other`에는 필드가 없다(`SnapshotFilterTest`).
+게스트도 탈출구를 받는다. 창고가 없을 뿐이다.
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
 `self.item`: `KNIFE | BAT | PISTOL | CROSSBOW | MEDKIT | PAN | SPOON | CUP | DOLL |
 RECORDER | REGISTER`, or null for empty hands. `YOU_DIED.weapon` is null for a
 bare-hand kill.
-**바닥 아이템은 위치만 보낸다. 종류는 누구에게도 보내지 않는다(결정).** 무엇인지는
-루팅이 끝나 손에 들어왔을 때 `self.item`으로 처음 안다. 클라가 그리지 않더라도
+
+**V2: 인벤토리 3칸.** `self.inventory`는 칸 순서대로 `{kind, ammo}` 또는 빈 칸 `null`,
+`self.equipped`는 A가 쓰는 칸, `self.item`/`self.ammo`는 장착 칸의 것이다.
+`self.crate`는 **내가 열어 둔 상자의 내용**(순서대로)이고, 열린 상자가 없으면 `null`이다.
+
+**바닥에는 상자(`items[]`)만 보낸다. 내용은 연 사람에게만, 그것도 `self.crate`로만
+보낸다(결정).** 상자를 열기 전에는 무엇이 들었는지 아무도 모른다. 클라가 그리지 않더라도
 전송하면 개발자 도구로 보이므로 필드 자체를 두지 않는다 — `SnapshotFilterTest`가
-`FloorItem`을 `id`/`x`/`y`로 고정한다. 들고 있는 아이템은 본인만 안다.
+`FloorItem`을 `id`/`x`/`y`로 고정하고, 상자 내용이 연 사람 말고는 가지 않는 것도 확인한다.
+`items[].id`는 상자의 ID다. 들고 있는 것은 본인만 안다.
 
 `actionA`/`actionB`는 서버가 계산한 현재 유효 행동 **토큰**이다. 표시 문구가 아니다.
 
 ```
 actionA   ATTACK | FIRE | HEAL | null
-actionB   PICKUP | SWAP | DOOR | null
+actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 ```
 
 캐비닛은 `MOVE`로 들어가고 나온다. B 토큰이 없다.
@@ -182,6 +247,7 @@ actionB   PICKUP | SWAP | DOOR | null
 | `SWING` | 방 안의 모든 플레이어 (`from` 공격자 타일, `to` 휘두른 타일) |
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
+| `EXTRACTED` | 탈출한 사람만 (V2) |
 | `FELL` | 사망 순간 사망자를 볼 수 있었던 같은 방 사람 (사망자 제외) |
 
 이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE` 이벤트는
@@ -200,6 +266,18 @@ actionB   PICKUP | SWAP | DOOR | null
 `killer`/`weapon`은 **사망자에게만** 간다. 살아 있는 동안 숨겨지는 정보(상대 무기)지만
 이 시점에 받는 사람은 이미 탈락했다. 처치자가 없는 사망(향후 끊김 타임아웃)이면 둘 다
 `null`. 문장은 클라가 만든다 — 서버는 무기 코드만 보낸다.
+
+### `EXTRACTED` (V2)
+
+```json
+{ "type": "EXTRACTED", "score": 15, "kills": 0, "survivedSeconds": 58,
+  "carried": [ { "kind": "PISTOL", "ammo": 4 }, { "kind": "CUP", "ammo": null } ] }
+```
+
+탈출구에서 B를 5초 누른 사람에게만. `carried`는 가지고 나온 것(칸 순서, 빈 칸 제외)이다.
+`YOU_DIED`처럼 그 목숨의 끝이다: 토큰은 폐기되고(다시 붙으면 거부), 결과가 저장되며
+(`~` 이름 제외), 계정이면 가져온 것이 창고에 들어간다. 다른 사람은 다음 스냅샷에서
+그 사람이 사라지는 것으로만 안다.
 
 ---
 

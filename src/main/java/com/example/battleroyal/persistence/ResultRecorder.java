@@ -1,7 +1,7 @@
 package com.example.battleroyal.persistence;
 
 import com.example.battleroyal.game.core.GameEvent;
-import com.example.battleroyal.game.loop.DeathListener;
+import com.example.battleroyal.game.loop.DepartureListener;
 import com.example.battleroyal.game.rule.GameConstants;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -15,8 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Saves a result whenever a life ends, however it ended: killed, or the disconnect
- * grace ran out. Lives played under an unranked name
+ * Saves a result whenever a life ends, however it ended: killed, the disconnect grace
+ * ran out, or out through an exit. Lives played under an unranked name
  * ({@link GameConstants#UNRANKED_PREFIX}) are not saved.
  *
  * <p>The death is reported on the game loop thread, and a database write can take
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * it over. A single thread keeps results in the order the deaths happened.
  */
 @Component
-public class ResultRecorder implements DeathListener {
+public class ResultRecorder implements DepartureListener {
 
     private static final Logger log = LoggerFactory.getLogger(ResultRecorder.class);
 
@@ -49,16 +49,25 @@ public class ResultRecorder implements DeathListener {
 
     @Override
     public void onDeath(GameEvent.Died died) {
-        if (died.nickname().startsWith(GameConstants.UNRANKED_PREFIX)) {
+        save(died.playerId(), died.nickname(), died.score(), died.kills(), died.survivedTicks());
+    }
+
+    @Override
+    public void onExtracted(GameEvent.Extracted out) {
+        save(out.playerId(), out.nickname(), out.score(), out.kills(), out.survivedTicks());
+    }
+
+    private void save(String playerId, String nickname, int score, int kills, long ticks) {
+        if (nickname.startsWith(GameConstants.UNRANKED_PREFIX)) {
             return;
         }
-        GameResult result = new GameResult(died.nickname(), died.score(), died.kills(),
-                died.survivedTicks() / GameConstants.TICKS_PER_SECOND, clock.instant());
+        GameResult result = new GameResult(nickname, score, kills,
+                ticks / GameConstants.TICKS_PER_SECOND, clock.instant());
         writer.execute(() -> {
             try {
                 results.save(result);
             } catch (RuntimeException e) {
-                log.error("Could not save the result for {}", died.playerId(), e);
+                log.error("Could not save the result for {}", playerId, e);
             }
         });
     }

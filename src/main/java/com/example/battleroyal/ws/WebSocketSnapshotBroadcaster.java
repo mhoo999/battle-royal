@@ -16,7 +16,8 @@ import java.util.List;
 /**
  * Serializes one filtered snapshot per player and writes it to their socket, then sends
  * each event to its audience: a shot to the whole room, a hit to the attacker, a death
- * to the player who died, and that someone fell to those who saw it.
+ * to the player who died, a way out to the player who took it, and that someone fell
+ * to those who saw it.
  *
  * <p>Called from the game loop thread only, which is why sends are not synchronized
  * here; the sessions themselves are wrapped in a concurrent decorator so a slow reader
@@ -62,6 +63,7 @@ public class WebSocketSnapshotBroadcaster implements RoomBroadcaster {
                 }
                 case GameEvent.Hit hit -> send(hit.attackerId(), Outbound.hit());
                 case GameEvent.Died died -> send(died.playerId(), Outbound.youDied(died));
+                case GameEvent.Extracted out -> send(out.playerId(), Outbound.extracted(out));
                 case GameEvent.Fell fell -> {
                     Object message = Outbound.fell(fell);
                     for (String witnessId : fell.witnessIds()) {

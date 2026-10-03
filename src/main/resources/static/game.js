@@ -19,11 +19,11 @@ const TERRAIN = {
 const SELF_GLYPH  = { UP: '△', DOWN: '▽', LEFT: '◁', RIGHT: '▷' };
 const ENEMY_GLYPH = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
 
-const A_LABEL = { ATTACK: '공격', FIRE: '발사', HEAL: '치료' };
+const A_LABEL = { ATTACK: '공격', FIRE: '발사', HEAL: '치료', RELOAD: '장전' };
 const ITEM_LABEL = {
   KNIFE: '칼', BAT: '야구배트', PISTOL: '권총', CROSSBOW: '석궁', MEDKIT: '메디킷',
   PAN: '프라이팬', SPOON: '숟가락', CUP: '컵', DOLL: '솜 빠진 인형', RECORDER: '리코더',
-  REGISTER: '출석부',
+  REGISTER: '출석부', ROUNDS: '권총탄', BOLTS: '화살',
 };
 /*
  * How a weapon killed you, glued after its name. Optional per weapon: anything not
@@ -36,7 +36,7 @@ const DEATH_VERB = {
 };
 const DEATH_VERB_DEFAULT = '에 당해';
 
-const B_LABEL = { PICKUP: '줍기', SWAP: '교체', DOOR: '이동' };
+const B_LABEL = { OPEN: '열기', CLOSE: '닫기', DOOR: '이동', EXTRACT: '탈출' };
 
 const KEY_DIR = {
   ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
@@ -67,15 +67,22 @@ const el = (id) => document.getElementById(id);
 
 const ui = {
   lobby: el('lobby'), lobbyForm: el('lobby-form'), nickname: el('nickname'),
-  lobbyError: el('lobby-error'),
+  lobbyError: el('lobby-error'), start: el('start'), entry: el('entry'),
+  guestEntry: el('guest-entry'), back: el('back'), logoutForm: el('logout-form'),
   game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
   board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
+  bag: el('bag'), inv: el('inv'), invClose: el('inv-close'), invCrate: el('inv-crate'),
+  crateList: el('crate-list'), invList: el('inv-list'), invHint: el('inv-hint'),
+  hideout: el('hideout'), hideoutName: el('hideout-name'), stashList: el('stash-list'),
+  stashCount: el('stash-count'), loadoutList: el('loadout-list'), hideoutHint: el('hideout-hint'),
+  hideoutError: el('hideout-error'), setOut: el('set-out'), hideoutBack: el('hideout-back'),
+  money: el('money'), haul: el('haul'), sell: el('sell'), traderList: el('trader-list'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
   deadRecord: el('dead-record'),
-  restart: el('restart'),
+  restart: el('restart'), deadTitle: el('dead-title'), compass: el('compass'),
   loot: el('loot'), lootFill: el('loot-fill'),
   ranking: el('ranking'), rankingList: el('ranking-list'),
 };
@@ -123,6 +130,14 @@ function paint(snapshot) {
     // out by looting it.
     cell.classList.add('has-item');
     cell.textContent = '';
+  }
+
+  // My own exits, under anything standing on them. Only ever in my snapshot.
+  for (const exit of snapshot.self.exits) {
+    if (exit.x === null) continue;
+    const cell = cells[exit.y * GRID + exit.x];
+    cell.classList.add('exit');
+    cell.textContent = '◎';
   }
 
   for (const other of snapshot.players) {
@@ -216,7 +231,9 @@ function paintHud(snapshot) {
 
   // A medkit at full health is not offered. Keep its name on the button, greyed, so
   // the player sees why A is off rather than a bare dash.
-  const idleA = self.item === 'MEDKIT' ? A_LABEL.HEAL : null;
+  // An empty gun with nothing to load it says so rather than going blank.
+  const idleA = self.item === 'MEDKIT' ? A_LABEL.HEAL
+    : (self.item === 'PISTOL' || self.item === 'CROSSBOW') ? '탄 없음' : null;
   setAction(ui.btnA, 'A', A_LABEL[self.actionA], idleA);
   setAction(ui.btnB, 'B', B_LABEL[self.actionB]);
 
@@ -227,8 +244,11 @@ function paintHud(snapshot) {
   } else if (self.concealment === 'CABINET') {
     ui.state.textContent = '캐비닛에 숨어 있음 — 옆이나 뒤로 움직이면 나감';
     ui.state.classList.add('hidden-cabinet');
+  } else if (self.extractMsLeft !== null) {
+    ui.state.textContent = '탈출 중 — B를 떼거나 움직이거나 맞으면 취소';
+    ui.state.classList.add('extracting');
   } else if (self.lootMsLeft !== null) {
-    ui.state.textContent = '줍는 중 — B를 떼거나 움직이면 취소';
+    ui.state.textContent = '여는 중 — B를 떼거나 움직이면 취소';
     ui.state.classList.add('looting');
   } else if (self.concealment === 'BUSH') {
     ui.state.textContent = '부시에 은폐 중 — 밖에서 보이지 않음';
@@ -244,7 +264,8 @@ function paintHud(snapshot) {
  * begins rather than on every snapshot that arrives during one.
  */
 function paintLoot(self) {
-  const left = self.lootMsLeft;
+  // Getting out fills the same gauge as opening a crate, only for longer.
+  const left = self.lootMsLeft ?? self.extractMsLeft;
   if (left === null || left === undefined) {
     ui.loot.hidden = true;
     ui.lootFill.style.transition = 'none';
@@ -258,6 +279,30 @@ function paintLoot(self) {
   void ui.lootFill.offsetWidth;
   ui.lootFill.style.transition = `width ${left}ms linear`;
   ui.lootFill.style.width = '100%';
+}
+
+/*
+ * A needle per exit: eight ways, from how many rooms east and south it lies, and how
+ * many doors away. In its own room an exit is the ◎ on the board instead.
+ */
+function needle(dx, dy) {
+  const col = Math.sign(dx) + 1;
+  const row = Math.sign(dy) + 1;
+  return [['↖', '↑', '↗'], ['←', '◎', '→'], ['↙', '↓', '↘']][row][col];
+}
+
+function paintCompass(self) {
+  if (self.exits.length === 0) {
+    ui.compass.textContent = '';
+    return;
+  }
+  const parts = self.exits.map((exit) => {
+    const doors = Math.abs(exit.dx) + Math.abs(exit.dy);
+    return doors === 0 ? '◎ 이 방' : `${needle(exit.dx, exit.dy)} ${doors}`;
+  });
+  const label = document.createElement('b');
+  label.textContent = '탈출구 ';
+  ui.compass.replaceChildren(label, parts.join('  ·  '));
 }
 
 function setAction(button, letter, label, idleLabel = null) {
@@ -310,6 +355,8 @@ function connect(token) {
       paint(message);
       paintHud(message);
       paintLoot(message.self);
+      paintCompass(message.self);
+      paintBag(message.self);
     } else if (message.type === 'EVENT') {
       if (message.event === 'SHOT') showShot(message.path);
       else if (message.event === 'SWING') showSwing(message.from, message.to);
@@ -317,6 +364,8 @@ function connect(token) {
       else if (message.event === 'FELL') showFell(message.at);
     } else if (message.type === 'YOU_DIED') {
       showDeath(message);
+    } else if (message.type === 'EXTRACTED') {
+      showExtracted(message);
     }
   });
 
@@ -388,9 +437,6 @@ function stopClock() {
 
 const RANKING_SIZE = 10;
 
-/* The life that just ended, from YOU_DIED: { nickname, score, survivedSeconds }. */
-let lastResult = null;
-
 /* Nicknames are typed by other players, so rows are built with textContent only. */
 function rankingRow(rank, name, score, mine) {
   const li = document.createElement('li');
@@ -404,40 +450,26 @@ function rankingRow(rank, name, score, mine) {
   return li;
 }
 
-function isLastResult(row) {
-  return lastResult !== null
-    && row.nickname === lastResult.nickname
-    && row.score === lastResult.score
-    && row.survivedSeconds === lastResult.survivedSeconds;
-}
-
 /*
- * The top ten, and below it, after a death, where that life ranks: "⋮" then its row.
- * Found by its numbers rather than by name, since names repeat. A failed fetch leaves
- * the ranking hidden; the lobby works without it.
+ * The ten biggest hauls, and below them, for a signed-in account outside the ten, "⋮"
+ * and its own row. The server works out that row from the session. A failed fetch
+ * leaves the ranking hidden; the lobby works without it.
  */
 async function loadRanking() {
   try {
-    const mine = lastResult;
-    const [top, position] = await Promise.all([
-      fetch(`/api/ranking?limit=${RANKING_SIZE}`).then((r) => (r.ok ? r.json() : [])),
-      mine
-        ? fetch(`/api/ranking/rank?score=${mine.score}&survivedSeconds=${mine.survivedSeconds}`)
-          .then((r) => (r.ok ? r.json() : null))
-        : Promise.resolve(null),
-    ]);
-
-    const items = top.map((row, i) => rankingRow(i + 1, row.nickname, row.score, isLastResult(row)));
-    if (mine && position && !top.some(isLastResult)) {
-      // "⋮" only when ranks are actually skipped. A top-ten life can be missing from
-      // the list for a moment while its save is still on the way; it just goes last.
-      if (position.rank > top.length + 1) {
+    const response = await fetch(`/api/ranking?limit=${RANKING_SIZE}`);
+    if (!response.ok) throw new Error(String(response.status));
+    const { top, me: mine } = await response.json();
+    const isMine = (row) => mine !== null && row.nickname === mine.nickname;
+    const items = top.map((row) => rankingRow(row.rank, row.nickname, row.value, isMine(row)));
+    if (mine !== null && !top.some(isMine)) {
+      if (mine.rank > top.length + 1) {
         const gap = document.createElement('li');
         gap.className = 'gap';
         gap.textContent = '⋮';
         items.push(gap);
       }
-      items.push(rankingRow(position.rank, mine.nickname, mine.score, true));
+      items.push(rankingRow(mine.rank, mine.nickname, mine.value, true));
     }
     ui.rankingList.replaceChildren(...items);
     ui.ranking.hidden = items.length === 0;
@@ -473,9 +505,80 @@ function forgetSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* none */ }
 }
 
+// --- Account -------------------------------------------------------------
+
+/*
+ * Who the browser is signed in as, and what the lobby shows for it:
+ *   signed out          Google and guest buttons; guest leads to the name form
+ *   signed in, no name  the name form picks the account's nickname, once
+ *   signed in, named    one button that starts as that nickname, no questions
+ */
+let me = { signedIn: false, nickname: null };
+let guestChosen = false;
+
+async function loadMe() {
+  try {
+    const response = await fetch('/api/me');
+    if (response.ok) me = await response.json();
+  } catch (e) { /* offline: stay a guest */ }
+  paintAccount();
+}
+
+function choosingNickname() {
+  return me.signedIn && !me.nickname;
+}
+
+function paintAccount() {
+  const named = me.signedIn && !!me.nickname;
+  const showForm = me.signedIn || guestChosen;
+  ui.entry.hidden = showForm;
+  ui.lobbyForm.hidden = !showForm;
+  ui.nickname.hidden = named;
+  ui.nickname.placeholder = choosingNickname() ? '닉네임 정하기' : '이름';
+  ui.nickname.setAttribute('aria-label', ui.nickname.placeholder);
+  ui.start.textContent = choosingNickname() ? '확인' : named ? `${me.nickname} · START` : 'START';
+  ui.back.hidden = !(guestChosen && !me.signedIn);
+  ui.logoutForm.hidden = !me.signedIn;
+  if (showForm && !ui.nickname.hidden && !ui.lobby.hidden) ui.nickname.focus();
+}
+
+async function chooseNickname(typed) {
+  if (!typed) {
+    ui.lobbyError.textContent = '닉네임을 입력하세요';
+    return;
+  }
+  ui.lobbyError.textContent = '';
+  try {
+    const response = await fetch('/api/me/nickname', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: typed }),
+    });
+    if (response.status === 409) {
+      ui.lobbyError.textContent = '이미 쓰는 닉네임입니다';
+      await loadMe();
+      return;
+    }
+    if (!response.ok) {
+      // The server says why: too long, a blocked word, or the ~ that marks guests.
+      ui.lobbyError.textContent = (await response.text()) || '쓸 수 없는 닉네임입니다';
+      return;
+    }
+    me = await response.json();
+    paintAccount();
+  } catch (e) {
+    ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
+  }
+}
+
 // --- Screens -------------------------------------------------------------
 
 async function beginSession(typed) {
+  // A signed-in account sets out from the hideout instead.
+  if (me.signedIn) {
+    openHideout();
+    return;
+  }
   if (!typed) {
     ui.lobbyError.textContent = '아이디를 입력하세요';
     return;
@@ -511,6 +614,9 @@ function enterGame(saved) {
   lastHp = null;
   flourishes = [];
   notice = null;
+  bagOpen = false;
+  selection = null;
+  crateWasOpen = false;
   ui.lobby.hidden = true;
   ui.dead.hidden = true;
   ui.game.hidden = false;
@@ -529,17 +635,33 @@ function deathCause(killer, weapon) {
 function showDeath(message) {
   stopClock();
   forgetSession();
-  // A ~name plays unranked: nothing was saved, so there is no place of ours to look up.
-  lastResult = nickname.startsWith('~')
-    ? null
-    : { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
+  ui.deadTitle.textContent = 'GAME OVER';
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
+  showRecord(message);
+}
+
+/* The record under either ending. */
+function showRecord(message) {
   ui.deadName.textContent = nickname;
   ui.deadScore.textContent = message.score;
   ui.deadKills.textContent = message.kills;
   ui.deadTime.textContent = (message.survivedSeconds ?? Math.round((Date.now() - startedAt) / 1000)) + 's';
   ui.deadRecord.hidden = false;
+  ui.restart.textContent = me.signedIn ? '거점으로' : '처음으로';
   ui.dead.hidden = false;
+}
+
+/* Out through an exit, with what was carried. An account's haul is in the stash now. */
+function showExtracted(message) {
+  stopClock();
+  forgetSession();
+  ui.deadTitle.textContent = '탈출 성공';
+  const haul = message.carried.map(slotText).join(', ');
+  const kept = me.signedIn ? ' 창고로 옮겼다.' : '';
+  ui.deadCause.textContent = haul
+    ? `섬을 빠져나왔다. 가져온 것: ${haul}.${kept}`
+    : '섬을 빠져나왔다. 빈손이다.';
+  showRecord(message);
 }
 
 /*
@@ -551,13 +673,14 @@ function showDisconnected() {
   stopClock();
   forgetSession();
   sessionToken = null;
-  lastResult = null;
   const corpse = document.createElement('em');
   corpse.textContent = '끔찍한 시체';
   ui.deadCause.replaceChildren(
     '자고 있는 사이에 야생 동물에 당해', document.createElement('br'),
     corpse, '가 되었다.');
+  ui.deadTitle.textContent = 'GAME OVER';
   ui.deadRecord.hidden = true;
+  ui.restart.textContent = me.signedIn ? '거점으로' : '처음으로';
   ui.dead.hidden = false;
 }
 
@@ -569,9 +692,12 @@ function restart() {
   ui.dead.hidden = true;
   ui.game.hidden = true;
   ui.lobby.hidden = false;
-  ui.nickname.value = nickname;
-  ui.nickname.focus();
-  ui.nickname.select();
+  // A guest's name came back with its ~; offer it again without one.
+  ui.nickname.value = me.signedIn ? '' : nickname.replace(/^~/, '');
+  if (!ui.nickname.hidden) {
+    ui.nickname.focus();
+    ui.nickname.select();
+  }
   loadRanking();
 }
 
@@ -714,6 +840,10 @@ function wireInput() {
       return;
     }
     if (!playing()) return;
+    if (event.key === 'i' || event.key === 'I') setBag(!bagOpen);
+    if (event.key === '1' || event.key === '2' || event.key === '3') {
+      send({ type: 'EQUIP', slot: Number(event.key) - 1 });
+    }
     if (event.key === 'j' || event.key === 'J') actionA();
     if ((event.key === 'k' || event.key === 'K') && !event.repeat) pressB();
   });
@@ -737,19 +867,316 @@ function wireInput() {
   });
 }
 
+// --- Bag: inventory and crate ----------------------------------------------
+
+/*
+ * The bag window lies over the board. Three inventory slots, one of them equipped (the
+ * "e"), and the crate beside them while one is open. Pick something, then pick where
+ * it goes; the server checks every move and the next snapshot shows the result.
+ *
+ *   crate open, crate item picked   -> an inventory slot takes it (TAKE)
+ *   crate open, inventory item      -> the crate takes it (PUT); the same slot again equips
+ *   no crate                        -> tapping a slot equips it
+ */
+let bagOpen = false;
+let selection = null;      // { from: 'crate' | 'inv', index }
+let crateWasOpen = false;
+
+function slotText(slot) {
+  if (!slot) return '비어 있음';
+  const name = ITEM_LABEL[slot.kind] || slot.kind;
+  return slot.ammo === null || slot.ammo === undefined ? name : `${name} ${slot.ammo}`;
+}
+
+function slotButton(slot, from, index, equipped) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'slot' + (slot ? '' : ' empty')
+    + (selection && selection.from === from && selection.index === index ? ' selected' : '');
+  button.dataset.from = from;
+  button.dataset.index = String(index);
+  button.textContent = slotText(slot);
+  if (equipped) {
+    const badge = document.createElement('span');
+    badge.className = 'equip';
+    badge.textContent = 'e';
+    badge.setAttribute('aria-label', '장착');
+    button.appendChild(badge);
+  }
+  const li = document.createElement('li');
+  li.appendChild(button);
+  return li;
+}
+
+function paintBag(self) {
+  const crate = Array.isArray(self.crate) ? self.crate : null;
+  // Opening a crate pops the bag open; a crate shutting (moving away) drops a pick from it.
+  if (crate && !crateWasOpen) {
+    bagOpen = true;
+    selection = null;
+  }
+  if (!crate && selection && selection.from === 'crate') selection = null;
+  crateWasOpen = !!crate;
+  if (selection && selection.from === 'crate' && crate && selection.index >= crate.length) selection = null;
+
+  ui.bag.classList.toggle('open', bagOpen);
+  ui.inv.hidden = !bagOpen;
+  if (!bagOpen) return;
+
+  ui.invCrate.hidden = !crate;
+  ui.crateList.replaceChildren(...(crate || []).map((slot, i) => slotButton(slot, 'crate', i, false)));
+  ui.invList.replaceChildren(...self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
+
+  if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
+  else if (!selection) ui.invHint.textContent = '옮길 아이템을 고르세요';
+  else if (selection.from === 'crate') ui.invHint.textContent = '넣을 칸을 고르세요';
+  else ui.invHint.textContent = '상자를 누르면 넣기 · 한 번 더 누르면 장착';
+}
+
+function repaintBag() {
+  if (lastSnapshot) paintBag(lastSnapshot.self);
+}
+
+function setBag(open) {
+  bagOpen = open;
+  selection = null;
+  // Closing the window over an open crate closes the crate too.
+  if (!open && lastSnapshot && Array.isArray(lastSnapshot.self.crate)) send({ type: 'CLOSE' });
+  repaintBag();
+}
+
+function pickInBag(from, index) {
+  const crateOpen = lastSnapshot && Array.isArray(lastSnapshot.self.crate);
+  if (from === 'crate') {
+    if (selection && selection.from === 'inv') {
+      send({ type: 'PUT', slot: selection.index });
+      selection = null;
+    } else {
+      selection = { from: 'crate', index };
+    }
+  } else if (selection && selection.from === 'crate') {
+    send({ type: 'TAKE', index: selection.index, slot: index });
+    selection = null;
+  } else if (!crateOpen || (selection && selection.from === 'inv' && selection.index === index)) {
+    send({ type: 'EQUIP', slot: index });
+    selection = null;
+  } else {
+    selection = { from: 'inv', index };
+  }
+  repaintBag();
+}
+
+function wireBag() {
+  ui.bag.addEventListener('click', () => setBag(!bagOpen));
+  ui.invClose.addEventListener('click', () => setBag(false));
+  ui.inv.addEventListener('click', (event) => {
+    const button = event.target.closest('.slot');
+    if (button) {
+      pickInBag(button.dataset.from, Number(button.dataset.index));
+      return;
+    }
+    // Anywhere in the crate column takes a picked inventory item, not only its rows.
+    if (event.target.closest('.crate-col') && selection && selection.from === 'inv') {
+      send({ type: 'PUT', slot: selection.index });
+      selection = null;
+      repaintBag();
+    }
+  });
+}
+
+// --- Hideout ---------------------------------------------------------------
+
+/*
+ * A signed-in account's way onto the island. The stash on the left, three slots to
+ * carry out on the right: pick a stash item, then the slot it goes in; tap a filled
+ * slot to leave it at home. "섬으로" sets out with exactly that. Nothing taken out
+ * comes back except by extraction or a server restart; dying loses it.
+ */
+let stash = [];             // [{ id, kind, ammo, price }]
+let hideoutView = null;     // the last /api/hideout answer
+let loadout = [null, null, null];   // stash item ids
+let stashPick = null;       // a stash item id
+
+async function openHideout() {
+  ui.hideoutError.textContent = '';
+  ui.hideoutName.textContent = me.nickname ?? '';
+  stashPick = null;
+  loadout = [null, null, null];
+  try {
+    const response = await fetch('/api/hideout');
+    if (!response.ok) {
+      ui.lobbyError.textContent = (await response.text()) || '거점을 열 수 없습니다';
+      return;
+    }
+    applyHideout(await response.json());
+    ui.lobby.hidden = true;
+    ui.hideout.hidden = false;
+  } catch (e) {
+    ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
+  }
+}
+
+function applyHideout(view) {
+  hideoutView = view;
+  stash = view.stash;
+  ui.stashCount.textContent = `${stash.length}/${view.capacity}`;
+  ui.money.textContent = view.money;
+  ui.haul.textContent = view.haul;
+  if (stashPick !== null && !stashEntry(stashPick)) stashPick = null;
+  paintHideout();
+}
+
+/*
+ * The trader's stock. A line is greyed when it cannot be bought now; the server is the
+ * one that says no, this only saves a pointless tap.
+ */
+function paintTrader() {
+  const full = stash.length >= hideoutView.capacity;
+  ui.traderList.replaceChildren(...hideoutView.trader.map((offer) => {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    // Guns are sold empty, so only a bundle's count is worth showing.
+    name.textContent = slotText({ kind: offer.kind, ammo: offer.ammo > 0 ? offer.ammo : null });
+    const price = document.createElement('span');
+    price.className = 'price';
+    price.textContent = `${offer.price}원`;
+    const buy = document.createElement('button');
+    buy.type = 'button';
+    buy.dataset.kind = offer.kind;
+    buy.textContent = '사기';
+    buy.disabled = full || hideoutView.money < offer.price;
+    li.append(name, price, buy);
+    return li;
+  }));
+}
+
+async function trade(path, body) {
+  ui.hideoutError.textContent = '';
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      ui.hideoutError.textContent = (await response.text()) || '거래할 수 없습니다';
+      return;
+    }
+    applyHideout(await response.json());
+  } catch (e) {
+    ui.hideoutError.textContent = '서버에 연결할 수 없습니다';
+  }
+}
+
+function stashEntry(id) {
+  return stash.find((entry) => entry.id === id) || null;
+}
+
+function paintHideout() {
+  const carried = new Set(loadout.filter((id) => id !== null));
+  ui.stashList.replaceChildren(...stash.map((entry) => {
+    const li = slotButton(entry, 'stash', entry.id, false);
+    const button = li.firstChild;
+    button.classList.toggle('selected', stashPick === entry.id);
+    button.disabled = carried.has(entry.id);
+    return li;
+  }));
+  if (stash.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'inv-hint';
+    li.textContent = '비어 있다';
+    ui.stashList.replaceChildren(li);
+  }
+  ui.loadoutList.replaceChildren(...loadout.map((id, i) =>
+    slotButton(id === null ? null : stashEntry(id), 'loadout', i, i === 0)));
+  const picked = stashPick === null ? null : stashEntry(stashPick);
+  ui.sell.hidden = picked === null;
+  if (picked) ui.sell.textContent = `${slotText(picked)} 팔기 · ${picked.price}원`;
+  paintTrader();
+  ui.hideoutHint.textContent = stash.length === 0
+    ? '첫 출발은 빈손이다. 탈출하면 가져온 것이 여기 쌓인다.'
+    : stashPick !== null ? '넣을 칸을 고르거나 상인에게 파세요' : '창고에서 고른 뒤 칸을 고르세요 · 채운 칸을 누르면 빼기';
+}
+
+function pickInHideout(from, index) {
+  if (from === 'stash') {
+    stashPick = stashPick === index ? null : index;
+  } else if (stashPick !== null) {
+    loadout = loadout.map((id) => (id === stashPick ? null : id));
+    loadout[index] = stashPick;
+    stashPick = null;
+  } else {
+    loadout[index] = null;
+  }
+  paintHideout();
+}
+
+async function setOut() {
+  ui.hideoutError.textContent = '';
+  ui.setOut.disabled = true;
+  try {
+    const response = await fetch('/api/hideout/sortie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loadout }),
+    });
+    if (!response.ok) {
+      ui.hideoutError.textContent = (await response.text()) || '출발할 수 없습니다';
+      return;
+    }
+    const session = await response.json();
+    const saved = { token: session.token, nickname: session.nickname, startedAt: Date.now() };
+    saveSession(saved);
+    ui.hideout.hidden = true;
+    enterGame(saved);
+  } catch (e) {
+    ui.hideoutError.textContent = '서버에 연결할 수 없습니다';
+  } finally {
+    ui.setOut.disabled = false;
+  }
+}
+
+function wireHideout() {
+  ui.hideout.addEventListener('click', (event) => {
+    const button = event.target.closest('.slot');
+    if (!button || button.disabled) return;
+    pickInHideout(button.dataset.from, Number(button.dataset.index));
+  });
+  ui.setOut.addEventListener('click', setOut);
+  ui.sell.addEventListener('click', () => {
+    if (stashPick !== null) trade('/api/hideout/sell', { itemId: stashPick });
+  });
+  ui.traderList.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-kind]');
+    if (button && !button.disabled) trade('/api/hideout/buy', { kind: button.dataset.kind });
+  });
+  ui.hideoutBack.addEventListener('click', () => {
+    ui.hideout.hidden = true;
+    ui.lobby.hidden = false;
+  });
+}
+
 // --- Boot ----------------------------------------------------------------
 
 buildBoard();
 wireInput();
+wireBag();
+wireHideout();
 ui.lobbyForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  beginSession(ui.nickname.value.trim());
+  if (choosingNickname()) chooseNickname(ui.nickname.value.trim());
+  else beginSession(ui.nickname.value.trim());
 });
-ui.restart.addEventListener('click', restart);
+ui.restart.addEventListener('click', () => {
+  restart();
+  // An account's next trip starts from the hideout, which shows what came home.
+  if (me.signedIn) openHideout();
+});
+ui.guestEntry.addEventListener('click', () => { guestChosen = true; ui.lobbyError.textContent = ''; paintAccount(); });
+ui.back.addEventListener('click', () => { guestChosen = false; ui.lobbyError.textContent = ''; paintAccount(); });
 loadRanking();
+loadMe();
 const resumable = savedSession();
 if (resumable) {
   enterGame(resumable);
-} else {
-  ui.nickname.focus();
 }

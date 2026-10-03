@@ -3,6 +3,7 @@ package com.example.battleroyal.game.rule;
 import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.ActionB;
 import com.example.battleroyal.game.core.Command;
+import com.example.battleroyal.game.core.Crate;
 import com.example.battleroyal.game.core.Direction;
 import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
@@ -46,7 +47,7 @@ public final class RoomSimulator {
      */
     public static DoorTransit apply(Room room, Command command, long nowTick) {
         Player player = room.player(command.playerId());
-        if (player == null || !player.alive()) {
+        if (player == null || !player.active()) {
             return null;
         }
         switch (command) {
@@ -56,11 +57,16 @@ public final class RoomSimulator {
                 return actionB(room, player, nowTick);
             }
             case Command.ReleaseB ignored -> {
-                if (player.looting()) {
+                if (player.looting() || player.extracting()) {
                     player.cancelLoot();
+                    player.cancelExtract();
                     room.markDirty();
                 }
             }
+            case Command.Equip equip -> equip(room, player, equip.slot());
+            case Command.Take take -> take(room, player, take.crateIndex(), take.slot());
+            case Command.Put put -> put(room, player, put.slot());
+            case Command.CloseCrate ignored -> closeCrate(room, player);
         }
         return null;
     }
@@ -71,10 +77,13 @@ public final class RoomSimulator {
      */
     public static void tick(Room room, long nowTick) {
         for (Player player : room.players()) {
-            if (!player.alive()) {
+            if (!player.active()) {
                 continue;
             }
             finishLoot(room, player, nowTick);
+            if (finishExtract(room, player, nowTick)) {
+                continue;
+            }
             if (ScoreRules.accrueSurvival(player)) {
                 room.markDirty();
             }
@@ -119,8 +128,11 @@ public final class RoomSimulator {
         player.face(outcome.facing());
         if (outcome.moved()) {
             player.moveTo(outcome.pos());
-            // Stepping off the item starts the loot over; turning on the spot does not.
+            // Stepping off the crate starts the loot over and shuts it, and stepping off
+            // an exit starts the way out over; turning on the spot does none of these.
             player.cancelLoot();
+            player.closeCrate();
+            player.cancelExtract();
         }
         // A blocked input still spends the cooldown; that is what makes walls and other
         // players cost you time rather than being free to probe.
@@ -149,6 +161,8 @@ public final class RoomSimulator {
             player.moveTo(cabinet);
             player.setInCabinet(true);
             player.cancelLoot();
+            player.closeCrate();
+            player.cancelExtract();
             player.setNextCabinetToggleTick(
                     nowTick + GameConstants.CABINET_TOGGLE_COOLDOWN_TICKS);
             room.markDirty();
@@ -202,13 +216,13 @@ public final class RoomSimulator {
                 Item gun = player.heldItem();
                 Weapons.Strike shot = Weapons.strikeOf(gun.kind());
                 gun.spendAmmo();
+                // The empty gun stays in hand: it can be loaded again.
                 strike(room, player, shot, nowTick);
-                if (!gun.hasAmmo()) {
-                    // No reload: the last round uses the gun up, like a medkit. Only
-                    // after the strike, so a kill with it still names the gun.
-                    player.releaseItem();
-                }
                 player.setNextActionTick(nowTick + shot.cooldownTicks());
+            }
+            case RELOAD -> {
+                reload(player);
+                player.setNextActionTick(nowTick + GameConstants.RELOAD_TICKS);
             }
             case HEAL -> {
                 player.heal(GameConstants.MEDKIT_HEAL, GameConstants.MAX_HP);
@@ -217,6 +231,22 @@ public final class RoomSimulator {
             }
         }
         room.markDirty();
+    }
+
+    /**
+     * Fills the gun in hand from the first matching bundle, as far as the bundle goes.
+     * An emptied bundle is gone; what is left of one stays where it was.
+     */
+    private static void reload(Player player) {
+        Item gun = player.heldItem();
+        int slot = ActionResolver.ammunitionSlot(player);
+        Item bundle = player.slot(slot);
+        int moved = Math.min(Weapons.capacity(gun.kind()) - gun.ammo(), bundle.ammo());
+        bundle.spendAmmo(moved);
+        gun.addAmmo(moved);
+        if (!bundle.hasAmmo()) {
+            player.setSlot(slot, null);
+        }
     }
 
     /** Bare hands are a null kind, which is how {@link Weapons} tells them apart. */
@@ -242,6 +272,11 @@ public final class RoomSimulator {
         }
         Player victim = trace.victim();
         room.emit(new GameEvent.Hit(attacker.id()));
+        // A hit knocks you off the way out, whatever it does to your health.
+        if (victim.extracting()) {
+            victim.cancelExtract();
+            room.markDirty();
+        }
         attacker.addScore(GameConstants.SCORE_HIT);
         if (victim.takeDamage(blow.damage())) {
             attacker.addScore(GameConstants.SCORE_KILL);
@@ -255,7 +290,7 @@ public final class RoomSimulator {
      * dropped and result recorded, but with nobody to credit.
      */
     public static void abandon(Room room, Player player, long nowTick) {
-        if (!player.alive()) {
+        if (!player.active()) {
             return;
         }
         player.takeDamage(player.hp());
@@ -281,12 +316,15 @@ public final class RoomSimulator {
 
         victim.setInCabinet(false);
         victim.cancelLoot();
+        victim.cancelExtract();
+        victim.closeCrate();
         victim.clearBufferedMove();
-        Item dropped = victim.releaseItem();
-        if (dropped != null) {
+        // Everything they carried, in one crate: a body is worth searching.
+        List<Item> dropped = victim.dropAll();
+        if (!dropped.isEmpty()) {
             Pos spot = dropSpot(room, victim.pos());
             if (spot != null) {
-                room.placeItem(spot, dropped);
+                room.placeCrate(spot, new Crate(room.newCrateId(), dropped));
             }
         }
         String killerName = killer == null ? null : killer.nickname();
@@ -297,10 +335,10 @@ public final class RoomSimulator {
     }
 
     /**
-     * Where a dead player's item lands: the nearest tile, starting with their own, that
-     * is walkable, holds no item already, and is out of a door's reach. B resolves a
-     * door before an item, so an item beside a door could never be picked up again.
-     * A cabinet occupant's item spills onto the floor next to it.
+     * Where a dead player's crate lands: the nearest tile, starting with their own, that
+     * is walkable, holds no crate already, and is out of a door's reach. B resolves a
+     * door before a crate, so a crate beside a door could never be opened.
+     * A cabinet occupant's crate lands on the floor next to it.
      */
     private static Pos dropSpot(Room room, Pos at) {
         Set<Pos> seen = new HashSet<>();
@@ -309,7 +347,7 @@ public final class RoomSimulator {
         frontier.add(at);
         while (!frontier.isEmpty()) {
             Pos pos = frontier.removeFirst();
-            if (room.map().walkable(pos) && room.itemAt(pos) == null
+            if (room.map().walkable(pos) && room.crateAt(pos) == null
                     && ActionResolver.doorSideAt(room, pos) == null) {
                 return pos;
             }
@@ -320,7 +358,7 @@ public final class RoomSimulator {
                 }
             }
         }
-        // Only a room with an item on every usable tile ends up here.
+        // Only a room with a crate on every usable tile ends up here.
         return null;
     }
 
@@ -336,9 +374,42 @@ public final class RoomSimulator {
                 Direction side = ActionResolver.doorSideFor(room, player);
                 return side == null ? null : new DoorTransit(player.id(), side);
             }
-            case PICKUP, SWAP -> startLoot(room, player, nowTick);
+            case OPEN -> startLoot(room, player, nowTick);
+            case CLOSE -> closeCrate(room, player);
+            case EXTRACT -> startExtract(room, player, nowTick);
         }
         return null;
+    }
+
+    // --- Exits ------------------------------------------------------------
+
+    /** Like a loot, pressing B again while already on the way out does not restart it. */
+    private static void startExtract(Room room, Player player, long nowTick) {
+        if (player.extracting()) {
+            return;
+        }
+        player.closeCrate();
+        player.startExtract(nowTick + GameConstants.EXTRACT_TICKS);
+        room.markDirty();
+    }
+
+    /**
+     * Five seconds held without moving or being hit: the player is out, with everything
+     * they carry. They stay in the room until the registry takes them away after this
+     * tick's broadcast, so their last snapshot and the news reach them first.
+     *
+     * @return true when the player got out this tick
+     */
+    private static boolean finishExtract(Room room, Player player, long nowTick) {
+        if (!player.extractDue(nowTick)) {
+            return false;
+        }
+        List<Item> carried = player.dropAll();
+        player.markExtracted();
+        room.emit(new GameEvent.Extracted(player.id(), player.nickname(), player.score(),
+                player.kills(), nowTick - player.joinedTick(), carried));
+        room.markDirty();
+        return true;
     }
 
     /** Pressing B again while already looting does not restart the clock. */
@@ -346,41 +417,90 @@ public final class RoomSimulator {
         if (player.looting()) {
             return;
         }
-        player.startLoot(room.itemAt(player.pos()).id(), nowTick + GameConstants.LOOT_TICKS);
+        player.startLoot(room.crateAt(player.pos()).id(), nowTick + GameConstants.LOOT_TICKS);
         room.markDirty();
     }
 
+    /** When the time is up the crate opens, and its contents go to this player alone. */
     private static void finishLoot(Room room, Player player, long nowTick) {
         if (!player.looting()) {
             return;
         }
-        String itemId = player.takeFinishedLoot(nowTick);
+        String crateId = player.takeFinishedLoot(nowTick);
         if (player.looting()) {
             return;
         }
         room.markDirty();
-        Item lying = room.itemAt(player.pos());
-        // Someone else may have taken it, or swapped something else onto the tile.
-        if (itemId != null && lying != null && lying.id().equals(itemId)) {
-            takeItem(room, player);
+        Crate lying = room.crateAt(player.pos());
+        // Someone may have emptied it, or a different crate may lie here now.
+        if (crateId != null && lying != null && lying.id().equals(crateId)) {
+            player.openCrate(player.pos());
         }
     }
 
-    /**
-     * Picks up the item underfoot. When already holding one, the two trade places: the
-     * outgoing item stays on this tile for anyone to take. Never destroyed.
-     */
-    private static void takeItem(Room room, Player player) {
-        Pos here = player.pos();
-        Item taken = room.takeItem(here);
-        Item outgoing = player.releaseItem();
-        if (outgoing != null) {
-            room.placeItem(here, outgoing);
+    private static void closeCrate(Room room, Player player) {
+        if (player.openCrateAt() != null) {
+            player.closeCrate();
+            room.markDirty();
         }
-        player.hold(taken);
+    }
+
+    /** The crate this player has open and is standing on, or null. */
+    public static Crate openCrate(Room room, Player player) {
+        Pos at = player.openCrateAt();
+        if (at == null || !at.equals(player.pos()) || player.inCabinet()) {
+            return null;
+        }
+        return room.crateAt(at);
+    }
+
+    private static boolean validSlot(int slot) {
+        return slot >= 0 && slot < Player.INVENTORY_SLOTS;
+    }
+
+    /** Which slot A uses. Instant: the one A cooldown is what keeps swapping honest. */
+    private static void equip(Room room, Player player, int slot) {
+        if (!validSlot(slot) || player.equipped() == slot) {
+            return;
+        }
+        player.equip(slot);
+        room.markDirty();
+    }
+
+    /**
+     * From the open crate into a slot. An occupied slot trades places with the crate's
+     * item, so nothing is ever destroyed. An emptied crate leaves the floor.
+     */
+    private static void take(Room room, Player player, int crateIndex, int slot) {
+        Crate crate = openCrate(room, player);
+        if (crate == null || !validSlot(slot) || crateIndex < 0 || crateIndex >= crate.size()) {
+            return;
+        }
+        Item taken = crate.get(crateIndex);
+        Item outgoing = player.setSlot(slot, taken);
+        if (outgoing != null) {
+            crate.replace(crateIndex, outgoing);
+        } else {
+            crate.remove(crateIndex);
+        }
         if (player.firstPickup(taken.id())) {
             player.addScore(GameConstants.SCORE_ITEM_PICKUP);
         }
+        if (crate.isEmpty()) {
+            room.removeCrate(player.pos());
+            player.closeCrate();
+        }
+        room.markDirty();
+    }
+
+    /** From a slot into the open crate, while it has room. */
+    private static void put(Room room, Player player, int slot) {
+        Crate crate = openCrate(room, player);
+        if (crate == null || !validSlot(slot) || player.slot(slot) == null
+                || crate.size() >= GameConstants.CRATE_CAPACITY) {
+            return;
+        }
+        crate.add(player.setSlot(slot, null));
         room.markDirty();
     }
 }

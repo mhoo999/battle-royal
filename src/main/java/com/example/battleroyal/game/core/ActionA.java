@@ -10,5 +10,7 @@ package com.example.battleroyal.game.core;
 public enum ActionA {
     ATTACK,
     FIRE,
-    HEAL
+    HEAL,
+    /** An empty gun in hand and its ammunition in the inventory: load it. */
+    RELOAD
 }

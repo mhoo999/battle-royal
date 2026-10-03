@@ -41,7 +41,7 @@ public final class ItemSpawns {
      */
     public static void tick(Room room, Random random, Supplier<String> ids) {
         if (!room.takeLootRoll()) {
-            if (!room.isEmpty() || !room.floorItems().isEmpty()) {
+            if (!room.isEmpty() || !room.crates().isEmpty()) {
                 return;
             }
             if (room.advanceLootRegrow() < GameConstants.LOOT_REGROW_TICKS) {
@@ -53,7 +53,7 @@ public final class ItemSpawns {
     }
 
     /**
-     * Nothing, or one item on one of the map's spawn tiles. The tile is chosen per roll,
+     * Nothing, or a crate of one item on one of the map's spawn tiles. The tile is chosen per roll,
      * so the same layout does not always hide its loot in the same place.
      */
     private static void roll(Room room, Random random, Supplier<String> ids) {
@@ -82,6 +82,8 @@ public final class ItemSpawns {
             new Weight(ItemKind.KNIFE, GameConstants.LOOT_WEIGHT_KNIFE),
             new Weight(ItemKind.BAT, GameConstants.LOOT_WEIGHT_BAT),
             new Weight(ItemKind.CROSSBOW, GameConstants.LOOT_WEIGHT_CROSSBOW),
+            new Weight(ItemKind.ROUNDS, GameConstants.LOOT_WEIGHT_ROUNDS),
+            new Weight(ItemKind.BOLTS, GameConstants.LOOT_WEIGHT_BOLTS),
             new Weight(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL));
 
     static final int TOTAL_WEIGHT = TABLE.stream().mapToInt(Weight::weight).sum();

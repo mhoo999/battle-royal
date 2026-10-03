@@ -2,13 +2,16 @@ package com.example.battleroyal.game.loop;
 
 import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Direction;
+import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.GridMap;
+import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.core.TileType;
 import com.example.battleroyal.game.map.MapTemplate;
 import com.example.battleroyal.game.map.MapTemplates;
+import com.example.battleroyal.game.rule.ActionResolver;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemSpawns;
 import com.example.battleroyal.game.rule.RoomSimulator;
@@ -54,7 +57,8 @@ public class RoomRegistry {
     private static final Logger log = LoggerFactory.getLogger(RoomRegistry.class);
 
     /** A player asking to enter the world. Resolved on the next tick. */
-    public record JoinRequest(String playerId, String nickname) {
+    /** @param loadout what the player carries in, slot by slot; nulls are empty slots */
+    public record JoinRequest(String playerId, String nickname, List<Item> loadout) {
     }
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
@@ -73,9 +77,10 @@ public class RoomRegistry {
     private final AtomicLong itemSequence = new AtomicLong();
     private final Random random;
     private final Random itemRandom;
+    private final Random exitRandom;
 
     public RoomRegistry() {
-        this(new Random(), new Random());
+        this(new Random(), new Random(), new Random());
     }
 
     /**
@@ -92,8 +97,14 @@ public class RoomRegistry {
      * {@link GameConstants#ROOMS_PER_OTHER_PLAYER} would move with it.
      */
     public RoomRegistry(Random random, Random itemRandom) {
+        this(random, itemRandom, new Random(1));
+    }
+
+    /** Exits roll from a third source, for the same reason items do. */
+    RoomRegistry(Random random, Random itemRandom, Random exitRandom) {
         this.random = random;
         this.itemRandom = itemRandom;
+        this.exitRandom = exitRandom;
     }
 
     // --- Called from any thread -------------------------------------------
@@ -103,7 +114,15 @@ public class RoomRegistry {
     }
 
     public void requestJoin(String playerId, String nickname) {
-        joins.add(new JoinRequest(playerId, nickname));
+        requestJoin(playerId, nickname, List.of());
+    }
+
+    /**
+     * A join carrying gear from the hideout. The loadout only fills a new player; a
+     * reconnect inside the grace period keeps whatever the player holds now.
+     */
+    public void requestJoin(String playerId, String nickname, List<Item> loadout) {
+        joins.add(new JoinRequest(playerId, nickname, loadout));
     }
 
     public void requestLeave(String playerId) {
@@ -167,7 +186,7 @@ public class RoomRegistry {
 
     private void expireDisconnected(Room room, long nowTick) {
         for (Player player : room.players()) {
-            if (player.alive() && player.disconnected()
+            if (player.active() && player.disconnected()
                     && nowTick - player.disconnectedSinceTick()
                             >= GameConstants.DISCONNECT_GRACE_TICKS) {
                 RoomSimulator.abandon(room, player, nowTick);
@@ -177,15 +196,15 @@ public class RoomRegistry {
     }
 
     /**
-     * Takes the dead out of the world. Runs after the tick's broadcast, so the victim
-     * has already been sent their last snapshot and their result.
+     * Takes the dead, and those who got out, out of the world. Runs after the tick's
+     * broadcast, so they have already been sent their last snapshot and their result.
      *
      * <p>Their socket stays open; the client starts a fresh session to play again.
      */
     public void reapDead() {
         for (Room room : rooms.values()) {
             List<String> dead = room.players().stream()
-                    .filter(player -> !player.alive())
+                    .filter(player -> !player.active())
                     .map(Player::id)
                     .toList();
             for (String playerId : dead) {
@@ -263,6 +282,13 @@ public class RoomRegistry {
             }
         }
         wireDoors();
+        // Dropped rooms take their exits with them, and every bearing may change.
+        for (Room room : rooms.values()) {
+            for (Player player : room.players()) {
+                rerollLostExits(player, room);
+                pointCompass(player, room);
+            }
+        }
         log.info("World {}x{} -> {}x{} for {} players", before.columns(), before.rows(),
                 next.columns(), next.rows(), roomOfPlayer.size());
     }
@@ -337,8 +363,14 @@ public class RoomRegistry {
 
         Player player = new Player(request.playerId(), request.nickname(),
                 spawn, GameConstants.MAX_HP, nowTick);
+        List<Item> loadout = request.loadout();
+        for (int slot = 0; slot < Math.min(loadout.size(), Player.INVENTORY_SLOTS); slot++) {
+            player.setSlot(slot, loadout.get(slot));
+        }
         // Where you start is not somewhere you travelled to.
         player.visitRoom(room.id());
+        player.setExits(rollExits(room, List.of()));
+        pointCompass(player, room);
         place(player, room);
         log.info("{} joined {} ({}x{} world)",
                 request.playerId(), room.id(), grid.columns(), grid.rows());
@@ -395,8 +427,11 @@ public class RoomRegistry {
         player.clearBufferedMove();
         // The same coordinates in the next room are a different tile.
         player.cancelLoot();
+        player.closeCrate();
+        player.cancelExtract();
         player.setNextMoveTick(nowTick + GameConstants.MOVE_COOLDOWN_TICKS);
         place(player, target);
+        pointCompass(player, target);
         ScoreRules.enterRoom(player, target.id(), nowTick);
     }
 
@@ -482,6 +517,107 @@ public class RoomRegistry {
             }
         }
         return pickSpawn(room);
+    }
+
+    // --- Exits ------------------------------------------------------------
+
+    /** A room's place on the grid. */
+    private record Cell(int row, int column) {
+    }
+
+    private Cell cellOf(Room room) {
+        for (int row = 0; row < grid.rows(); row++) {
+            for (int column = 0; column < grid.columns(); column++) {
+                if (cells[row][column] == room) {
+                    return new Cell(row, column);
+                }
+            }
+        }
+        throw new IllegalStateException(room.id() + " is not on the grid");
+    }
+
+    /** The shorter way from {@code from} to {@code to} on a ring of {@code size}, signed. */
+    private static int around(int from, int to, int size) {
+        int ahead = Math.floorMod(to - from, size);
+        return ahead > size / 2 ? ahead - size : ahead;
+    }
+
+    /**
+     * A player's exits, one for each of {@link GameConstants#EXIT_DISTANCES}, counted in
+     * doors from {@code start}. A distance the world is too small for becomes its
+     * farthest. Each exit gets a room of its own when there are enough, and a floor tile
+     * that is no door's, bush's, cabinet's or crate's.
+     *
+     * @param keep exits already decided, whose rooms are not used again
+     */
+    private List<Exit> rollExits(Room start, List<Exit> keep) {
+        Cell origin = cellOf(start);
+        int farthest = grid.rows() / 2 + grid.columns() / 2;
+        List<Exit> exits = new ArrayList<>(keep);
+        for (int i = keep.size(); i < GameConstants.EXIT_DISTANCES.size(); i++) {
+            int distance = Math.min(GameConstants.EXIT_DISTANCES.get(i), farthest);
+            List<Room> ring = new ArrayList<>();
+            List<Room> fallback = new ArrayList<>();
+            for (int row = 0; row < grid.rows(); row++) {
+                for (int column = 0; column < grid.columns(); column++) {
+                    Room room = cells[row][column];
+                    boolean taken = exits.stream().anyMatch(exit -> exit.in(room));
+                    if (room == start || taken) {
+                        continue;
+                    }
+                    int away = Math.abs(around(origin.row(), row, grid.rows()))
+                            + Math.abs(around(origin.column(), column, grid.columns()));
+                    (away == distance ? ring : fallback).add(room);
+                }
+            }
+            List<Room> choice = ring.isEmpty() ? fallback : ring;
+            if (choice.isEmpty()) {
+                break;
+            }
+            Room room = choice.get(exitRandom.nextInt(choice.size()));
+            Pos at = exitTile(room);
+            if (at != null) {
+                exits.add(new Exit(room.id(), at, 0, 0));
+            }
+        }
+        return exits;
+    }
+
+    private Pos exitTile(Room room) {
+        List<Pos> candidates = new ArrayList<>();
+        for (int y = 0; y < GridMap.SIZE; y++) {
+            for (int x = 0; x < GridMap.SIZE; x++) {
+                Pos p = new Pos(x, y);
+                if (room.map().tileAt(p) == TileType.FLOOR && room.crateAt(p) == null
+                        && ActionResolver.doorSideAt(room, p) == null) {
+                    candidates.add(p);
+                }
+            }
+        }
+        return candidates.isEmpty() ? null : candidates.get(exitRandom.nextInt(candidates.size()));
+    }
+
+    /** An exit whose room the world dropped is rolled again from where the player is. */
+    private void rerollLostExits(Player player, Room room) {
+        List<Exit> kept = player.exits().stream()
+                .filter(exit -> rooms.containsKey(exit.roomId()))
+                .toList();
+        if (kept.size() < player.exits().size()) {
+            player.setExits(rollExits(room, kept));
+        }
+    }
+
+    /** Points every exit's bearing from the room the player is in now. */
+    private void pointCompass(Player player, Room here) {
+        Cell origin = cellOf(here);
+        List<Exit> pointed = new ArrayList<>();
+        for (Exit exit : player.exits()) {
+            Cell target = cellOf(rooms.get(exit.roomId()));
+            pointed.add(exit.pointedFrom(
+                    around(origin.column(), target.column(), grid.columns()),
+                    around(origin.row(), target.row(), grid.rows())));
+        }
+        player.setExits(pointed);
     }
 
     private <T> T pick(List<T> candidates) {

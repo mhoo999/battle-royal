@@ -2,6 +2,7 @@ package com.example.battleroyal.ws;
 
 import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.Command;
+import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
@@ -54,6 +55,64 @@ class SnapshotFilterTest {
         assertEquals(GameConstants.TICK_MS,
                 filter.forViewer(room, viewer, 100 + GameConstants.LOOT_TICKS - 1)
                         .self().lootMsLeft());
+    }
+
+    @Test
+    void theCompassIsForItsOwnerAndAnExitsTileShowsOnlyInItsRoom() throws Exception {
+        Room room = room();
+        Player viewer = at("v", OPEN);
+        viewer.setExits(List.of(new Exit("room-1", new Pos(2, 5), 0, 0),
+                new Exit("room-7", new Pos(4, 4), -1, 2)));
+        Player other = at("o", ALSO_OPEN);
+        room.add(viewer);
+        room.add(other);
+
+        List<Snapshot.Bearing> mine = filter.forViewer(room, viewer, 1).self().exits();
+        assertEquals(new Snapshot.Bearing(0, 0, 2, 5), mine.get(0));
+        assertEquals(new Snapshot.Bearing(-1, 2, null, null), mine.get(1),
+                "a direction to walk, not the tile of a room you are not in");
+
+        String theirs = new ObjectMapper().writeValueAsString(filter.forViewer(room, other, 1));
+        assertFalse(theirs.contains("\"dx\":-1"), "nobody else learns where your exits are");
+        assertTrue(filter.forViewer(room, other, 1).self().exits().isEmpty());
+    }
+
+    @Test
+    void aCrateIsOpenedForTheOpenerAloneAndOthersStillSeeOnlyACrate() {
+        Room room = room();
+        Player opener = at("v", OPEN);
+        Player bystander = at("b", ALSO_OPEN);
+        room.add(opener);
+        room.add(bystander);
+        room.placeItem(OPEN, new Item("i-1", ItemKind.PISTOL, GameConstants.PISTOL_MAGAZINE));
+        assertNull(filter.forViewer(room, opener, 100).self().crate(), "not before it is open");
+
+        RoomSimulator.apply(room, new Command.ActionB("v"), 100);
+        RoomSimulator.tick(room, 100 + GameConstants.LOOT_TICKS);
+
+        assertEquals(List.of(new Snapshot.Slot(ItemKind.PISTOL, GameConstants.PISTOL_MAGAZINE)),
+                filter.forViewer(room, opener, 200).self().crate());
+        assertNull(filter.forViewer(room, bystander, 200).self().crate(),
+                "what is inside is the opener's to know");
+        assertEquals(1, filter.forViewer(room, bystander, 200).items().size(),
+                "everyone still sees that a crate lies there");
+    }
+
+    @Test
+    void theViewerSeesTheirWholeInventoryAndWhichSlotIsEquipped() {
+        Room room = room();
+        Player viewer = at("v", OPEN);
+        viewer.setSlot(0, new Item("i-1", ItemKind.KNIFE, 0));
+        viewer.setSlot(2, new Item("i-2", ItemKind.PISTOL, 4));
+        viewer.equip(2);
+        room.add(viewer);
+
+        Snapshot.Self self = filter.forViewer(room, viewer, 100).self();
+
+        assertEquals(Arrays.asList(new Snapshot.Slot(ItemKind.KNIFE, null), null,
+                new Snapshot.Slot(ItemKind.PISTOL, 4)), self.inventory());
+        assertEquals(2, self.equipped());
+        assertEquals(ItemKind.PISTOL, self.item(), "item is the equipped one");
     }
 
     /**

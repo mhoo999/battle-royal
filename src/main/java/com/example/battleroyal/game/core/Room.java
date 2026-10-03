@@ -2,7 +2,6 @@ package com.example.battleroyal.game.core;
 
 import java.util.Collection;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,7 +27,8 @@ public final class Room {
     private final String id;
     private final GridMap map;
     private final Map<String, Player> players = new LinkedHashMap<>();
-    private final Map<Pos, Item> floorItems = new HashMap<>();
+    private final Map<Pos, Crate> crates = new LinkedHashMap<>();
+    private int crateSequence;
     private final Map<Direction, Room> links = new EnumMap<>(Direction.class);
     private final List<GameEvent> events = new ArrayList<>();
     private boolean lootRollPending;
@@ -123,27 +123,44 @@ public final class Room {
         return null;
     }
 
-    // --- Floor items ------------------------------------------------------
+    // --- Crates ---------------------------------------------------------
 
-    public Map<Pos, Item> floorItems() {
-        return floorItems;
+    /** Crates on the floor by tile, at most one per tile. */
+    public Map<Pos, Crate> crates() {
+        return crates;
     }
 
-    public Item itemAt(Pos pos) {
-        return floorItems.get(pos);
+    public Crate crateAt(Pos pos) {
+        return crates.get(pos);
     }
 
-    public void placeItem(Pos pos, Item item) {
-        floorItems.put(pos, item);
+    public void placeCrate(Pos pos, Crate crate) {
+        crates.put(pos, crate);
         dirty = true;
     }
 
-    public Item takeItem(Pos pos) {
-        Item taken = floorItems.remove(pos);
-        if (taken != null) {
+    public Crate removeCrate(Pos pos) {
+        Crate removed = crates.remove(pos);
+        if (removed != null) {
             dirty = true;
         }
-        return taken;
+        return removed;
+    }
+
+    /** Puts an item on the floor: into the crate on that tile, or a new one. */
+    public void placeItem(Pos pos, Item item) {
+        Crate crate = crates.get(pos);
+        if (crate == null) {
+            placeCrate(pos, new Crate(newCrateId(), List.of(item)));
+        } else {
+            crate.add(item);
+            dirty = true;
+        }
+    }
+
+    /** A crate id unique within this room, which is all a loot needs to check. */
+    public String newCrateId() {
+        return id + "-c" + (++crateSequence);
     }
 
     // --- Loot roll --------------------------------------------------------

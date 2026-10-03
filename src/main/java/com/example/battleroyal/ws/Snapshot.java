@@ -45,12 +45,43 @@ public record Snapshot(
             int hp,
             ItemKind item,
             Integer ammo,
+            List<Slot> inventory,
+            int equipped,
+            List<Slot> crate,
             Concealment concealment,
             Integer lootMsLeft,
+            List<Bearing> exits,
+            Integer extractMsLeft,
             int score,
             int kills,
             ActionA actionA,
             ActionB actionB
+    ) {
+    }
+
+    /**
+     * One inventory slot or crate entry, as its owner sees it. An empty inventory slot
+     * is a null in the list. Only ever inside {@link Self}: what a player carries, and
+     * what is in a crate they opened, is nobody else's business.
+     */
+    public record Slot(
+            ItemKind kind,
+            Integer ammo
+    ) {
+    }
+
+    /**
+     * The compass needle for one of the viewer's own exits: how many rooms east and
+     * south it lies, the shorter way round, and its tile once the viewer is in its room.
+     * Only ever inside {@link Self}; nobody learns where anyone else's exits are (D9).
+     *
+     * @param x null unless the exit is in this room
+     */
+    public record Bearing(
+            int dx,
+            int dy,
+            Integer x,
+            Integer y
     ) {
     }
 
@@ -68,9 +99,9 @@ public record Snapshot(
     }
 
     /**
-     * That something lies here, never what. You learn what an item is by looting it,
-     * which is the point of looting; a kind on the wire would be one devtools panel
-     * away even if the client never drew it.
+     * That a crate lies here, never what is in it. You learn that by opening it, which is
+     * the point of looting; a kind on the wire would be one devtools panel away even if
+     * the client never drew it. The id is the crate's.
      */
     public record FloorItem(
             String id,

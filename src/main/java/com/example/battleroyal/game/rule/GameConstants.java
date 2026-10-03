@@ -1,5 +1,7 @@
 package com.example.battleroyal.game.rule;
 
+import java.util.List;
+
 /**
  * Every tunable number in the game, in one place.
  *
@@ -47,10 +49,32 @@ public final class GameConstants {
     public static final int CABINET_TOGGLE_COOLDOWN_TICKS = 8;
 
     /**
-     * Time to take an item off the floor: 500ms. Moving off the tile during it starts
-     * over, so grabbing a weapon under fire is a commitment rather than a free action.
+     * Time to open a crate: 500ms with B held. Moving off the tile during it starts
+     * over, so looting under fire is a commitment rather than a free action.
      */
     public static final int LOOT_TICKS = 10;
+
+    /**
+     * Time to get out through an exit: 5s with B held (D7). Moving, letting go or being
+     * hit starts it over, which makes the way out the most dangerous moment of a trip.
+     */
+    public static final int EXTRACT_TICKS = 100;
+
+    /**
+     * How many rooms away, counted in doors, each of a player's exits lies from the room
+     * they start in (D8): one near, one farther. A world too small for a distance gets
+     * its farthest room instead.
+     */
+    public static final List<Integer> EXIT_DISTANCES = List.of(2, 3);
+
+    /**
+     * Most items a crate holds. A death leaves at most a full inventory, and putting
+     * things back can add to it; past this the crate refuses.
+     */
+    public static final int CRATE_CAPACITY = 6;
+
+    /** Slots in a hideout stash: the plain box (V2 D10). Bigger boxes come later. */
+    public static final int STASH_CAPACITY = 10;
 
     /** Grace period after a socket drops before the player is killed: 15s. */
     public static final int DISCONNECT_GRACE_TICKS = 300;
@@ -89,6 +113,12 @@ public final class GameConstants {
     /** Bolts a crossbow comes with; like the pistol, the last one uses it up. */
     public static final int CROSSBOW_BOLTS = 3;
 
+    /**
+     * Loading an empty gun from a bundle in the inventory fills it at once, then nothing
+     * can be done with A for 1.5s. Being hit does not stop it: it is already done.
+     */
+    public static final int RELOAD_TICKS = 30;
+
     public static final int MEDKIT_HEAL = 50;
     public static final int MEDKIT_COOLDOWN_TICKS = 20;
 
@@ -113,12 +143,12 @@ public final class GameConstants {
     // --- Loot ---------------------------------------------------------------
 
     /**
-     * What a new room rolls, out of 100: one item or nothing. A little over half the
-     * rooms hold something, mostly junk; a real weapon (knife, bat, crossbow, pistol)
+     * What a new room rolls, out of 100: one item or nothing. Six rooms in ten hold
+     * something, mostly junk; a real weapon (knife, bat, crossbow, pistol)
      * turns up about one room in eight, a pistol one in a hundred. Starting values,
      * not playtested.
      */
-    public static final int LOOT_WEIGHT_NOTHING = 45;
+    public static final int LOOT_WEIGHT_NOTHING = 39;
     public static final int LOOT_WEIGHT_SPOON = 6;
     public static final int LOOT_WEIGHT_DOLL = 6;
     public static final int LOOT_WEIGHT_CUP = 6;
@@ -130,6 +160,9 @@ public final class GameConstants {
     public static final int LOOT_WEIGHT_BAT = 4;
     public static final int LOOT_WEIGHT_CROSSBOW = 2;
     public static final int LOOT_WEIGHT_PISTOL = 1;
+    /** Ammunition, a full magazine's worth, for a gun someone already has. */
+    public static final int LOOT_WEIGHT_ROUNDS = 3;
+    public static final int LOOT_WEIGHT_BOLTS = 3;
 
     /**
      * A room rolls again after 30s in all with nobody in it and nothing on its floor.

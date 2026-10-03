@@ -6,10 +6,17 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 
 ## Current Task
 
-V1 finishing line (2026-10-03). Live at https://battleroyale.site, deployed on every push
-to `main` (tests, then OIDC + S3 + SSM). Latest deploy: crate, FELL event, medkit rule,
-away-screen wording. Server commands: `docs/SERVER_COMMANDS.md`; DB: `scripts/db-tunnel.cmd`.
-Portfolio screenshots: `docs/images/README.md`, rule in CLAUDE.md §16.
+**On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
+to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
+Google sign-in works for real (user, local). Step 2 is done: crates, three-slot
+inventory, bag window, stash in the DB, hideout screen, sorties (set out / death loses /
+restart refunds). Step 3 is done: two private exits per trip, a compass, B held 5s to
+get out, the haul into the stash. Step 4 is done: trader (sell, buy), money, and the
+ranking by the value of what was found and brought out; the hideout has an ASCII hut
+under the moon behind it. That completes V2.0's loop (§7) except stash upgrades, which
+§7 puts in V2.1. Next: rehearse the new tables on local MySQL 8.4, add the Google
+client secret to the server env, then merge `v2` into `main` as v2.0 (ask first: it
+deploys).
 
 ## Completed
 
@@ -25,7 +32,7 @@ Portfolio screenshots: `docs/images/README.md`, rule in CLAUDE.md §16.
 - [x] `game/loop` — GameLoopService (20Hz thread), RoomRegistry, RoomBroadcaster
 - [x] `ws` — Snapshot, SnapshotFilter, GameWebSocketHandler, SessionRegistry,
       WebSocketSnapshotBroadcaster
-- [x] `web` — GuestSessionService, SessionController
+- [x] `web` — GameSessionService, SessionController
 - [x] Client — lobby, CSS Grid 15x15 renderer, D-pad + A/B, death overlay
 - [x] Movement: 150ms cooldown with a one-slot input buffer
 - [x] Rooms: torus grid sized to the population (replaced the capped linked graph)
@@ -90,6 +97,52 @@ Portfolio screenshots: `docs/images/README.md`, rule in CLAUDE.md §16.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] V2 step 1, accounts (branch `v2`, 2026-10-03): Spring Security OAuth2 client,
+      Google sign-in with the `openid` scope only; `Account` stores Google's `sub` and a
+      unique nickname, nothing else. Lobby: guest form + Google link; signed in, pick a
+      nickname once, then START plays under it. Guests get the `~` prefix (unranked).
+      `GuestSessionService` renamed `GameSessionService`. 202 tests (AccountServiceTest,
+      SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
+      client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
+      V2_PLAN §5, the secret stays with the user).
+- [x] Ammo system (branch `v2`, 2026-10-03, user's call): an empty pistol/crossbow stays in
+      hand (A does nothing); ROUNDS/BOLTS bundles take a slot, A=RELOAD fills the empty gun
+      (RELOAD_TICKS 30); bundles spawn on the island; trader sells guns empty and ammo apart.
+      Hideout art redrawn as generated block art (scratchpad `hut_art.py` style). 256 tests.
+      NOT YET: browser look at the new art + screenshot; GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md
+      still say "no reload" and list old prices — update them next.
+- [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
+      (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
+      `account.money` and `account.haul` (default 0 so `ddl-auto=update` can add them to
+      a table with rows: without it H2 refused the column, and so might prod);
+      `/api/hideout/sell`, `/buy` under the account row lock; `/api/ranking` is now
+      `{top, me}` by haul. Hideout art pins Consolas: a Korean font drew `\` as `₩`.
+      251 tests.
+- [x] V2 exits, compass, extraction (branch `v2`, 2026-10-03): each new player gets two
+      exits 2 and 3 doors from the start room (capped by the island), on plain floor out of
+      door reach, private to them; `self.exits` carries torus bearings and the tile in its
+      own room (`◎`). B on your exit is EXTRACT, held 100 ticks, broken by moving, letting go
+      or a hit. `EXTRACTED` to that player; listeners (renamed `DepartureListener`) retire
+      the token, save the result, and settle the sortie: own gear home with its ammo, finds
+      added, gear left on the island deleted. Exits re-roll if a shrink drops their room.
+      Smoke walks a guest to an exit by compass and out (5.1s). 243 tests.
+- [x] V2 stash and hideout (branch `v2`, 2026-10-03): `stash_item` (STASH or OUT with a
+      sortie) and `sortie` (OUT, DIED, EXTRACTED, REFUNDED). Setting out locks the account
+      row and refuses a second open sortie; death deletes what was carried on its own
+      writer thread; start-up refunds sorties a stopped server left open (D6). Signed-in
+      START opens the hideout: pick from a 10-slot stash into 3 slots, then 섬으로.
+      `/api/session` is guests only now. 226 tests.
+- [x] V2 crates and inventory (branch `v2`, 2026-10-03): the floor holds crates; B held
+      opens one for the opener alone; a bag window over the board (button, `I`) shows
+      the crate left and three inventory slots right; pick, then pick where it goes
+      (TAKE swaps into an occupied slot, PUT returns one, the same slot again equips);
+      `e` marks the equipped slot (`1` `2` `3`). A death drops everything in one crate.
+      216 tests, smoke opens and takes; browser checked.
+- [x] Lobby: Google and guest first, the name after; a named account starts in one tap.
+- [x] Nickname filter (branch `v2`, 2026-10-03, user's request): swearing, sexual
+      words and posing as staff, for guests and accounts. List in
+      `nickname-blocklist.txt`; names are normalized (spaces, symbols, digit swaps,
+      full-width) before matching. Refusals are Korean text the lobby shows as is.
 - [x] Ranking cleanup (2026-10-03): a `~name` plays unranked (`UNRANKED_PREFIX`) and
       smoke uses `~alpha`/`~bravo`/`~reconnect`, so production smoke leaves no rows
       (checked). Deleted 20 test rows from the live DB at the user's word, leaving only
@@ -154,7 +207,7 @@ Step 6 and HUD: `./gradlew test` green, smoke all passed, user verified cabinets
 and clock in the browser.
 
 Step 7: `./gradlew test` green (new: ScoreRulesTest 7, RoomRegistryTest grace and
-room-score cases, GuestSessionServiceTest, GameResultRepositoryTest 2). Smoke all
+room-score cases, GameSessionServiceTest, GameResultRepositoryTest 2). Smoke all
 passed including the new reconnect check (same room, same tile). Live server: the
 three smoke players died 15s after their sockets closed ("did not come back in
 time") and `/api/ranking` returned them best-first.
@@ -208,6 +261,20 @@ Nothing.
   tab; check it on a real phone.
 
 ## Recent Decisions
+
+- **Only finds count towards the ranking.** Haul = value of extracted items that did
+  not leave the stash on that trip; otherwise a stash pistol walked in and out would farm
+  it. Prices are a first draft (Q12).
+- **Stash upgrades wait for V2.1**, as V2_PLAN §7 says, though step 4's line lists them.
+
+- **A full stash still takes the whole haul (V2 step 3, temporary).** Losing loot at the
+  hideout door would punish the best trips, and there is no way to make room until step
+  4's traders. The count shows e.g. 11/10. Revisit with selling.
+- **Guests get exits and can extract**; they just have no stash. The portfolio visitor
+  should see the whole loop without a Google account.
+- **Known hole (V2 step 3):** an item one account put in a crate and another account
+  extracted with is a new row for the second; if the server restarts while the first is
+  still out, D6 refunds the first one's copy too. Needs a restart and two accounts.
 
 - **A game that ended while the socket was down says so, without a record.** The
   client cannot tell an expired grace (result saved) from a server restart (nothing
