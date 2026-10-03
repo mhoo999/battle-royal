@@ -6,10 +6,10 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 
 ## Current Task
 
-V1 finishing line (2026-10-03). Live at https://battleroyale.site, deployed on every push
-to `main` (tests, then OIDC + S3 + SSM). Latest deploy: crate, FELL event, medkit rule,
-away-screen wording. Server commands: `docs/SERVER_COMMANDS.md`; DB: `scripts/db-tunnel.cmd`.
-Portfolio screenshots: `docs/images/README.md`, rule in CLAUDE.md §16.
+**On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
+to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
+accounts — Google login (needs an OAuth client from the user's Google Cloud Console)
+with guest play kept as a trial.
 
 ## Completed
 
