@@ -4,7 +4,7 @@
  * events and who receives them (including a kill), and a server that ignores anything the client asserts
  * about itself.
  *
- * A room holds one item at most and often none, so the pickup check runs only when B's
+ * A room holds one crate at most and often none, so the crate check runs only when B's
  * starting room offers something and prints SKIP otherwise. The combat check needs
  * nothing: A strikes with bare hands.
  *
@@ -165,12 +165,22 @@ async function takeDoor(player, side) {
   }
 }
 
-/** Walks onto an item and presses B. Resolves to the snapshot once it is in hand. */
-async function pickUp(player, item) {
-  if (!(await walkTo(player, item))) return null;
+/** Walks onto a crate and holds B. Resolves to the snapshot once it is open. */
+async function openCrate(player, crate) {
+  if (!(await walkTo(player, crate))) return null;
   player.send({ type: 'ACTION_B' });
   try {
-    return await until(player, (s) => !s.items.some((i) => i.id === item.id), 'pickup', 1500);
+    return await until(player, (s) => s.self.crate !== null, 'crate open', 1500);
+  } catch {
+    return null;
+  }
+}
+
+/** Takes the crate's first item into the first slot. Resolves once it is carried. */
+async function takeFirst(player) {
+  player.send({ type: 'TAKE', index: 0, slot: 0 });
+  try {
+    return await until(player, (s) => s.self.inventory[0] !== null, 'take', 1500);
   } catch {
     return null;
   }
@@ -206,20 +216,27 @@ async function main() {
   check(aStart.players.length === 0 && bStart.players.length === 0,
     'a new arrival sees nobody');
 
-  // Items: B picks up whatever its starting room offers.
+  // Crates: B opens whatever its starting room offers and takes what is inside.
   const offered = b.latest().items[0];
   if (!offered) {
-    skip('B picks up an item', 'the starting room rolled nothing');
+    skip('B opens a crate', 'the starting room rolled nothing');
   } else {
-    const scoreBefore = b.latest().self.score;
-    const after = await pickUp(b, offered);
-    check(after !== null && after.self.item !== null,
-      'B picks up the item it stands on', `${after?.self.item} ${offered.id}`);
     check(Object.keys(offered).sort().join() === 'id,x,y',
-      'a floor item does not say what it is', JSON.stringify(offered));
-    if (after) {
-      check(after.self.score === scoreBefore + 5, 'a first pickup scores +5',
-        `${scoreBefore} -> ${after.self.score}`);
+      'a crate does not say what is in it', JSON.stringify(offered));
+    const scoreBefore = b.latest().self.score;
+    const opened = await openCrate(b, offered);
+    check(opened !== null && opened.self.crate.length === 1,
+      'holding B over a crate opens it for B', JSON.stringify(opened?.self.crate));
+    if (opened) {
+      const after = await takeFirst(b);
+      check(after !== null && after.self.inventory[0].kind === opened.self.crate[0].kind,
+        'TAKE moves the item into the slot', JSON.stringify(after?.self.inventory));
+      check(after !== null && !after.items.some((i) => i.id === offered.id),
+        'an emptied crate leaves the floor');
+      if (after) {
+        check(after.self.score === scoreBefore + 5, 'a first pickup scores +5',
+          `${scoreBefore} -> ${after.self.score}`);
+      }
     }
   }
 

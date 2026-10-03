@@ -1,11 +1,13 @@
 package com.example.battleroyal.ws;
 
+import com.example.battleroyal.game.core.Crate;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
 import com.example.battleroyal.game.rule.ActionResolver;
 import com.example.battleroyal.game.rule.GameConstants;
+import com.example.battleroyal.game.rule.RoomSimulator;
 import com.example.battleroyal.game.rule.VisibilityRules;
 import org.springframework.stereotype.Component;
 
@@ -44,10 +46,9 @@ public class SnapshotFilter {
         }
 
         List<Snapshot.FloorItem> items = new ArrayList<>();
-        for (Map.Entry<Pos, Item> entry : room.floorItems().entrySet()) {
+        for (Map.Entry<Pos, Crate> entry : room.crates().entrySet()) {
             Pos pos = entry.getKey();
-            Item item = entry.getValue();
-            items.add(new Snapshot.FloorItem(item.id(), pos.x(), pos.y()));
+            items.add(new Snapshot.FloorItem(entry.getValue().id(), pos.x(), pos.y()));
         }
 
         return Snapshot.of(tick, room.id(), room.map().terrainRows(),
@@ -65,6 +66,9 @@ public class SnapshotFilter {
                 viewer.hp(),
                 held == null ? null : held.kind(),
                 held != null && held.kind().usesAmmo() ? held.ammo() : null,
+                viewer.inventory().stream().map(SnapshotFilter::slot).toList(),
+                viewer.equipped(),
+                crate(room, viewer),
                 viewer.concealment(room.map()),
                 viewer.looting()
                         ? (int) (viewer.lootDoneTick() - tick) * GameConstants.TICK_MS
@@ -73,5 +77,19 @@ public class SnapshotFilter {
                 viewer.kills(),
                 ActionResolver.actionA(viewer),
                 ActionResolver.actionB(room, viewer));
+    }
+
+    /** What is in the crate this viewer opened, or null when none is open. */
+    private static List<Snapshot.Slot> crate(Room room, Player viewer) {
+        Crate open = RoomSimulator.openCrate(room, viewer);
+        return open == null ? null : open.items().stream().map(SnapshotFilter::slot).toList();
+    }
+
+    /** Null in, null out: an empty slot stays a gap in the list. */
+    private static Snapshot.Slot slot(Item item) {
+        if (item == null) {
+            return null;
+        }
+        return new Snapshot.Slot(item.kind(), item.kind().usesAmmo() ? item.ammo() : null);
     }
 }

@@ -56,6 +56,44 @@ class SnapshotFilterTest {
                         .self().lootMsLeft());
     }
 
+    @Test
+    void aCrateIsOpenedForTheOpenerAloneAndOthersStillSeeOnlyACrate() {
+        Room room = room();
+        Player opener = at("v", OPEN);
+        Player bystander = at("b", ALSO_OPEN);
+        room.add(opener);
+        room.add(bystander);
+        room.placeItem(OPEN, new Item("i-1", ItemKind.PISTOL, GameConstants.PISTOL_MAGAZINE));
+        assertNull(filter.forViewer(room, opener, 100).self().crate(), "not before it is open");
+
+        RoomSimulator.apply(room, new Command.ActionB("v"), 100);
+        RoomSimulator.tick(room, 100 + GameConstants.LOOT_TICKS);
+
+        assertEquals(List.of(new Snapshot.Slot(ItemKind.PISTOL, GameConstants.PISTOL_MAGAZINE)),
+                filter.forViewer(room, opener, 200).self().crate());
+        assertNull(filter.forViewer(room, bystander, 200).self().crate(),
+                "what is inside is the opener's to know");
+        assertEquals(1, filter.forViewer(room, bystander, 200).items().size(),
+                "everyone still sees that a crate lies there");
+    }
+
+    @Test
+    void theViewerSeesTheirWholeInventoryAndWhichSlotIsEquipped() {
+        Room room = room();
+        Player viewer = at("v", OPEN);
+        viewer.setSlot(0, new Item("i-1", ItemKind.KNIFE, 0));
+        viewer.setSlot(2, new Item("i-2", ItemKind.PISTOL, 4));
+        viewer.equip(2);
+        room.add(viewer);
+
+        Snapshot.Self self = filter.forViewer(room, viewer, 100).self();
+
+        assertEquals(Arrays.asList(new Snapshot.Slot(ItemKind.KNIFE, null), null,
+                new Snapshot.Slot(ItemKind.PISTOL, 4)), self.inventory());
+        assertEquals(2, self.equipped());
+        assertEquals(ItemKind.PISTOL, self.item(), "item is the equipped one");
+    }
+
     /**
      * The strongest guard in the codebase: if anyone adds hp, item or ammo to the view
      * other players receive, this fails. The type is the contract.

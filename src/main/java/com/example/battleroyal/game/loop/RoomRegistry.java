@@ -395,6 +395,7 @@ public class RoomRegistry {
         player.clearBufferedMove();
         // The same coordinates in the next room are a different tile.
         player.cancelLoot();
+        player.closeCrate();
         player.setNextMoveTick(nowTick + GameConstants.MOVE_COOLDOWN_TICKS);
         place(player, target);
         ScoreRules.enterRoom(player, target.id(), nowTick);

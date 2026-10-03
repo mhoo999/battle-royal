@@ -624,8 +624,9 @@ class RoomRegistryTest {
         registry.requestJoin("a", "a");
         registry.processPending(0);
         registry.tickRooms(0);
-        return registry.roomOf("a").floorItems().entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue().id() + ":" + e.getValue().kind())
+        return registry.roomOf("a").crates().entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue().items().stream()
+                        .map(item -> item.id() + ":" + item.kind()).toList())
                 .sorted()
                 .toList()
                 .toString();

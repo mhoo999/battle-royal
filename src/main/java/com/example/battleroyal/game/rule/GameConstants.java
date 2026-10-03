@@ -47,10 +47,16 @@ public final class GameConstants {
     public static final int CABINET_TOGGLE_COOLDOWN_TICKS = 8;
 
     /**
-     * Time to take an item off the floor: 500ms. Moving off the tile during it starts
-     * over, so grabbing a weapon under fire is a commitment rather than a free action.
+     * Time to open a crate: 500ms with B held. Moving off the tile during it starts
+     * over, so looting under fire is a commitment rather than a free action.
      */
     public static final int LOOT_TICKS = 10;
+
+    /**
+     * Most items a crate holds. A death leaves at most a full inventory, and putting
+     * things back can add to it; past this the crate refuses.
+     */
+    public static final int CRATE_CAPACITY = 6;
 
     /** Grace period after a socket drops before the player is killed: 15s. */
     public static final int DISCONNECT_GRACE_TICKS = 300;

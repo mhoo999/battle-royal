@@ -110,7 +110,7 @@ class CombatSimulationTest {
         assertInstanceOf(GameEvent.Shot.class, room.drainEvents().getFirst(),
                 "the last round is still a shot");
         assertNull(shooter.heldItem(), "no reload: the empty pistol is gone");
-        assertTrue(room.floorItems().isEmpty(), "and not left on the floor either");
+        assertTrue(room.crates().isEmpty(), "and not left on the floor either");
         assertEquals(ActionA.ATTACK, ActionResolver.actionA(shooter), "back to bare hands");
     }
 
@@ -324,21 +324,24 @@ class CombatSimulationTest {
     }
 
     @Test
-    void aDeadPlayersItemFallsWhereTheyDied() {
+    void aDeadPlayersInventoryFallsWhereTheyDiedInOneCrate() {
         Room room = room();
         Player attacker = put(room, "a", new Pos(1, 1), Direction.RIGHT, ItemKind.KNIFE);
         Player target = put(room, "t", new Pos(2, 1), Direction.LEFT, ItemKind.PISTOL);
         Item carried = target.heldItem();
+        Item spare = new Item("i-spare", ItemKind.MEDKIT, 0);
+        target.setSlot(2, spare);
         target.takeDamage(FULL - 1);
 
         pressA(room, attacker, 0);
 
         assertNull(target.heldItem());
-        assertSame(carried, room.itemAt(new Pos(2, 1)), "the same instance, ammo intact");
+        assertEquals(java.util.List.of(carried, spare), room.crateAt(new Pos(2, 1)).items(),
+                "the same instances, ammo intact, all of them: a body is worth searching");
     }
 
     @Test
-    void aDropNeverOverwritesAnItemAlreadyOnTheFloor() {
+    void aDropNeverJoinsACrateAlreadyOnTheFloor() {
         Room room = room();
         Player attacker = put(room, "a", new Pos(1, 1), Direction.RIGHT, ItemKind.KNIFE);
         Player target = put(room, "t", new Pos(2, 1), Direction.LEFT, ItemKind.PISTOL);
@@ -349,16 +352,16 @@ class CombatSimulationTest {
 
         pressA(room, attacker, 0);
 
-        assertSame(lying, room.itemAt(new Pos(2, 1)));
+        assertEquals(java.util.List.of(lying), room.crateAt(new Pos(2, 1)).items());
         long placed = Arrays.stream(Direction.values())
-                .map(d -> room.itemAt(new Pos(2, 1).step(d)))
-                .filter(item -> item == carried)
+                .map(d -> room.crateAt(new Pos(2, 1).step(d)))
+                .filter(crate -> crate != null && crate.items().contains(carried))
                 .count();
-        assertEquals(1, placed, "the carried item lands on a neighbouring tile");
+        assertEquals(1, placed, "the body's crate lands on a neighbouring tile");
     }
 
     @Test
-    void anItemDroppedAtADoorLandsWhereBCanStillPickItUp() {
+    void aCrateDroppedAtADoorLandsWhereBCanStillOpenIt() {
         Room room = room();
         // (0,7) is CROSSROADS' west door; (1,7) is the tile just inside it.
         Player attacker = put(room, "a", new Pos(2, 7), Direction.LEFT, ItemKind.KNIFE);
@@ -368,12 +371,12 @@ class CombatSimulationTest {
 
         pressA(room, attacker, 0);
 
-        Pos landed = room.floorItems().entrySet().stream()
-                .filter(e -> e.getValue() == carried)
+        Pos landed = room.crates().entrySet().stream()
+                .filter(e -> e.getValue().items().contains(carried))
                 .map(java.util.Map.Entry::getKey)
                 .findFirst().orElseThrow();
         assertNull(ActionResolver.doorSideAt(room, landed),
-                "B would take the door instead of the item at " + landed);
+                "B would take the door instead of the crate at " + landed);
     }
 
     @Test
@@ -388,8 +391,8 @@ class CombatSimulationTest {
 
         assertFalse(inside.alive());
         assertFalse(inside.inCabinet());
-        assertNull(room.itemAt(new Pos(9, 4)), "a cabinet tile holds no floor item");
-        assertEquals(1, room.floorItems().size());
+        assertNull(room.crateAt(new Pos(9, 4)), "a cabinet tile holds no crate");
+        assertEquals(1, room.crates().size());
     }
 
     // --- Medkit ----------------------------------------------------------------

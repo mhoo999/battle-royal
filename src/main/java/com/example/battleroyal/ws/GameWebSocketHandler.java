@@ -105,9 +105,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     /**
      * The entire vocabulary a client may use. Deserializing into this shape is itself a
      * guard: a frame carrying {@code x}, {@code y}, {@code hp} or {@code damage} has
-     * those fields discarded, because there is nowhere for them to land.
+     * those fields discarded, because there is nowhere for them to land. {@code slot}
+     * and {@code index} name positions in the player's own inventory and open crate,
+     * which the server checks, never an item.
      */
-    private record Frame(String type, String dir) {
+    private record Frame(String type, String dir, Integer slot, Integer index) {
     }
 
     /**
@@ -129,6 +131,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 case "ACTION_A" -> new Command.ActionA(playerId);
                 case "ACTION_B" -> new Command.ActionB(playerId);
                 case "RELEASE_B" -> new Command.ReleaseB(playerId);
+                case "EQUIP" -> frame.slot() == null ? null
+                        : new Command.Equip(playerId, frame.slot());
+                case "TAKE" -> frame.slot() == null || frame.index() == null ? null
+                        : new Command.Take(playerId, frame.index(), frame.slot());
+                case "PUT" -> frame.slot() == null ? null
+                        : new Command.Put(playerId, frame.slot());
+                case "CLOSE" -> new Command.CloseCrate(playerId);
                 default -> null;
             };
         } catch (Exception e) {

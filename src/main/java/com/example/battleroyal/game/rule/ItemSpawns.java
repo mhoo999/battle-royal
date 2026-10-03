@@ -41,7 +41,7 @@ public final class ItemSpawns {
      */
     public static void tick(Room room, Random random, Supplier<String> ids) {
         if (!room.takeLootRoll()) {
-            if (!room.isEmpty() || !room.floorItems().isEmpty()) {
+            if (!room.isEmpty() || !room.crates().isEmpty()) {
                 return;
             }
             if (room.advanceLootRegrow() < GameConstants.LOOT_REGROW_TICKS) {
@@ -53,7 +53,7 @@ public final class ItemSpawns {
     }
 
     /**
-     * Nothing, or one item on one of the map's spawn tiles. The tile is chosen per roll,
+     * Nothing, or a crate of one item on one of the map's spawn tiles. The tile is chosen per roll,
      * so the same layout does not always hide its loot in the same place.
      */
     private static void roll(Room room, Random random, Supplier<String> ids) {

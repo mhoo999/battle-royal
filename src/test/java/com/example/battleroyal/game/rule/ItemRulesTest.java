@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pickup, swap and the loot roll. CROSSROADS spawn points are (10,2), (5,7), (9,7) and
+ * Crates, the inventory and the loot roll. CROSSROADS spawn points are (10,2), (5,7), (9,7) and
  * (4,12); (2,1) is plain floor well away from any door.
  */
 class ItemRulesTest {
@@ -65,25 +65,50 @@ class ItemRulesTest {
         return () -> "i-" + next.incrementAndGet();
     }
 
-    // --- Pickup and swap ------------------------------------------------------
+    // --- Opening a crate -----------------------------------------------------
+
+    private static void take(Room room, Player player, int crateIndex, int slot, long tick) {
+        RoomSimulator.apply(room, new Command.Take(player.id(), crateIndex, slot), tick);
+    }
+
+    private static void putBack(Room room, Player player, int slot, long tick) {
+        RoomSimulator.apply(room, new Command.Put(player.id(), slot), tick);
+    }
 
     @Test
-    void bOverAnItemWithEmptyHandsPicksItUpAndScoresOnce() {
+    void holdingBOverACrateOpensItAndBAgainClosesIt() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
+        assertEquals(ActionB.OPEN, ActionResolver.actionB(room, player));
+
+        loot(room, player, 0);
+
+        assertEquals(FLOOR, player.openCrateAt());
+        assertEquals(ActionB.CLOSE, ActionResolver.actionB(room, player));
+
+        pressB(room, player, 20);
+        assertNull(player.openCrateAt());
+    }
+
+    @Test
+    void takingAnItemPutsItInTheChosenSlotAndScoresOnce() {
         Room room = room();
         Player player = put(room, FLOOR);
         Item knife = item("i-1", ItemKind.KNIFE);
         room.placeItem(FLOOR, knife);
-        assertEquals(ActionB.PICKUP, ActionResolver.actionB(room, player));
-
         loot(room, player, 0);
 
-        assertSame(knife, player.heldItem());
-        assertNull(room.itemAt(FLOOR));
+        take(room, player, 0, 1, 20);
+
+        assertSame(knife, player.slot(1));
+        assertNull(room.crateAt(FLOOR), "an emptied crate leaves the floor");
+        assertNull(player.openCrateAt());
         assertEquals(GameConstants.SCORE_ITEM_PICKUP, player.score());
     }
 
     @Test
-    void bOverAnItemWhileHoldingOneSwapsAndLeavesTheOldItemBehind() {
+    void takingIntoAnOccupiedSlotTradesPlacesAndDestroysNothing() {
         Room room = room();
         Player player = put(room, FLOOR);
         Item pistol = item("i-1", ItemKind.PISTOL);
@@ -91,14 +116,14 @@ class ItemRulesTest {
         player.hold(pistol);
         Item knife = item("i-2", ItemKind.KNIFE);
         room.placeItem(FLOOR, knife);
-        assertEquals(ActionB.SWAP, ActionResolver.actionB(room, player));
-
         loot(room, player, 0);
 
+        take(room, player, 0, player.equipped(), 20);
+
         assertSame(knife, player.heldItem());
-        assertSame(pistol, room.itemAt(FLOOR), "never destroyed");
+        assertSame(pistol, room.crateAt(FLOOR).get(0), "never destroyed");
         assertEquals(GameConstants.PISTOL_MAGAZINE - 1, pistol.ammo(),
-                "the dropped pistol keeps its rounds");
+                "the pistol keeps its rounds in the crate");
     }
 
     @Test
@@ -107,32 +132,94 @@ class ItemRulesTest {
         Player player = put(room, FLOOR);
         room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
         player.hold(item("i-2", ItemKind.SPOON));
+        loot(room, player, 0);
 
-        loot(room, player, 0);     // take the knife, drop the spoon
-        loot(room, player, 20);    // take the spoon back
-        loot(room, player, 40);    // and the knife again
+        take(room, player, 0, 0, 20);   // the knife in, the spoon out
+        take(room, player, 0, 0, 21);   // the spoon back
+        take(room, player, 0, 0, 22);   // and the knife again
 
         assertEquals(2 * GameConstants.SCORE_ITEM_PICKUP, player.score(),
                 "once per item instance, however often it changes hands");
     }
 
-    // --- Loot time ------------------------------------------------------------
+    @Test
+    void puttingAnItemBackMovesItIntoTheCrate() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
+        Item spoon = item("i-2", ItemKind.SPOON);
+        player.setSlot(2, spoon);
+        loot(room, player, 0);
+
+        putBack(room, player, 2, 20);
+
+        assertNull(player.slot(2));
+        assertEquals(2, room.crateAt(FLOOR).size());
+        assertSame(spoon, room.crateAt(FLOOR).get(1));
+    }
 
     @Test
-    void lootingTakesTimeAndTheItemArrivesWhenItIsUp() {
+    void aFullCrateTakesNothingMore() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        for (int i = 0; i < GameConstants.CRATE_CAPACITY; i++) {
+            room.placeItem(FLOOR, item("i-" + i, ItemKind.CUP));
+        }
+        Item spoon = item("i-spoon", ItemKind.SPOON);
+        player.setSlot(0, spoon);
+        loot(room, player, 0);
+
+        putBack(room, player, 0, 20);
+
+        assertSame(spoon, player.slot(0), "refused, so still carried");
+        assertEquals(GameConstants.CRATE_CAPACITY, room.crateAt(FLOOR).size());
+    }
+
+    @Test
+    void nothingMovesWithoutAnOpenCrate() {
         Room room = room();
         Player player = put(room, FLOOR);
         Item knife = item("i-1", ItemKind.KNIFE);
         room.placeItem(FLOOR, knife);
 
+        take(room, player, 0, 0, 0);
+
+        assertFalse(player.hasItem(), "a crate has to be opened before it can be emptied");
+        assertSame(knife, room.crateAt(FLOOR).get(0));
+    }
+
+    @Test
+    void equipChoosesWhatAUses() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        Item knife = item("i-1", ItemKind.KNIFE);
+        Item pistol = item("i-2", ItemKind.PISTOL);
+        player.setSlot(0, knife);
+        player.setSlot(1, pistol);
+
+        RoomSimulator.apply(room, new Command.Equip("p", 1), 0);
+        assertSame(pistol, player.heldItem());
+        assertEquals(ActionA.FIRE, ActionResolver.actionA(player));
+
+        RoomSimulator.apply(room, new Command.Equip("p", 7), 1);
+        assertEquals(1, player.equipped(), "a slot that does not exist is ignored");
+    }
+
+    // --- Loot time ------------------------------------------------------------
+
+    @Test
+    void openingTakesTimeAndTheCrateOpensWhenItIsUp() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
+
         pressB(room, player, 0);
         assertTrue(player.looting());
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS - 1);
-        assertFalse(player.hasItem(), "not yet");
-        assertSame(knife, room.itemAt(FLOOR), "still on the floor for anyone to grab");
+        assertNull(player.openCrateAt(), "not yet");
 
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
-        assertSame(knife, player.heldItem());
+        assertEquals(FLOOR, player.openCrateAt());
         assertFalse(player.looting());
     }
 
@@ -147,12 +234,28 @@ class ItemRulesTest {
         RoomSimulator.apply(room, new Command.Move("p", Direction.UP), 5);
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
 
-        assertEquals(FLOOR, player.pos(), "back on the item");
-        assertFalse(player.hasItem(), "moving away abandoned the loot");
+        assertEquals(FLOOR, player.pos(), "back on the crate");
+        assertNull(player.openCrateAt(), "moving away abandoned the loot");
         assertFalse(player.looting());
 
         loot(room, player, 20);
-        assertTrue(player.hasItem(), "a fresh B starts it again");
+        assertEquals(FLOOR, player.openCrateAt(), "a fresh B starts it again");
+    }
+
+    @Test
+    void steppingOffAnOpenCrateShutsIt() {
+        Room room = room();
+        Player player = put(room, FLOOR);
+        Item knife = item("i-1", ItemKind.KNIFE);
+        room.placeItem(FLOOR, knife);
+        loot(room, player, 0);
+
+        RoomSimulator.apply(room, new Command.Move("p", Direction.DOWN), 20);
+        take(room, player, 0, 0, 30);
+
+        assertNull(player.openCrateAt());
+        assertFalse(player.hasItem());
+        assertSame(knife, room.crateAt(FLOOR).get(0));
     }
 
     @Test
@@ -167,23 +270,21 @@ class ItemRulesTest {
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
 
         assertEquals(Direction.UP, player.facing());
-        assertTrue(player.hasItem());
+        assertEquals(new Pos(1, 1), player.openCrateAt());
     }
 
     @Test
     void lettingGoOfBAbandonsTheLoot() {
         Room room = room();
         Player player = put(room, FLOOR);
-        Item knife = item("i-1", ItemKind.KNIFE);
-        room.placeItem(FLOOR, knife);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
 
         pressB(room, player, 0);
         RoomSimulator.apply(room, new Command.ReleaseB("p"), 5);
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
 
-        assertFalse(player.hasItem());
+        assertNull(player.openCrateAt());
         assertFalse(player.looting());
-        assertSame(knife, room.itemAt(FLOOR));
     }
 
     @Test
@@ -196,26 +297,25 @@ class ItemRulesTest {
         pressB(room, player, 5);
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
 
-        assertTrue(player.hasItem());
+        assertEquals(FLOOR, player.openCrateAt());
     }
 
     @Test
-    void anItemSnatchedFirstIsNotConjuredIntoTheSlowerHand() {
+    void aCrateEmptiedFirstIsNotOpenedForTheSlowerHand() {
         Room room = room();
         Player slow = put(room, FLOOR);
-        Item knife = item("i-1", ItemKind.KNIFE);
-        room.placeItem(FLOOR, knife);
+        room.placeItem(FLOOR, item("i-1", ItemKind.KNIFE));
 
         pressB(room, slow, 0);
-        room.takeItem(FLOOR);   // someone else got there
+        room.removeCrate(FLOOR);   // someone else got there
         room.placeItem(FLOOR, item("i-2", ItemKind.SPOON));
         RoomSimulator.tick(room, GameConstants.LOOT_TICKS);
 
-        assertFalse(slow.hasItem(), "the loot was for the knife, not whatever lies there now");
+        assertNull(slow.openCrateAt(), "the loot was for that crate, not whatever lies here now");
     }
 
     @Test
-    void anItemBesideYouIsNotInReach() {
+    void aCrateBesideYouIsNotInReach() {
         Room room = room();
         Player player = put(room, FLOOR);
         room.placeItem(FLOOR.step(Direction.RIGHT), item("i-1", ItemKind.KNIFE));
@@ -290,8 +390,8 @@ class ItemRulesTest {
             ItemSpawns.tick(room, new Random(seed), ids());
 
             assertFalse(room.lootRollPending(), "rolled, seed " + seed);
-            assertTrue(room.floorItems().size() <= 1, "one item or none, seed " + seed);
-            for (Pos at : room.floorItems().keySet()) {
+            assertTrue(room.crates().size() <= 1, "one crate or none, seed " + seed);
+            for (Pos at : room.crates().keySet()) {
                 assertTrue(room.map().itemSpawns().contains(at), "on a spawn tile: " + at);
             }
         }
@@ -305,9 +405,10 @@ class ItemRulesTest {
         ItemSpawns.tick(room, alwaysLast(), ids());
 
         Pos last = room.map().itemSpawns().getLast();
-        assertEquals(1, room.floorItems().size());
-        assertEquals(ItemKind.PISTOL, room.itemAt(last).kind());
-        assertEquals(GameConstants.PISTOL_MAGAZINE, room.itemAt(last).ammo());
+        assertEquals(1, room.crates().size());
+        assertEquals(1, room.crateAt(last).size(), "a crate of one item");
+        assertEquals(ItemKind.PISTOL, room.crateAt(last).get(0).kind());
+        assertEquals(GameConstants.PISTOL_MAGAZINE, room.crateAt(last).get(0).ammo());
     }
 
     @Test
@@ -317,7 +418,7 @@ class ItemRulesTest {
             Room room = room();
             ItemSpawns.prime(room);
             ItemSpawns.tick(room, new Random(seed), ids());
-            used.addAll(room.floorItems().keySet());
+            used.addAll(room.crates().keySet());
         }
         assertEquals(Set.copyOf(room().map().itemSpawns()), used);
     }
@@ -345,10 +446,10 @@ class ItemRulesTest {
         ItemSpawns.tick(room, alwaysEmpty(), ids());
 
         ticks(room, GameConstants.LOOT_REGROW_TICKS - 1, alwaysLast());
-        assertTrue(room.floorItems().isEmpty(), "not yet");
+        assertTrue(room.crates().isEmpty(), "not yet");
 
         ticks(room, 1, alwaysLast());
-        assertEquals(1, room.floorItems().size());
+        assertEquals(1, room.crates().size());
     }
 
     @Test
@@ -360,7 +461,7 @@ class ItemRulesTest {
 
         ticks(room, 10 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
 
-        assertTrue(room.floorItems().isEmpty(), "camping gains nothing");
+        assertTrue(room.crates().isEmpty(), "camping gains nothing");
     }
 
     @Test
@@ -375,21 +476,21 @@ class ItemRulesTest {
         ticks(room, 5 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
         room.remove(visitor.id());
         ticks(room, GameConstants.LOOT_REGROW_TICKS - half - 1, alwaysLast());
-        assertTrue(room.floorItems().isEmpty(), "the visit did not count");
+        assertTrue(room.crates().isEmpty(), "the visit did not count");
 
         ticks(room, 1, alwaysLast());
-        assertEquals(1, room.floorItems().size(), "the time before the visit did");
+        assertEquals(1, room.crates().size(), "the time before the visit did");
     }
 
     @Test
-    void anItemLyingAroundHoldsRegrowthBackSoARoomNeverStacksLoot() {
+    void aCrateLyingAroundHoldsRegrowthBackSoARoomNeverStacksLoot() {
         Room room = room();
         ItemSpawns.prime(room);
         ItemSpawns.tick(room, alwaysLast(), ids());
 
         ticks(room, 5 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
 
-        assertEquals(1, room.floorItems().size());
+        assertEquals(1, room.crates().size());
     }
 
     @Test
@@ -401,10 +502,11 @@ class ItemRulesTest {
         Player player = put(room, spawn);
 
         loot(room, player, 100);
+        take(room, player, 0, 0, 120);
         ticks(room, 2 * GameConstants.LOOT_REGROW_TICKS, alwaysLast());
 
         assertEquals(ItemKind.PISTOL, player.heldItem().kind());
-        assertTrue(room.floorItems().isEmpty());
+        assertTrue(room.crates().isEmpty());
     }
 
     @Test
