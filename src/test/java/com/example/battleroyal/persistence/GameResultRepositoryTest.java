@@ -84,6 +84,17 @@ class GameResultRepositoryTest {
         assertEquals(T0, result.endedAt());
     }
 
+    @Test
+    void anUnrankedNameIsNeverSaved() {
+        ResultRecorder recorder = new ResultRecorder(results, new DirectExecutor(),
+                Clock.fixed(T0, ZoneOffset.UTC));
+
+        recorder.onDeath(new GameEvent.Died("p-1", "~alpha", 420, 2,
+                95L * GameConstants.TICKS_PER_SECOND, null, null));
+
+        assertEquals(0, results.count(), "test runs on the live server stay off the ranking");
+    }
+
     /** Runs the write on the calling thread so the test can look straight away. */
     private static final class DirectExecutor extends AbstractExecutorService {
         private boolean shutdown;

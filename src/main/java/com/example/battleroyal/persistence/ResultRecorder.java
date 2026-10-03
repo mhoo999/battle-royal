@@ -16,7 +16,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Saves a result whenever a life ends, however it ended: killed, or the disconnect
- * grace ran out.
+ * grace ran out. Lives played under an unranked name
+ * ({@link GameConstants#UNRANKED_PREFIX}) are not saved.
  *
  * <p>The death is reported on the game loop thread, and a database write can take
  * longer than a tick. So the write goes to a thread of its own; the loop only hands
@@ -48,6 +49,9 @@ public class ResultRecorder implements DeathListener {
 
     @Override
     public void onDeath(GameEvent.Died died) {
+        if (died.nickname().startsWith(GameConstants.UNRANKED_PREFIX)) {
+            return;
+        }
         GameResult result = new GameResult(died.nickname(), died.score(), died.kills(),
                 died.survivedTicks() / GameConstants.TICKS_PER_SECOND, clock.instant());
         writer.execute(() -> {

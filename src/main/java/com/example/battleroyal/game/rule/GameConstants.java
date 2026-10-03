@@ -199,6 +199,14 @@ public final class GameConstants {
     public static final int NICKNAME_MIN_LENGTH = 1;
     public static final int NICKNAME_MAX_LENGTH = 12;
 
+    /**
+     * A nickname starting with this plays as normal but is never saved as a result.
+     *
+     * <p>For test runs against the live server, which otherwise filled the ranking with
+     * {@code alpha} and {@code bravo}. Anyone may use it; it only means practice.
+     */
+    public static final String UNRANKED_PREFIX = "~";
+
     public static int seconds(int ticks) {
         return ticks / TICKS_PER_SECOND;
     }

@@ -529,7 +529,10 @@ function deathCause(killer, weapon) {
 function showDeath(message) {
   stopClock();
   forgetSession();
-  lastResult = { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
+  // A ~name plays unranked: nothing was saved, so there is no place of ours to look up.
+  lastResult = nickname.startsWith('~')
+    ? null
+    : { nickname, score: message.score, survivedSeconds: message.survivedSeconds };
   ui.deadCause.textContent = deathCause(message.killer, message.weapon);
   ui.deadName.textContent = nickname;
   ui.deadScore.textContent = message.score;

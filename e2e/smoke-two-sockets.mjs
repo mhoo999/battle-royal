@@ -12,6 +12,9 @@
  * isolates the server; the browser walk in .claude/skills/game-testing covers rendering.
  *
  *   node e2e/smoke-two-sockets.mjs
+ *
+ * Players are named with a leading ~ so that running this against the live server
+ * leaves no rows in the ranking.
  */
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:8080';
@@ -191,8 +194,8 @@ async function faceFromBeside(player, target) {
 // --- Checks --------------------------------------------------------------
 
 async function main() {
-  const a = await openSession('alpha');
-  const b = await openSession('bravo');
+  const a = await openSession('~alpha');
+  const b = await openSession('~bravo');
   await sleep(200);
 
   // Arrival: separate rooms, and nobody is dropped into a fight on spawn.
@@ -338,7 +341,7 @@ async function main() {
  * period, and the same token picks them up exactly where they were.
  */
 async function reconnect() {
-  const c = await openSession('reconnect');
+  const c = await openSession('~reconnect');
   const before = c.latest();
   c.socket.close();
   await sleep(300);
