@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-V1 Multiplayer Core
+V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 
 ## Current Task
 
@@ -188,22 +188,16 @@ Nothing.
 
 ## Next
 
-V1 is done when someone new can play ten minutes without being told how. Left:
-
-2. Real-phone check of the touch zones and held-move cadence (automation cannot measure
-   timers in a background tab). The live-site screenshot is taken (`~noriko`).
-3. Friends' feedback as it comes.
-4. Rollback drill: a jar that does not start should go back to `app.jar.prev`. Drops
-   everyone, so the user picks the moment (auto mode refused to push a broken commit).
-5. Not yet recorded: the server coming back on its own after `sudo reboot`.
-6. Declare V1: tag `v1.0`, then plan V2 (user's idea: Tarkov-like stash, extraction,
-   accounts — conflicts with several V1 decisions; see V2 notes below).
-7. Later: two EC2 instances with deploys that keep players. The world lives in one JVM,
-   so this needs a world handoff or rooms pinned to servers (CLAUDE.md §10).
-
-V2 notes so far: multi-slot raid inventory, extraction to a DB-backed stash, loss on
-death, accounts. Hard part is the boundary between in-memory raid state and the DB
-(no duplication on disconnect or restart). Not started; needs an explicit decision.
+1. **V2 planning** — `docs/V2_PLAN.md`. The game becomes a real-time top-down
+   extraction: log in (Google) to a hideout, take gear onto the always-open island,
+   loot, and extract to keep it or die and lose it. Decided D1–D5 there; open questions
+   Q1–Q10, most urgent Q1 (what happens to gear in the island when a deploy restarts
+   the server). Do not build until those are settled.
+2. Left over from V1, whenever convenient: real-phone check of touch input; rollback
+   drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
+3. Later: two EC2 instances with deploys that keep players (world handoff or rooms
+   pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
+   players their gear.
 
 ## Known Issues
 
