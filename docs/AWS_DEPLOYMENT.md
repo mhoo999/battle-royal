@@ -114,6 +114,8 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 | 배포 버킷 | battle-royal-deploy-495791792486 (lifecycle `expire-releases`, 14일) |
 | GitHub 배포 역할 | `deploy` (arn:aws:iam::495791792486:role/deploy, 인라인 정책 `deploy`) |
 | EC2 인스턴스 역할 | battle-royal-ec2 (AmazonSSMManagedInstanceCore + `read-releases`) |
+| 알림 SNS 주제 | battle-royal-alerts (이메일 구독) |
+| CloudWatch 경보 | `br-ec2-system-check` (StatusCheckFailed_System ≥1, 1분×2, Recover) · `br-ec2-instance-check` (StatusCheckFailed_Instance ≥1, 1분×3, Reboot) · `br-ec2-cpu-credits` (CPUCreditBalance <20, 5분×3) · `br-rds-storage` (FreeStorageSpace <2 GiB, 5분×1). 2026-10-03 모두 OK |
 | 접속 URL | http://54.116.237.112/ |
 | 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (수동) |
 | 첫 자동 배포 | 2026-10-03 / `4e331af` (토러스 월드), Actions run 37082984097 |
@@ -132,6 +134,7 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 - [x] **Phase 7** 첫 배포 (jar, env, systemd, Nginx) (2026-10-03)
 - [x] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB) (2026-10-03)
 - [~] **Phase 9** 재배포 절차 한 번 연습 (건너뜀, Phase 10이 대신함)
+- [x] (선택) CloudWatch 경보 4개 + 이메일 알림 (2026-10-03)
 - [ ] (선택) 도메인 + HTTPS
 - [x] **Phase 10** 자동 배포 (GitHub Actions + OIDC + S3 + SSM) (2026-10-03)
 - [x] (선택) SSH 포트 닫기 (SSM Session Manager로 접속) (2026-10-03)
@@ -637,8 +640,9 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 2. **SSM Session Manager**: EC2에 IAM 역할(`AmazonSSMManagedInstanceCore`)을 붙이고
    22번 포트를 닫는다. "SSH 포트를 열지 않는 운영"은 면접에서 좋은 이야깃거리다.
 3. **HTTPS** (§5).
-4. **CloudWatch**: 인스턴스 기본 지표 + 경보(CPU, 상태 검사 실패). 로그는 CloudWatch
-   Agent로 journal을 보낼 수 있다.
+4. **CloudWatch**: 경보 4개는 완료(§2). CPU 사용률 대신 **CPU 크레딧 잔량**을 본다:
+   t3.micro는 크레딧이 바닥나면 기준치로 제한되어 20Hz 루프가 버벅인다. 남은 것: journal
+   로그를 CloudWatch Agent로 보내기.
 5. **RDS 인증서 검증**: `sslMode=VERIFY_IDENTITY` + RDS CA 번들.
 6. 서버 두 대 이상이 필요해질 때: ALB, 방→서버 고정, Redis 디렉터리/pub-sub
    (`CLAUDE.md` §10). 20Hz 게임 상태를 Redis에 쓰지 않는다.
