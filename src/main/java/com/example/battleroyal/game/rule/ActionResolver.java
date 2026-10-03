@@ -4,6 +4,7 @@ import com.example.battleroyal.game.core.ActionA;
 import com.example.battleroyal.game.core.ActionB;
 import com.example.battleroyal.game.core.Direction;
 import com.example.battleroyal.game.core.Exit;
+import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
@@ -24,8 +25,9 @@ public final class ActionResolver {
     }
 
     /**
-     * A follows the held item, and empty hands punch. A gun in hand always has a round:
-     * the last shot uses it up. A medkit does nothing at full health, so it is not
+     * A follows the held item, and empty hands punch. A gun fires while it has a round;
+     * empty, it loads from a matching bundle in the inventory, and with none it does
+     * nothing until one turns up. A medkit does nothing at full health, so it is not
      * offered then and cannot be wasted.
      */
     public static ActionA actionA(Player player) {
@@ -41,10 +43,27 @@ public final class ActionResolver {
             return ActionA.ATTACK;
         }
         return switch (player.heldItem().kind()) {
-            case PISTOL, CROSSBOW -> ActionA.FIRE;
-            // Everything else is swung, junk included.
+            case PISTOL, CROSSBOW -> {
+                if (player.heldItem().hasAmmo()) {
+                    yield ActionA.FIRE;
+                }
+                yield ammunitionSlot(player) >= 0 ? ActionA.RELOAD : null;
+            }
+            // Everything else is swung, junk and ammunition included.
             default -> ActionA.ATTACK;
         };
+    }
+
+    /** The first slot holding what loads the gun in hand, or -1. */
+    public static int ammunitionSlot(Player player) {
+        ItemKind wanted = Weapons.ammunitionFor(player.heldItem().kind());
+        for (int slot = 0; slot < Player.INVENTORY_SLOTS; slot++) {
+            Item item = player.slot(slot);
+            if (item != null && item.kind() == wanted && item.hasAmmo()) {
+                return slot;
+            }
+        }
+        return -1;
     }
 
     /**

@@ -113,6 +113,12 @@ public final class GameConstants {
     /** Bolts a crossbow comes with; like the pistol, the last one uses it up. */
     public static final int CROSSBOW_BOLTS = 3;
 
+    /**
+     * Loading an empty gun from a bundle in the inventory fills it at once, then nothing
+     * can be done with A for 1.5s. Being hit does not stop it: it is already done.
+     */
+    public static final int RELOAD_TICKS = 30;
+
     public static final int MEDKIT_HEAL = 50;
     public static final int MEDKIT_COOLDOWN_TICKS = 20;
 
@@ -137,12 +143,12 @@ public final class GameConstants {
     // --- Loot ---------------------------------------------------------------
 
     /**
-     * What a new room rolls, out of 100: one item or nothing. A little over half the
-     * rooms hold something, mostly junk; a real weapon (knife, bat, crossbow, pistol)
+     * What a new room rolls, out of 100: one item or nothing. Six rooms in ten hold
+     * something, mostly junk; a real weapon (knife, bat, crossbow, pistol)
      * turns up about one room in eight, a pistol one in a hundred. Starting values,
      * not playtested.
      */
-    public static final int LOOT_WEIGHT_NOTHING = 45;
+    public static final int LOOT_WEIGHT_NOTHING = 39;
     public static final int LOOT_WEIGHT_SPOON = 6;
     public static final int LOOT_WEIGHT_DOLL = 6;
     public static final int LOOT_WEIGHT_CUP = 6;
@@ -154,6 +160,9 @@ public final class GameConstants {
     public static final int LOOT_WEIGHT_BAT = 4;
     public static final int LOOT_WEIGHT_CROSSBOW = 2;
     public static final int LOOT_WEIGHT_PISTOL = 1;
+    /** Ammunition, a full magazine's worth, for a gun someone already has. */
+    public static final int LOOT_WEIGHT_ROUNDS = 3;
+    public static final int LOOT_WEIGHT_BOLTS = 3;
 
     /**
      * A room rolls again after 30s in all with nobody in it and nothing on its floor.

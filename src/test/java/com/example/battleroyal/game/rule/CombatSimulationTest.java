@@ -96,7 +96,7 @@ class CombatSimulationTest {
     }
 
     @Test
-    void theLastRoundIsFiredAndUsesThePistolUp() {
+    void theLastRoundIsFiredAndTheEmptyPistolStaysInHand() {
         Room room = room();
         Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.PISTOL);
         for (int i = 0; i < GameConstants.PISTOL_MAGAZINE - 1; i++) {
@@ -109,9 +109,62 @@ class CombatSimulationTest {
 
         assertInstanceOf(GameEvent.Shot.class, room.drainEvents().getFirst(),
                 "the last round is still a shot");
-        assertNull(shooter.heldItem(), "no reload: the empty pistol is gone");
-        assertTrue(room.crates().isEmpty(), "and not left on the floor either");
-        assertEquals(ActionA.ATTACK, ActionResolver.actionA(shooter), "back to bare hands");
+        assertEquals(ItemKind.PISTOL, shooter.heldItem().kind(), "an empty gun is kept");
+        assertEquals(0, shooter.heldItem().ammo());
+        assertNull(ActionResolver.actionA(shooter), "and does nothing until it is loaded");
+    }
+
+    @Test
+    void anEmptyPistolLoadsFromABundleInTheInventory() {
+        Room room = room();
+        Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.PISTOL);
+        for (int i = 0; i < GameConstants.PISTOL_MAGAZINE; i++) {
+            shooter.heldItem().spendAmmo();
+        }
+        shooter.setSlot(2, new Item("r", ItemKind.ROUNDS, GameConstants.PISTOL_MAGAZINE + 2));
+        assertEquals(ActionA.RELOAD, ActionResolver.actionA(shooter));
+
+        pressA(room, shooter, 0);
+
+        assertEquals(GameConstants.PISTOL_MAGAZINE, shooter.heldItem().ammo(), "full");
+        assertEquals(2, shooter.slot(2).ammo(), "what did not fit stays in the bundle");
+        assertEquals(ActionA.FIRE, ActionResolver.actionA(shooter));
+        pressA(room, shooter, GameConstants.RELOAD_TICKS - 1);
+        assertEquals(GameConstants.PISTOL_MAGAZINE, shooter.heldItem().ammo(),
+                "loading takes a moment before the first shot");
+        pressA(room, shooter, GameConstants.RELOAD_TICKS);
+        assertEquals(GameConstants.PISTOL_MAGAZINE - 1, shooter.heldItem().ammo());
+    }
+
+    @Test
+    void anEmptiedBundleIsGoneAndTheWrongAmmunitionLoadsNothing() {
+        Room room = room();
+        Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.CROSSBOW);
+        for (int i = 0; i < GameConstants.CROSSBOW_BOLTS; i++) {
+            shooter.heldItem().spendAmmo();
+        }
+        shooter.setSlot(1, new Item("r", ItemKind.ROUNDS, 6));
+        assertNull(ActionResolver.actionA(shooter), "pistol rounds do not fit a crossbow");
+
+        shooter.setSlot(2, new Item("b", ItemKind.BOLTS, 1));
+        pressA(room, shooter, 0);
+
+        assertEquals(1, shooter.heldItem().ammo(), "one bolt was all there was");
+        assertNull(shooter.slot(2), "the empty bundle is gone");
+        assertEquals(6, shooter.slot(1).ammo(), "the rounds were not touched");
+    }
+
+    @Test
+    void noLoadingInsideACabinet() {
+        Room room = room();
+        Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.PISTOL);
+        for (int i = 0; i < GameConstants.PISTOL_MAGAZINE; i++) {
+            shooter.heldItem().spendAmmo();
+        }
+        shooter.setSlot(1, new Item("r", ItemKind.ROUNDS, 6));
+        shooter.setInCabinet(true);
+
+        assertNull(ActionResolver.actionA(shooter), "a cabinet allows a medkit and nothing else");
     }
 
     @Test
@@ -133,7 +186,7 @@ class CombatSimulationTest {
                 .map(GameEvent.Died.class::cast)
                 .findFirst().orElseThrow();
         assertEquals(ItemKind.PISTOL, died.weapon());
-        assertNull(shooter.heldItem());
+        assertEquals(0, shooter.heldItem().ammo(), "the empty pistol is still in hand");
     }
 
     @Test
@@ -250,7 +303,7 @@ class CombatSimulationTest {
     }
 
     @Test
-    void aCrossbowShootsAlongTheLineAndItsLastBoltUsesItUp() {
+    void aCrossbowShootsAlongTheLineAndIsKeptWhenEmpty() {
         Room room = room();
         Player shooter = put(room, "s", new Pos(1, 1), Direction.RIGHT, ItemKind.CROSSBOW);
         Player target = put(room, "t", new Pos(4, 1), Direction.LEFT, null);
@@ -268,7 +321,8 @@ class CombatSimulationTest {
             pressA(room, shooter, (long) i * GameConstants.CROSSBOW_COOLDOWN_TICKS);
             target.heal(FULL, FULL);
         }
-        assertNull(shooter.heldItem(), "no bolts left, no crossbow");
+        assertEquals(0, shooter.heldItem().ammo(), "no bolts left");
+        assertEquals(ItemKind.CROSSBOW, shooter.heldItem().kind(), "but still a crossbow");
     }
 
     @Test

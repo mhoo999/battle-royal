@@ -216,13 +216,13 @@ public final class RoomSimulator {
                 Item gun = player.heldItem();
                 Weapons.Strike shot = Weapons.strikeOf(gun.kind());
                 gun.spendAmmo();
+                // The empty gun stays in hand: it can be loaded again.
                 strike(room, player, shot, nowTick);
-                if (!gun.hasAmmo()) {
-                    // No reload: the last round uses the gun up, like a medkit. Only
-                    // after the strike, so a kill with it still names the gun.
-                    player.releaseItem();
-                }
                 player.setNextActionTick(nowTick + shot.cooldownTicks());
+            }
+            case RELOAD -> {
+                reload(player);
+                player.setNextActionTick(nowTick + GameConstants.RELOAD_TICKS);
             }
             case HEAL -> {
                 player.heal(GameConstants.MEDKIT_HEAL, GameConstants.MAX_HP);
@@ -231,6 +231,22 @@ public final class RoomSimulator {
             }
         }
         room.markDirty();
+    }
+
+    /**
+     * Fills the gun in hand from the first matching bundle, as far as the bundle goes.
+     * An emptied bundle is gone; what is left of one stays where it was.
+     */
+    private static void reload(Player player) {
+        Item gun = player.heldItem();
+        int slot = ActionResolver.ammunitionSlot(player);
+        Item bundle = player.slot(slot);
+        int moved = Math.min(Weapons.capacity(gun.kind()) - gun.ammo(), bundle.ammo());
+        bundle.spendAmmo(moved);
+        gun.addAmmo(moved);
+        if (!bundle.hasAmmo()) {
+            player.setSlot(slot, null);
+        }
     }
 
     /** Bare hands are a null kind, which is how {@link Weapons} tells them apart. */

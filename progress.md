@@ -105,6 +105,12 @@ deploys).
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] Ammo system (branch `v2`, 2026-10-03, user's call): an empty pistol/crossbow stays in
+      hand (A does nothing); ROUNDS/BOLTS bundles take a slot, A=RELOAD fills the empty gun
+      (RELOAD_TICKS 30); bundles spawn on the island; trader sells guns empty and ammo apart.
+      Hideout art redrawn as generated block art (scratchpad `hut_art.py` style). 256 tests.
+      NOT YET: browser look at the new art + screenshot; GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md
+      still say "no reload" and list old prices — update them next.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
       `account.money` and `account.haul` (default 0 so `ddl-auto=update` can add them to

@@ -19,11 +19,11 @@ const TERRAIN = {
 const SELF_GLYPH  = { UP: '△', DOWN: '▽', LEFT: '◁', RIGHT: '▷' };
 const ENEMY_GLYPH = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
 
-const A_LABEL = { ATTACK: '공격', FIRE: '발사', HEAL: '치료' };
+const A_LABEL = { ATTACK: '공격', FIRE: '발사', HEAL: '치료', RELOAD: '장전' };
 const ITEM_LABEL = {
   KNIFE: '칼', BAT: '야구배트', PISTOL: '권총', CROSSBOW: '석궁', MEDKIT: '메디킷',
   PAN: '프라이팬', SPOON: '숟가락', CUP: '컵', DOLL: '솜 빠진 인형', RECORDER: '리코더',
-  REGISTER: '출석부',
+  REGISTER: '출석부', ROUNDS: '권총탄', BOLTS: '화살',
 };
 /*
  * How a weapon killed you, glued after its name. Optional per weapon: anything not
@@ -231,7 +231,9 @@ function paintHud(snapshot) {
 
   // A medkit at full health is not offered. Keep its name on the button, greyed, so
   // the player sees why A is off rather than a bare dash.
-  const idleA = self.item === 'MEDKIT' ? A_LABEL.HEAL : null;
+  // An empty gun with nothing to load it says so rather than going blank.
+  const idleA = self.item === 'MEDKIT' ? A_LABEL.HEAL
+    : (self.item === 'PISTOL' || self.item === 'CROSSBOW') ? '탄 없음' : null;
   setAction(ui.btnA, 'A', A_LABEL[self.actionA], idleA);
   setAction(ui.btnB, 'B', B_LABEL[self.actionB]);
 
@@ -1033,7 +1035,8 @@ function paintTrader() {
   ui.traderList.replaceChildren(...hideoutView.trader.map((offer) => {
     const li = document.createElement('li');
     const name = document.createElement('span');
-    name.textContent = slotText({ kind: offer.kind, ammo: offer.kind === 'PISTOL' || offer.kind === 'CROSSBOW' ? offer.ammo : null });
+    // Guns are sold empty, so only a bundle's count is worth showing.
+    name.textContent = slotText({ kind: offer.kind, ammo: offer.ammo > 0 ? offer.ammo : null });
     const price = document.createElement('span');
     price.className = 'price';
     price.textContent = `${offer.price}원`;

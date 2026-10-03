@@ -24,7 +24,11 @@ public enum ItemKind {
     CUP(false),
     DOLL(false),
     RECORDER(false),
-    REGISTER(false);
+    REGISTER(false),
+    /** Pistol rounds, a bundle; its ammo is how many are in it. Loaded into a pistol by A. */
+    ROUNDS(true),
+    /** Crossbow bolts, likewise. */
+    BOLTS(true);
 
     private final boolean usesAmmo;
 

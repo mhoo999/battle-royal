@@ -535,7 +535,9 @@ class ItemRulesTest {
                 Map.entry(ItemKind.KNIFE, GameConstants.LOOT_WEIGHT_KNIFE),
                 Map.entry(ItemKind.BAT, GameConstants.LOOT_WEIGHT_BAT),
                 Map.entry(ItemKind.CROSSBOW, GameConstants.LOOT_WEIGHT_CROSSBOW),
-                Map.entry(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL)));
+                Map.entry(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL),
+                Map.entry(ItemKind.ROUNDS, GameConstants.LOOT_WEIGHT_ROUNDS),
+                Map.entry(ItemKind.BOLTS, GameConstants.LOOT_WEIGHT_BOLTS)));
         assertEquals(ItemKind.values().length, expected.size(), "every item can be found");
         assertEquals(GameConstants.LOOT_WEIGHT_NOTHING, percent(nothing, rolls), 1.0);
         for (Map.Entry<ItemKind, Integer> entry : expected.entrySet()) {

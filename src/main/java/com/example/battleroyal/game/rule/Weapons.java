@@ -47,15 +47,38 @@ public final class Weapons {
             case CUP -> junk(GameConstants.CUP_DAMAGE);
             case RECORDER -> junk(GameConstants.RECORDER_DAMAGE);
             case REGISTER -> junk(GameConstants.REGISTER_DAMAGE);
+            // A bundle of ammunition swung is a fist with something in it.
+            case ROUNDS, BOLTS -> junk(GameConstants.FIST_DAMAGE);
             case MEDKIT -> null;
         };
     }
 
-    /** Ammunition a freshly spawned item comes with; zero for anything that needs none. */
-    public static int startingAmmo(ItemKind kind) {
-        return switch (kind) {
+    /** What loads this gun, or null for anything that is not one. */
+    public static ItemKind ammunitionFor(ItemKind gun) {
+        return switch (gun) {
+            case PISTOL -> ItemKind.ROUNDS;
+            case CROSSBOW -> ItemKind.BOLTS;
+            default -> null;
+        };
+    }
+
+    /** How many rounds this gun holds when full. */
+    public static int capacity(ItemKind gun) {
+        return switch (gun) {
             case PISTOL -> GameConstants.PISTOL_MAGAZINE;
             case CROSSBOW -> GameConstants.CROSSBOW_BOLTS;
+            default -> 0;
+        };
+    }
+
+    /**
+     * Ammunition a freshly spawned item comes with: a gun found on the island is loaded,
+     * a bundle is full. Zero for anything that needs none.
+     */
+    public static int startingAmmo(ItemKind kind) {
+        return switch (kind) {
+            case PISTOL, ROUNDS -> GameConstants.PISTOL_MAGAZINE;
+            case CROSSBOW, BOLTS -> GameConstants.CROSSBOW_BOLTS;
             default -> 0;
         };
     }

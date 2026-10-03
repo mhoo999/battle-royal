@@ -25,6 +25,22 @@ class ItemValuesTest {
     }
 
     @Test
+    void aLoadedGunIsWorthTheGunPlusItsRounds() {
+        assertEquals(ItemValues.sellPrice(ItemKind.PISTOL, 0)
+                        + ItemValues.sellPrice(ItemKind.ROUNDS, GameConstants.PISTOL_MAGAZINE),
+                ItemValues.sellPrice(ItemKind.PISTOL, GameConstants.PISTOL_MAGAZINE),
+                "loading a gun neither makes nor loses value");
+        assertTrue(ItemValues.sellPrice(ItemKind.PISTOL, 0) > 0, "an empty gun is still worth keeping");
+    }
+
+    @Test
+    void theStockIsListedCheapestFirst() {
+        for (int i = 1; i < ItemValues.STOCK.size(); i++) {
+            assertTrue(ItemValues.STOCK.get(i - 1).price() <= ItemValues.STOCK.get(i).price());
+        }
+    }
+
+    @Test
     void buyingAndSellingStraightBackAlwaysLoses() {
         for (ItemValues.Offer offer : ItemValues.STOCK) {
             assertTrue(offer.price() > ItemValues.sellPrice(offer.kind(), offer.ammo()),
@@ -33,9 +49,11 @@ class ItemValuesTest {
     }
 
     @Test
-    void theTraderSellsGearFullyLoadedAndNoJunk() {
-        assertEquals(GameConstants.PISTOL_MAGAZINE, ItemValues.offerFor(ItemKind.PISTOL).ammo());
-        assertEquals(GameConstants.CROSSBOW_BOLTS, ItemValues.offerFor(ItemKind.CROSSBOW).ammo());
+    void theTraderSellsGunsEmptyAmmunitionApartAndNoJunk() {
+        assertEquals(0, ItemValues.offerFor(ItemKind.PISTOL).ammo());
+        assertEquals(0, ItemValues.offerFor(ItemKind.CROSSBOW).ammo());
+        assertEquals(GameConstants.PISTOL_MAGAZINE, ItemValues.offerFor(ItemKind.ROUNDS).ammo());
+        assertEquals(GameConstants.CROSSBOW_BOLTS, ItemValues.offerFor(ItemKind.BOLTS).ammo());
         assertNull(ItemValues.offerFor(ItemKind.CUP));
         assertNull(ItemValues.offerFor(ItemKind.PAN));
     }
