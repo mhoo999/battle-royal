@@ -30,7 +30,8 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase 10: 첫 자동 배포 `4e331af`
 (토러스 월드) 성공, SSM 명령 Success, 공인 IP smoke 전부 통과.
 
-**다음 한 걸음:** Phase 10 롤백 확인(접속자가 끊기니 사용자가 시점을 정함).
+**다음 한 걸음:** Workbench로 RDS 보기(SSM 포트 포워딩). Phase 10 롤백 확인은 사용자가
+시점을 정함. 2026-10-03부터 접속 주소는 **https://battleroyale.site** 이다.
 
 > **SSH 포트는 닫혀 있다(2026-10-03).** sg-web의 인바운드는 HTTP 80 하나뿐이다. 서버
 > 접속은 **EC2 → 인스턴스 → Connect → Session Manager**. `.pem` 키는 비상용으로만
@@ -54,7 +55,7 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 
 ```
  브라우저 / 모바일
-      │  HTTP :80  (나중에 HTTPS :443)
+      │  HTTPS :443 (https://battleroyale.site), HTTP :80은 https로 리다이렉트
       ▼
 ┌──────────────────────── EC2 (Amazon Linux 2023, t3.micro) ────────────────────────┐
 │  Nginx :80  ──proxy──▶  Spring Boot 127.0.0.1:8080   (systemd: battle-royal)     │
@@ -116,7 +117,9 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 | EC2 인스턴스 역할 | battle-royal-ec2 (AmazonSSMManagedInstanceCore + `read-releases`) |
 | 알림 SNS 주제 | battle-royal-alerts (이메일 구독) |
 | CloudWatch 경보 | `br-ec2-system-check` (StatusCheckFailed_System ≥1, 1분×2, Recover) · `br-ec2-instance-check` (StatusCheckFailed_Instance ≥1, 1분×3, Reboot) · `br-ec2-cpu-credits` (CPUCreditBalance <20, 5분×3) · `br-rds-storage` (FreeStorageSpace <2 GiB, 5분×1). 2026-10-03 모두 OK |
-| 접속 URL | http://54.116.237.112/ |
+| 도메인 | battleroyale.site (가비아, 2026-10-03 구입, 1년), A `@`·`www` → 탄력적 IP |
+| 인증서 | Let's Encrypt, certbot `--nginx`, `certbot-renew.timer`. 첫 만료 2027-01-01 |
+| 접속 URL | **https://battleroyale.site/** (맨 IP는 404) |
 | 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (수동) |
 | 첫 자동 배포 | 2026-10-03 / `4e331af` (토러스 월드), Actions run 37082984097 |
 
@@ -135,7 +138,7 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 - [x] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB) (2026-10-03)
 - [~] **Phase 9** 재배포 절차 한 번 연습 (건너뜀, Phase 10이 대신함)
 - [x] (선택) CloudWatch 경보 4개 + 이메일 알림 (2026-10-03)
-- [ ] (선택) 도메인 + HTTPS
+- [x] (선택) 도메인 + HTTPS (2026-10-03)
 - [x] **Phase 10** 자동 배포 (GitHub Actions + OIDC + S3 + SSM) (2026-10-03)
 - [x] (선택) SSH 포트 닫기 (SSM Session Manager로 접속) (2026-10-03)
 
@@ -582,20 +585,36 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 
 ---
 
-## 5. (선택) 도메인 + HTTPS
+## 5. 도메인 + HTTPS ✅ (2026-10-03)
 
-지금은 필수가 아니다. 휴대폰 브라우저 일부가 HTTP 페이지에 경고를 띄우는 정도.
-클라이언트는 이미 `https:` 페이지에서 `wss:`를 쓰도록 되어 있다.
+**https://battleroyale.site** (가비아, 1년). 클라이언트는 `https:` 페이지에서 `wss:`를 쓰므로
+게임 코드는 바꾸지 않았다.
 
-1. 도메인: Route 53에서 구입하거나 외부 등록 기관 → A 레코드를 탄력적 IP로
-2. sg-web에 443 추가
-3. `deploy/nginx-battle-royal.conf`의 `server_name _;`을 도메인으로
-4. Let's Encrypt 인증서: certbot을 설치해 `certbot --nginx -d <도메인>`
-   (Amazon Linux 2023에서 certbot 설치 방법은 그때 공식 문서로 확인한다)
-5. 확인: `https://<도메인>/`에서 게임, 브라우저 개발자 도구 Network에 `wss://`
+1. **가비아 DNS 관리툴**: A `@` → `54.116.237.112`, A `www` → `54.116.237.112`, TTL 600.
+   반영은 몇 분이었다(8.8.8.8, 1.1.1.1 모두 확인).
+2. **sg-web**에 HTTPS 443 (0.0.0.0/0). 80은 닫지 않는다: https로 보내는 리다이렉트와
+   인증서 갱신이 쓴다.
+3. 서버(Session Manager):
+   ```bash
+   sudo sed -i 's/server_name _;/server_name battleroyale.site www.battleroyale.site;/' /etc/nginx/conf.d/battle-royal.conf
+   sudo nginx -t && sudo systemctl reload nginx
+   sudo dnf install -y certbot python3-certbot-nginx     # AL2023 저장소에 있다
+   sudo certbot --nginx -d battleroyale.site -d www.battleroyale.site \
+     -m <이메일> --agree-tos --no-eff-email --redirect
+   sudo systemctl enable --now certbot-renew.timer
+   sudo certbot renew --dry-run
+   ```
+4. 저장소의 `deploy/nginx-battle-royal.conf`는 certbot이 고친 뒤의 서버 파일과 같다. 새
+   서버에서는 파일 머리말대로 인증서 줄을 빼고 설치한 뒤 certbot을 돌린다.
+5. GitHub 변수 `PUBLIC_URL` → `https://battleroyale.site`. http는 이제 301만 돌려주므로,
+   바꾸지 않으면 deploy 잡의 마지막 확인이 실패한다.
+
+확인: http → 301 https, 인증서 Let's Encrypt(`battleroyale.site`, `www`), 만료 2027-01-01
+(자동 갱신), https 경유 smoke 전부 통과. 맨 IP(`http://54.116.237.112/`)는 이제 **404**다.
+어느 server_name에도 맞지 않기 때문이고, 의도한 것이다.
 
 주의: Nginx 설정의 `X-Forwarded-Proto`, `X-Forwarded-Port`가 HTTPS에서도 앱의 same-origin
-검사를 맞춰 준다. 지우지 않는다(§9 첫 줄).
+검사를 맞춰 준다. 지우지 않는다(§9).
 
 ---
 
@@ -639,7 +658,7 @@ sudo journalctl -u battle-royal -n 50 --no-pager
    재시작. 수동 재배포(Phase 9)를 두세 번 해 본 뒤에.
 2. **SSM Session Manager**: EC2에 IAM 역할(`AmazonSSMManagedInstanceCore`)을 붙이고
    22번 포트를 닫는다. "SSH 포트를 열지 않는 운영"은 면접에서 좋은 이야깃거리다.
-3. **HTTPS** (§5).
+3. ~~HTTPS~~ 완료(§5).
 4. **CloudWatch**: 경보 4개는 완료(§2). CPU 사용률 대신 **CPU 크레딧 잔량**을 본다:
    t3.micro는 크레딧이 바닥나면 기준치로 제한되어 20Hz 루프가 버벅인다. 남은 것: journal
    로그를 CloudWatch Agent로 보내기.

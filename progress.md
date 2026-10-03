@@ -7,8 +7,8 @@ V1 Multiplayer Core
 ## Current Task
 
 Continuous deployment live (2026-10-03): a push to `main` tests, then deploys to EC2.
-The torus world is deployed; docs-only pushes skip the deploy (checked). Next: see
-a broken jar roll back.
+Live at https://battleroyale.site (2026-10-03), deployed on every push to `main`.
+Next: SQL Workbench into RDS over SSM port forwarding; see a broken jar roll back.
 
 ## Completed
 
@@ -86,6 +86,9 @@ a broken jar roll back.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] Ops (2026-10-03): SSH port closed (Session Manager instead), four CloudWatch
+      alarms to email, domain battleroyale.site with Let's Encrypt HTTPS; http and
+      the bare IP no longer serve the game. Remote smoke over wss all passed.
 - [x] Continuous deployment (2026-10-03): `deploy` job after the tests in `ci.yml`.
       OIDC role, jar to S3, `deploy/install.sh` run over SSM, rollback to
       `app.jar.prev` if the new jar does not answer in 2 minutes. Docs-only pushes do
