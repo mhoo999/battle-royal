@@ -39,7 +39,9 @@ class SignInWebTest {
     @Test
     void theGameAndTheRankingStayOpenToGuests() throws Exception {
         mvc.perform(get("/")).andExpect(status().isOk());
-        mvc.perform(get("/api/ranking")).andExpect(status().isOk());
+        mvc.perform(get("/api/ranking")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.top").isArray())
+                .andExpect(jsonPath("$.me").doesNotExist());
         mvc.perform(get("/api/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.signedIn").value(false));

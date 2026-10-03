@@ -4,6 +4,7 @@ import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.rule.GameConstants;
+import com.example.battleroyal.game.rule.ItemValues;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.AccountRepository;
 import com.example.battleroyal.persistence.Sortie;
@@ -13,6 +14,7 @@ import com.example.battleroyal.persistence.StashItemRepository;
 import com.example.battleroyal.web.GameSessionService.GameSession;
 import com.example.battleroyal.web.HideoutService.AlreadyOutException;
 import com.example.battleroyal.web.HideoutService.InvalidLoadoutException;
+import com.example.battleroyal.web.HideoutService.TradeRefusedException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -167,6 +169,66 @@ class HideoutServiceTest {
                 .map(HideoutService.StashEntry::kind).toList());
         assertEquals(Sortie.Outcome.EXTRACTED, sorties.findAll().getFirst().outcome());
         assertFalse(hideout.view(me).out(), "free to set out again");
+    }
+
+    @Test
+    void onlyWhatWasFoundCountsTowardsTheHaul() {
+        StashItem pistol = stash(me, ItemKind.PISTOL, 6);
+        GameSession session = hideout.setOut(me, "shuya", List.of(pistol.id()));
+
+        hideout.onExtracted(extracted(session.playerId(),
+                new Item(pistol.gameItemId(), ItemKind.PISTOL, 6),
+                new Item("i-5", ItemKind.KNIFE, 0)));
+
+        assertEquals(ItemValues.sellPrice(ItemKind.KNIFE, 0), hideout.view(me).haul(),
+                "a pistol carried out and back is not a find");
+    }
+
+    @Test
+    void sellingPaysTheValueAndTheItemIsGone() {
+        StashItem pistol = stash(me, ItemKind.PISTOL, 2);
+
+        HideoutService.StashView after = hideout.sell(me, pistol.id());
+
+        assertEquals(ItemValues.sellPrice(ItemKind.PISTOL, 2), after.money());
+        assertTrue(after.stash().isEmpty());
+        assertTrue(items.findById(pistol.id()).isEmpty());
+    }
+
+    @Test
+    void onlyWhatIsAtHomeCanBeSold() {
+        StashItem knife = stash(me, ItemKind.KNIFE, 0);
+        long other = accounts.save(new Account("google-other", Instant.EPOCH)).id();
+        StashItem theirs = stash(other, ItemKind.PISTOL, 6);
+        hideout.setOut(me, "shuya", List.of(knife.id()));
+
+        assertThrows(TradeRefusedException.class, () -> hideout.sell(me, knife.id()),
+                "out on the island");
+        assertThrows(TradeRefusedException.class, () -> hideout.sell(me, theirs.id()));
+        assertEquals(0, hideout.view(me).money());
+    }
+
+    @Test
+    void buyingNeedsTheMoneyAndARoomInTheStash() {
+        ItemValues.Offer knife = ItemValues.offerFor(ItemKind.KNIFE);
+        assertThrows(TradeRefusedException.class, () -> hideout.buy(me, ItemKind.KNIFE),
+                "no money yet");
+        assertThrows(TradeRefusedException.class, () -> hideout.buy(me, ItemKind.CUP),
+                "the trader sells no junk");
+
+        StashItem pistol = stash(me, ItemKind.PISTOL, 6);
+        hideout.sell(me, pistol.id());
+        HideoutService.StashView after = hideout.buy(me, ItemKind.KNIFE);
+
+        assertEquals(ItemValues.sellPrice(ItemKind.PISTOL, 6) - knife.price(), after.money());
+        assertEquals(List.of(ItemKind.KNIFE), after.stash().stream()
+                .map(HideoutService.StashEntry::kind).toList());
+
+        for (int i = 1; i < GameConstants.STASH_CAPACITY; i++) {
+            stash(me, ItemKind.CUP, 0);
+        }
+        assertThrows(TradeRefusedException.class, () -> hideout.buy(me, ItemKind.KNIFE),
+                "a full stash has no room for a purchase");
     }
 
     @Test

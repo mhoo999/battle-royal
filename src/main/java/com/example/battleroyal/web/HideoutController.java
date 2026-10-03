@@ -1,9 +1,11 @@
 package com.example.battleroyal.web;
 
+import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.web.HideoutService.AlreadyOutException;
 import com.example.battleroyal.web.HideoutService.InvalidLoadoutException;
 import com.example.battleroyal.web.HideoutService.StashView;
+import com.example.battleroyal.web.HideoutService.TradeRefusedException;
 import com.example.battleroyal.web.SessionController.CreateResponse;
 import com.example.battleroyal.web.SessionController.NicknameRequiredException;
 import com.example.battleroyal.web.GameSessionService.GameSession;
@@ -21,8 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * The hideout, for signed-in accounts: look at the stash, set out with up to three of
- * its items. Guests have no hideout and go straight to the island.
+ * The hideout, for signed-in accounts: look at the stash, trade with the trader, set
+ * out with up to three of its items. Guests have no hideout and go straight to the island.
  */
 @RestController
 @RequestMapping("/api/hideout")
@@ -30,6 +32,12 @@ public class HideoutController {
 
     /** @param loadout stash item ids slot by slot, null for an empty slot */
     public record SetOutRequest(List<Long> loadout) {
+    }
+
+    public record SellRequest(long itemId) {
+    }
+
+    public record BuyRequest(ItemKind kind) {
     }
 
     private final AccountService accounts;
@@ -55,6 +63,16 @@ public class HideoutController {
         return new CreateResponse(session.token(), session.playerId(), session.nickname());
     }
 
+    @PostMapping("/sell")
+    public StashView sell(@AuthenticationPrincipal OidcUser user, @RequestBody SellRequest request) {
+        return hideout.sell(named(user).id(), request.itemId());
+    }
+
+    @PostMapping("/buy")
+    public StashView buy(@AuthenticationPrincipal OidcUser user, @RequestBody BuyRequest request) {
+        return hideout.buy(named(user).id(), request.kind());
+    }
+
     private Account named(OidcUser user) {
         Account account = accounts.signIn(user.getSubject());
         if (account.nickname() == null) {
@@ -63,7 +81,8 @@ public class HideoutController {
         return account;
     }
 
-    @ExceptionHandler({NicknameRequiredException.class, AlreadyOutException.class})
+    @ExceptionHandler({NicknameRequiredException.class, AlreadyOutException.class,
+            TradeRefusedException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public String conflict(RuntimeException e) {
         return e.getMessage();

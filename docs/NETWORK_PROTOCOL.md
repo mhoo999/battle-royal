@@ -28,7 +28,9 @@ per-player 필터링에는 raw `TextWebSocketHandler` + Jackson이 더 단순하
 ### `GET /api/hideout`, `POST /api/hideout/sortie` (V2 브랜치, 로그인 필요 — 아니면 401)
 
 ```json
-GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4 } ], "capacity": 10, "out": false }
+GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ],
+          "capacity": 10, "out": false, "money": 135, "haul": 165,
+          "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ] }
 POST  { "loadout": [ 11, null, 12 ] }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
@@ -38,7 +40,21 @@ POST  { "loadout": [ 11, null, 12 ] }  → { "token": "<uuid>", "playerId": "p-3
 두 번·4칸 이상이면 400. 한국어 사유를 본문에 담는다.
 
 들고 나간 아이템은 섬에서 평범한 아이템이고 ID가 `s-<창고 ID>`다. 죽으면 잃는다(창고에서
-삭제). 서버가 재시작되면 들고 나간 것만 창고로 돌아온다(D6). 탈출은 3단계.
+삭제). 서버가 재시작되면 들고 나간 것만 창고로 돌아온다(D6). 탈출하면 가져온 것이 창고에
+들어간다(`EXTRACTED` 참고).
+
+### `POST /api/hideout/sell`, `POST /api/hideout/buy` (V2 브랜치, 로그인 필요)
+
+```json
+sell  { "itemId": 11 }     → 위의 GET과 같은 거점 화면
+buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
+```
+
+상인(D11). 창고 항목의 `price`가 상인이 사 주는 값이자 그 아이템의 가치이고, `trader`는
+상인이 파는 목록과 값이다. 값은 서버만 정한다(`ItemValues`). 팔면 그 아이템은 사라지고 돈이
+는다. 사면 돈이 줄고 탄약이 가득 찬 새 아이템이 창고에 들어온다. 거부는 409와 한국어 사유:
+창고에 없는(나가 있거나 남의) 아이템, 상인이 팔지 않는 물건, 돈 부족, 창고가 가득 참(사기만 —
+탈출은 가득 차도 다 들어온다).
 
 ### `GET /api/me`, `POST /api/me/nickname` (V2 브랜치)
 
@@ -53,27 +69,20 @@ POST  { "nickname": "shuya" } → { "signedIn": true, "nickname": "shuya" }   �
 중복 불가(409), `~`로 시작할 수 없고(400), 한 번 정하면 바꾸지 않는다(409). 세션 쿠키는
 `SameSite=Lax`, 운영에서는 `Secure`. CSRF 토큰은 쓰지 않는다(`SecurityConfig` 주석).
 
-### `GET /api/ranking?limit=20`
+### `GET /api/ranking?limit=20` (V2: 가져온 가치)
 
 ```json
-[ { "nickname": "kang", "score": 1270, "kills": 3, "survivedSeconds": 412 } ]
+{ "top": [ { "rank": 1, "nickname": "shuya", "value": 1240 } ],
+  "me":  { "rank": 25, "nickname": "kawada", "value": 90 } }
 ```
 
-`GameResult`에 대한 top-N 쿼리다. 별도 Ranking 테이블은 두지 않는다.
-정렬은 점수 내림차순, 같으면 생존 시간이 긴 쪽, 그다음 먼저 끝난 쪽. `limit`은
-1~100으로 잘린다. 로비는 상위 10명을 보여준다.
-
-### `GET /api/ranking/rank?score=37&survivedSeconds=28`
-
-```json
-{ "rank": 25 }
-```
-
-이 수치의 기록이 몇 위인지. 1 + (더 나은 기록 수)다 — 점수가 높거나, 같은 점수에
-더 오래 살았으면 더 나은 기록이다. 완전히 같은 기록은 같은 순위다. 이름이 아니라
-수치로 묻는 이유는 이름이 중복되기 때문이다. 클라는 방금 끝난 목숨(`YOU_DIED`)의
-수치로 묻고, 그 기록이 10위 밖이면 목록 아래에 `⋮`와 함께 붙인다. 저장이 끝나기
-전에 물어도 답이 같다.
+계정별 **가져온 가치**(`haul`) 순위다(D5). 탈출할 때 섬에서 **주워 온 것**의 가치를 더한
+값이고, 창고에서 들고 나갔다 다시 들고 온 장비는 세지 않는다(같은 권총으로 들락날락하며
+쌓는 것을 막는다). 0인 계정은 없다. 같은 값은 같은 순위, 그다음 먼저 가입한 쪽이 위.
+`limit`은 1~100. `me`는 로그인한 사람 자신의 줄(어디에 있든), 아니면 `null`. 로비는 상위
+10명을 보이고, 내가 그 밖이면 `⋮` 아래에 내 줄을 붙인다. 게스트는 순위가 없다.
+V1의 점수 순위(`/api/ranking/rank`)는 없어졌다. 목숨마다의 기록(`GameResult`)은 계속
+저장한다.
 
 ---
 

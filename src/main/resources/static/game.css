@@ -503,11 +503,81 @@ header.hud-bar {
 
 /* The hideout: the stash on the left, what to carry out on the right. */
 .hideout { gap: 0.75rem; }
+.hideout > :not(.hideout-art) { position: relative; z-index: 1; }
+
+/*
+ * A shabby hut in the hills under a crescent moon, behind everything on the hideout.
+ * Decoration only, so it is dim, takes no clicks and scales with the screen.
+ */
+.hideout-art {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  margin: 0;
+  /*
+   * Named outright: on a Korean page the generic monospace falls back to a Korean font
+   * that draws a backslash as a won sign, and the hills come out as ₩₩₩.
+   */
+  font-family: Consolas, "Courier New", monospace;
+  font-size: min(3.4vw, 1rem);
+  line-height: 1.15;
+  text-align: left;
+  color: var(--wall);
+  pointer-events: none;
+  user-select: none;
+}
+.hideout-art .moon  { color: var(--item); opacity: 0.7; }
+.hideout-art .smoke { color: var(--dim); }
+.hideout-art .lit   { color: var(--door); }
+.hideout-art .grass { color: var(--bush); }
 .hideout h2 { margin: 0; letter-spacing: 0.3em; }
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
 .hideout-body { display: flex; gap: 0.75rem; width: min(100%, 24rem); }
 .slots.stash { max-height: 50vh; overflow-y: auto; }
+
+/* Money, and the haul the ranking counts. */
+.purse { margin: 0; font-size: 0.8rem; color: var(--dim); }
+.purse b { font-weight: normal; color: var(--item); font-variant-numeric: tabular-nums; }
+
+/* The trader: what a picked stash item fetches, and what is for sale. */
+.sell {
+  padding: 0.4rem 1rem;
+  background: transparent;
+  border: 1px solid var(--item);
+  border-radius: 2px;
+  color: var(--item);
+  cursor: pointer;
+}
+.sell[hidden] { display: none; }
+.trader { width: min(100%, 24rem); }
+.trader-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+.trader-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.trader-list .price { color: var(--item); font-variant-numeric: tabular-nums; }
+.trader-list button {
+  padding: 0.2rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.trader-list button:disabled { opacity: 0.35; cursor: default; }
 #set-out {
   width: min(100%, 18rem);
   padding: 0.85rem 1rem;

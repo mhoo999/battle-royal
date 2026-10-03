@@ -11,8 +11,12 @@ to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Nex
 Google sign-in works for real (user, local). Step 2 is done: crates, three-slot
 inventory, bag window, stash in the DB, hideout screen, sorties (set out / death loses /
 restart refunds). Step 3 is done: two private exits per trip, a compass, B held 5s to
-get out, the haul into the stash. Next: step 4, traders (sell price = value), buying,
-stash upgrades, extraction-value ranking.
+get out, the haul into the stash. Step 4 is done: trader (sell, buy), money, and the
+ranking by the value of what was found and brought out; the hideout has an ASCII hut
+under the moon behind it. That completes V2.0's loop (§7) except stash upgrades, which
+§7 puts in V2.1. Next: rehearse the new tables on local MySQL 8.4, add the Google
+client secret to the server env, then merge `v2` into `main` as v2.0 (ask first: it
+deploys).
 
 ## Completed
 
@@ -101,6 +105,13 @@ stash upgrades, extraction-value ranking.
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
+      (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
+      `account.money` and `account.haul` (default 0 so `ddl-auto=update` can add them to
+      a table with rows: without it H2 refused the column, and so might prod);
+      `/api/hideout/sell`, `/buy` under the account row lock; `/api/ranking` is now
+      `{top, me}` by haul. Hideout art pins Consolas: a Korean font drew `\` as `₩`.
+      251 tests.
 - [x] V2 exits, compass, extraction (branch `v2`, 2026-10-03): each new player gets two
       exits 2 and 3 doors from the start room (capped by the island), on plain floor out of
       door reach, private to them; `self.exits` carries torus bearings and the tile in its
@@ -244,6 +255,11 @@ Nothing.
   tab; check it on a real phone.
 
 ## Recent Decisions
+
+- **Only finds count towards the ranking.** Haul = value of extracted items that did
+  not leave the stash on that trip; otherwise a stash pistol walked in and out would farm
+  it. Prices are a first draft (Q12).
+- **Stash upgrades wait for V2.1**, as V2_PLAN §7 says, though step 4's line lists them.
 
 - **A full stash still takes the whole haul (V2 step 3, temporary).** Losing loot at the
   hideout door would punish the best trips, and there is no way to make room until step

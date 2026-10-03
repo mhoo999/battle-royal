@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
@@ -34,6 +35,21 @@ public class Account {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    /** Earned by selling to the trader, spent buying from it. Never negative. */
+    // A default, so adding the column to a table that already has accounts works.
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private long money;
+
+    /**
+     * The value of everything found on the island and brought out, added up over every
+     * extraction: what the ranking counts (D5). Gear carried out from the stash and back
+     * again is not counted, or a quick in-and-out with a pistol would farm it.
+     */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private long haul;
+
     protected Account() {
     }
 
@@ -60,5 +76,30 @@ public class Account {
 
     public Instant createdAt() {
         return createdAt;
+    }
+
+    public long money() {
+        return money;
+    }
+
+    public void earn(long amount) {
+        this.money += amount;
+    }
+
+    /** @return false, changing nothing, when there is not enough */
+    public boolean spend(long amount) {
+        if (amount > money) {
+            return false;
+        }
+        this.money -= amount;
+        return true;
+    }
+
+    public long haul() {
+        return haul;
+    }
+
+    public void addHaul(long value) {
+        this.haul += value;
     }
 }

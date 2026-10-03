@@ -6,6 +6,8 @@ import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.loop.DepartureListener;
 import com.example.battleroyal.game.rule.GameConstants;
+import com.example.battleroyal.game.rule.ItemValues;
+import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.AccountRepository;
 import com.example.battleroyal.persistence.Sortie;
 import com.example.battleroyal.persistence.SortieRepository;
@@ -62,10 +64,19 @@ public class HideoutService implements DepartureListener {
 
     private static final Logger log = LoggerFactory.getLogger(HideoutService.class);
 
-    public record StashEntry(long id, ItemKind kind, Integer ammo) {
+    /** @param price what the trader pays for it */
+    public record StashEntry(long id, ItemKind kind, Integer ammo, int price) {
     }
 
-    public record StashView(List<StashEntry> stash, int capacity, boolean out) {
+    public record StashView(List<StashEntry> stash, int capacity, boolean out, long money,
+                            long haul, List<ItemValues.Offer> trader) {
+    }
+
+    /** Thrown for a sale or purchase the rules do not allow; the message says why. */
+    public static class TradeRefusedException extends RuntimeException {
+        public TradeRefusedException(String message) {
+            super(message);
+        }
     }
 
     /** Thrown when the account already has a sortie on the island. */
@@ -118,15 +129,56 @@ public class HideoutService implements DepartureListener {
     }
 
     public StashView view(long accountId) {
+        return tx.execute(status -> viewInside(accountId));
+    }
+
+    private StashView viewInside(long accountId) {
+        Account account = accounts.findById(accountId).orElseThrow();
+        List<StashEntry> stash = items
+                .findByAccountIdAndLocationOrderById(accountId, StashItem.Location.STASH)
+                .stream()
+                .map(item -> new StashEntry(item.id(), item.kind(),
+                        item.kind().usesAmmo() ? item.ammo() : null,
+                        ItemValues.sellPrice(item.kind(), item.ammo())))
+                .toList();
+        return new StashView(stash, GameConstants.STASH_CAPACITY,
+                sorties.existsByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT),
+                account.money(), account.haul(), ItemValues.STOCK);
+    }
+
+    // --- The trader ---------------------------------------------------------
+
+    /** Sells a stash item to the trader for its value. Only what is at home can be sold. */
+    public StashView sell(long accountId, long itemId) {
         return tx.execute(status -> {
-            List<StashEntry> stash = items
-                    .findByAccountIdAndLocationOrderById(accountId, StashItem.Location.STASH)
-                    .stream()
-                    .map(item -> new StashEntry(item.id(), item.kind(),
-                            item.kind().usesAmmo() ? item.ammo() : null))
-                    .toList();
-            return new StashView(stash, GameConstants.STASH_CAPACITY,
-                    sorties.existsByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT));
+            Account account = accounts.lockById(accountId).orElseThrow();
+            StashItem item = items.findById(itemId)
+                    .filter(found -> found.accountId().equals(accountId))
+                    .filter(found -> found.location() == StashItem.Location.STASH)
+                    .orElseThrow(() -> new TradeRefusedException("창고에 없는 아이템입니다"));
+            account.earn(ItemValues.sellPrice(item.kind(), item.ammo()));
+            items.delete(item);
+            return viewInside(accountId);
+        });
+    }
+
+    /** Buys from the trader's stock into the stash, which needs a free slot. */
+    public StashView buy(long accountId, ItemKind kind) {
+        ItemValues.Offer offer = kind == null ? null : ItemValues.offerFor(kind);
+        if (offer == null) {
+            throw new TradeRefusedException("상인이 팔지 않는 물건입니다");
+        }
+        return tx.execute(status -> {
+            Account account = accounts.lockById(accountId).orElseThrow();
+            if (items.countByAccountIdAndLocation(accountId, StashItem.Location.STASH)
+                    >= GameConstants.STASH_CAPACITY) {
+                throw new TradeRefusedException("창고가 가득 찼습니다");
+            }
+            if (!account.spend(offer.price())) {
+                throw new TradeRefusedException("돈이 모자랍니다");
+            }
+            items.save(new StashItem(accountId, offer.kind(), offer.ammo()));
+            return viewInside(accountId);
         });
     }
 
@@ -223,14 +275,18 @@ public class HideoutService implements DepartureListener {
         for (StashItem item : items.findBySortieId(sortieId)) {
             wentOut.put(item.gameItemId(), item);
         }
+        long found = 0;
         for (Item item : carried) {
             StashItem own = wentOut.remove(item.id());
             if (own != null) {
                 own.bringBack(item.ammo());
             } else {
                 items.save(new StashItem(sortie.accountId(), item.kind(), item.ammo()));
+                found += ItemValues.sellPrice(item.kind(), item.ammo());
             }
         }
+        // Only what was found counts towards the ranking (D5).
+        accounts.lockById(sortie.accountId()).orElseThrow().addHaul(found);
         // Taken out and not brought back: left in a crate somewhere, so lost.
         items.deleteAll(wentOut.values());
     }
