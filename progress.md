@@ -197,7 +197,7 @@ V1 is done when someone new can play ten minutes without being told how. Left:
    everyone, so the user picks the moment (auto mode refused to push a broken commit).
 5. Not yet recorded: the server coming back on its own after `sudo reboot`.
 6. Declare V1: tag `v1.0`, then plan V2 (user's idea: Tarkov-like stash, extraction,
-   accounts — conflicts with several V1 decisions, see the conversation summary below).
+   accounts — conflicts with several V1 decisions; see V2 notes below).
 7. Later: two EC2 instances with deploys that keep players. The world lives in one JVM,
    so this needs a world handoff or rooms pinned to servers (CLAUDE.md §10).
 
