@@ -32,7 +32,8 @@ GET   → { "signedIn": false, "nickname": null }       누구나
 POST  { "nickname": "shuya" } → { "signedIn": true, "nickname": "shuya" }   로그인 필요(아니면 401)
 ```
 
-구글 로그인은 `/oauth2/authorization/google`로 시작하고 `openid` 범위만 요청한다. 계정에는
+닉네임은 게스트와 계정 모두 `NicknamePolicy`를 거친다: 1~12자, 비속어·음란어·운영자 사칭 금지
+(400, 본문은 플레이어에게 그대로 보여 줄 한국어 사유). 구글 로그인은 `/oauth2/authorization/google`로 시작하고 `openid` 범위만 요청한다. 계정에는
 구글의 `sub`와 닉네임만 저장한다(이메일·이름 없음). 계정 닉네임은 1~12자, 계정끼리
 중복 불가(409), `~`로 시작할 수 없고(400), 한 번 정하면 바꾸지 않는다(409). 세션 쿠키는
 `SameSite=Lax`, 운영에서는 `Secure`. CSRF 토큰은 쓰지 않는다(`SecurityConfig` 주석).

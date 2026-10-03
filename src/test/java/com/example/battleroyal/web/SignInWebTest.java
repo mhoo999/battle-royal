@@ -8,6 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.nio.charset.StandardCharsets;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,6 +51,15 @@ class SignInWebTest {
                         .content(nickname("kang")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").value("~kang"));
+    }
+
+    @Test
+    void aBlockedNameIsRefusedInWordsThePlayerReads() throws Exception {
+        String body = mvc.perform(post("/api/session").contentType(MediaType.APPLICATION_JSON)
+                        .content(nickname("씨 발")))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertEquals("쓸 수 없는 닉네임입니다", body);
     }
 
     @Test

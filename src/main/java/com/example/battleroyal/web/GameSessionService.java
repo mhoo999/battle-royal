@@ -32,7 +32,7 @@ public class GameSessionService implements DeathListener {
     public record GameSession(String token, String playerId, String nickname, Long accountId) {
     }
 
-    /** Thrown for a nickname that is blank or the wrong length after trimming. */
+    /** Thrown for a nickname {@link NicknamePolicy} refuses. The message is shown to the player. */
     public static class InvalidNicknameException extends RuntimeException {
         public InvalidNicknameException(String message) {
             super(message);
@@ -48,7 +48,7 @@ public class GameSessionService implements DeathListener {
         while (nickname.startsWith(GameConstants.UNRANKED_PREFIX)) {
             nickname = nickname.substring(GameConstants.UNRANKED_PREFIX.length()).trim();
         }
-        requireLength(nickname);
+        NicknamePolicy.require(nickname);
         return issue(GameConstants.UNRANKED_PREFIX + nickname, null);
     }
 
@@ -64,15 +64,6 @@ public class GameSessionService implements DeathListener {
     @Override
     public void onDeath(GameEvent.Died died) {
         byToken.values().removeIf(session -> session.playerId().equals(died.playerId()));
-    }
-
-    static void requireLength(String nickname) {
-        if (nickname.length() < GameConstants.NICKNAME_MIN_LENGTH
-                || nickname.length() > GameConstants.NICKNAME_MAX_LENGTH) {
-            throw new InvalidNicknameException("Nickname must be "
-                    + GameConstants.NICKNAME_MIN_LENGTH + " to "
-                    + GameConstants.NICKNAME_MAX_LENGTH + " characters after trimming");
-        }
     }
 
     private GameSession issue(String nickname, Long accountId) {

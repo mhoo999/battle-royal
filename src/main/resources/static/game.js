@@ -525,7 +525,8 @@ async function chooseNickname(typed) {
       return;
     }
     if (!response.ok) {
-      ui.lobbyError.textContent = '닉네임은 1~12자, ~로 시작할 수 없습니다';
+      // The server says why: too long, a blocked word, or the ~ that marks guests.
+      ui.lobbyError.textContent = (await response.text()) || '쓸 수 없는 닉네임입니다';
       return;
     }
     me = await response.json();

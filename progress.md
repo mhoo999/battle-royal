@@ -96,7 +96,12 @@ Google OAuth client to sign in for real, then step 2 (hideout and stash).
       nickname once, then START plays under it. Guests get the `~` prefix (unranked).
       `GuestSessionService` renamed `GameSessionService`. 202 tests (AccountServiceTest,
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
-      client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).
+      client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
+      V2_PLAN §5, the secret stays with the user).
+- [x] Nickname filter (branch `v2`, 2026-10-03, user's request): swearing, sexual
+      words and posing as staff, for guests and accounts. List in
+      `nickname-blocklist.txt`; names are normalized (spaces, symbols, digit swaps,
+      full-width) before matching. Refusals are Korean text the lobby shows as is.
 - [x] Ranking cleanup (2026-10-03): a `~name` plays unranked (`UNRANKED_PREFIX`) and
       smoke uses `~alpha`/`~bravo`/`~reconnect`, so production smoke leaves no rows
       (checked). Deleted 20 test rows from the live DB at the user's word, leaving only

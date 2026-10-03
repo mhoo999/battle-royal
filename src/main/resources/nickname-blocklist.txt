@@ -1,0 +1,90 @@
+# Words a nickname may not contain, one per line. Matching is on a normalized form of
+# the nickname (see NicknamePolicy): lower case, spaces and symbols removed, common
+# digit-for-letter swaps undone. So list each word once, plainly.
+#
+# Short words catch innocent names that happen to contain them; that is accepted for a
+# 12-character nickname. Lines starting with # are comments.
+
+# --- Korean: swearing ---
+시발
+씨발
+씨바
+시바
+씨팔
+시팔
+ㅅㅂ
+ㅆㅂ
+ㅅㅃ
+병신
+븅신
+ㅂㅅ
+개새
+새끼
+색끼
+쌔끼
+ㅅㄲ
+좆
+존나
+졸라
+ㅈㄴ
+지랄
+ㅈㄹ
+미친
+ㅁㅊ
+닥쳐
+꺼져
+엠창
+니미
+느금
+니애미
+애미
+애비
+에미
+엿먹
+
+# --- Korean: sexual ---
+보지
+자지
+섹스
+쎅스
+야동
+창녀
+걸레
+꼴려
+꼴린
+딸딸이
+자위
+강간
+성폭
+몸캠
+노모
+
+# --- English ---
+fuck
+fuk
+shit
+bitch
+cunt
+dick
+cock
+pussy
+porn
+sex
+nigg
+fag
+whore
+slut
+rape
+penis
+vagina
+asshole
+bastard
+nazi
+hitler
+
+# --- Pretending to be staff ---
+admin
+운영자
+관리자
+운영진
+system

@@ -21,14 +21,14 @@ public class AccountService {
     /** Thrown when another account already plays under the nickname asked for. */
     public static class NicknameTakenException extends RuntimeException {
         public NicknameTakenException(String nickname) {
-            super("Nickname is taken: " + nickname);
+            super("이미 쓰는 닉네임입니다: " + nickname);
         }
     }
 
     /** Thrown when an account that already has a nickname asks for another. */
     public static class NicknameAlreadyChosenException extends RuntimeException {
         public NicknameAlreadyChosenException() {
-            super("This account already has a nickname");
+            super("닉네임은 이미 정해졌습니다");
         }
     }
 
@@ -62,11 +62,11 @@ public class AccountService {
             throw new NicknameAlreadyChosenException();
         }
         String nickname = rawNickname == null ? "" : rawNickname.trim();
-        GameSessionService.requireLength(nickname);
         if (nickname.startsWith(GameConstants.UNRANKED_PREFIX)) {
-            throw new InvalidNicknameException("A nickname may not start with "
-                    + GameConstants.UNRANKED_PREFIX);
+            throw new InvalidNicknameException("닉네임은 "
+                    + GameConstants.UNRANKED_PREFIX + "로 시작할 수 없습니다");
         }
+        NicknamePolicy.require(nickname);
         if (accounts.existsByNickname(nickname)) {
             throw new NicknameTakenException(nickname);
         }

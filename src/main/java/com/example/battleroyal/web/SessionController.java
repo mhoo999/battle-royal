@@ -31,7 +31,7 @@ public class SessionController {
     /** Thrown when a signed-in account has not picked a nickname yet. */
     public static class NicknameRequiredException extends RuntimeException {
         public NicknameRequiredException() {
-            super("Choose a nickname first");
+            super("닉네임을 먼저 정하세요");
         }
     }
 
