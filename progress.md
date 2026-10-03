@@ -91,6 +91,12 @@ Next: game bugs; see a broken jar roll back when the user picks the moment.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] Input (2026-10-03): touch zones instead of buttons — the left half of the
+      controls strip steers by the thumb's side of the drawn cross (slide to turn),
+      the right half is whichever of A/B is nearer; on a phone the strip fills the
+      height below the board. A fires on press. Held keys repeat on our own 140ms
+      timer (OS key repeat paused ~0.5s first); overlapping keys fall back to the one
+      still held. Short vibration on Android. GAME_RULES §10 "입력".
 - [x] Ops (2026-10-03): SSH port closed (Session Manager instead), four CloudWatch
       alarms to email, domain battleroyale.site with Let's Encrypt HTTPS; http and
       the bare IP no longer serve the game. Remote smoke over wss all passed.
@@ -183,7 +189,9 @@ Nothing.
   reverted: not in the docs, and `SnapshotFilterTest` expects `HEAL` at full HP.
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
   needs a restart, and Chrome caches `game.js`/`game.css`: fetch them with
-  `cache: 'reload'` (or hard-reload) before testing a client change.
+  `cache: 'reload'` (or hard-reload) before testing a client change. Background tabs
+  also throttle timers, so held-input cadence cannot be measured from an automated
+  tab; check it on a real phone.
 
 ## Recent Decisions
 

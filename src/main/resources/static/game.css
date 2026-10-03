@@ -376,12 +376,29 @@ header.hud-bar {
 
 /* --- Controls ---------------------------------------------------------- */
 
+/*
+ * The whole strip is the touch surface: its left half steers, its right half is A/B
+ * (see wireInput). The drawn buttons are only a picture of where things are, so they
+ * take no pointer events of their own and show presses through .pressed.
+ */
 #controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding-top: 0.25rem;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+
+/* On a phone the strip takes all the height the board leaves, so a thumb can land
+   anywhere below the board. */
+@media (max-width: 479px) {
+  #game { align-self: stretch; }
+  #controls { flex: 1 0 auto; min-height: 9rem; }
 }
 
 /*
@@ -408,11 +425,10 @@ header.hud-bar {
   border: 1px solid var(--line);
   border-radius: 2px;
   color: var(--ink);
-  cursor: pointer;
-  touch-action: manipulation;
+  pointer-events: none;
 }
 
-.pad:active { background: var(--dpad-hi); color: var(--ink); }
+.pad.pressed { background: var(--dpad-hi); color: var(--ink); }
 
 .pad {
   background: var(--dpad);
@@ -441,6 +457,8 @@ header.hud-bar {
   border-radius: 3rem;
   background: rgba(255, 255, 255, 0.04);
   transform: rotate(-25deg);
+  /* the tilt pokes a few pixels past the box; keep it off a phone's edge */
+  margin-right: 0.4rem;
 }
 
 #btn-b { margin-bottom: 1.1rem; }
@@ -465,7 +483,7 @@ header.hud-bar {
 .action > * { transform: rotate(25deg); }
 .action b { font-size: 1.05rem; }
 .action small { font-size: 0.6rem; color: #f4e6ea; opacity: 0.85; }
-.action:active:not(:disabled) {
+.action.pressed:not(:disabled) {
   background: var(--button-hi);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
   transform: translateY(2px);

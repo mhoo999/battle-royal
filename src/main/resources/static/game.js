@@ -68,7 +68,7 @@ const ui = {
   game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
   board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
-  btnA: el('btn-a'), btnB: el('btn-b'),
+  btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
   deadRecord: el('dead-record'),
@@ -549,65 +549,163 @@ function restart() {
 
 // --- Input ---------------------------------------------------------------
 
-function holdToRepeat(button, fire) {
-  let timer = null;
+/*
+ * One steering direction, fed by the keyboard and the touch pad alike. While it is
+ * set, a move goes out at once and then every REPEAT_MS, so a held key or thumb walks
+ * steadily. The browser's own key repeat is not used: it waits a few hundred
+ * milliseconds before the first repeat, which made every held key step, pause, then
+ * run.
+ */
+const keysHeld = [];        // directions in the order their keys went down
+let touchDir = null;
+let steering = null;
+let steerTimer = null;
 
-  const stop = () => {
-    if (timer !== null) {
-      clearInterval(timer);
-      timer = null;
-    }
-  };
+function playing() {
+  return ui.dead.hidden && !ui.game.hidden;
+}
 
-  button.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    fire();
-    stop();
-    timer = setInterval(fire, REPEAT_MS);
-  });
+/** A short buzz so a thumb knows it registered without a glance. Android only. */
+function buzz() {
+  try { navigator.vibrate?.(8); } catch (e) { /* unsupported */ }
+}
 
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
-    button.addEventListener(type, stop);
+function steer() {
+  // The touch pad wins while a thumb is on it; otherwise the last key still held.
+  const dir = touchDir ?? keysHeld.at(-1) ?? null;
+  if (dir === steering) return;
+  steering = dir;
+  clearInterval(steerTimer);
+  steerTimer = null;
+  for (const pad of document.querySelectorAll('.pad')) {
+    pad.classList.toggle('pressed', pad.dataset.dir === dir);
   }
+  if (dir === null) return;
+  if (touchDir !== null) buzz();
+  if (playing()) move(dir);
+  steerTimer = setInterval(() => { if (playing()) move(steering); }, REPEAT_MS);
+}
+
+/*
+ * Touch zones. The controls strip is split down the middle, and neither half has to be
+ * hit precisely, so a thumb can stay put while the eyes stay on the board.
+ *
+ * Left half: steers by where the thumb is relative to the centre of the drawn cross,
+ * whichever axis it is further along. Near the centre nothing happens. Sliding the
+ * thumb round changes direction without lifting it.
+ *
+ * Right half: whichever of A and B is nearer. The tilted pair puts A low and B high,
+ * so the line between them runs the way a thumb rocks.
+ */
+function padDirection(x, y) {
+  const box = ui.dpad.getBoundingClientRect();
+  const dx = x - (box.left + box.width / 2);
+  const dy = y - (box.top + box.height / 2);
+  // The middle square of the cross is the dead zone.
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < box.width / 6) return null;
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'RIGHT' : 'LEFT';
+  return dy > 0 ? 'DOWN' : 'UP';
+}
+
+function nearerAction(x, y) {
+  const distance = (button) => {
+    const box = button.getBoundingClientRect();
+    return Math.hypot(x - (box.left + box.width / 2), y - (box.top + box.height / 2));
+  };
+  return distance(ui.btnA) <= distance(ui.btnB) ? ui.btnA : ui.btnB;
 }
 
 function wireInput() {
-  for (const pad of document.querySelectorAll('.pad')) {
-    holdToRepeat(pad, () => move(pad.dataset.dir));
-  }
-  ui.btnA.addEventListener('click', actionA);
-  // B is held, not clicked: a loot lasts only while it stays down. Doors act on the
+  // B is held, not tapped: a loot lasts only while it stays down. Doors act on the
   // press and ignore the release.
   let bDown = false;
   const pressB = () => { if (!bDown) { bDown = true; actionB(); } };
   const letGoB = () => { if (bDown) { bDown = false; releaseB(); } };
-  ui.btnB.addEventListener('pointerdown', (event) => { event.preventDefault(); pressB(); });
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
-    ui.btnB.addEventListener(type, letGoB);
-  }
 
-  // Browser auto-repeat fires far faster than the server accepts moves, so held keys
-  // are throttled to the same cadence as the on-screen pad.
-  let lastKeyMove = 0;
+  const fingers = new Map();  // pointerId -> 'pad' | the A or B button
+  let padFinger = null;
 
-  window.addEventListener('keydown', (event) => {
-    if (!ui.dead.hidden || ui.game.hidden) return;
+  ui.controls.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    // Keep receiving this finger's moves and lift even if it strays off the strip.
+    try { ui.controls.setPointerCapture(event.pointerId); } catch (e) { /* not capturable */ }
+    const box = ui.controls.getBoundingClientRect();
+    if (event.clientX < box.left + box.width / 2) {
+      fingers.set(event.pointerId, 'pad');
+      padFinger = event.pointerId;
+      touchDir = padDirection(event.clientX, event.clientY);
+      steer();
+      return;
+    }
+    const button = nearerAction(event.clientX, event.clientY);
+    fingers.set(event.pointerId, button);
+    if (button.disabled) return;
+    button.classList.add('pressed');
+    buzz();
+    // A fires on the press, not the release: a tap's release comes a beat late.
+    if (button === ui.btnA) actionA();
+    else pressB();
+  });
 
-    const dir = KEY_DIR[event.key];
-    if (dir) {
-      event.preventDefault();
-      const now = Date.now();
-      if (now - lastKeyMove >= REPEAT_MS) {
-        lastKeyMove = now;
-        move(dir);
+  ui.controls.addEventListener('pointermove', (event) => {
+    if (event.pointerId !== padFinger) return;
+    touchDir = padDirection(event.clientX, event.clientY);
+    steer();
+  });
+
+  const lift = (event) => {
+    const held = fingers.get(event.pointerId);
+    if (held === undefined) return;
+    fingers.delete(event.pointerId);
+    if (held === 'pad') {
+      if (event.pointerId === padFinger) {
+        padFinger = null;
+        touchDir = null;
+        steer();
       }
       return;
     }
+    held.classList.remove('pressed');
+    if (held === ui.btnB) letGoB();
+  };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    ui.controls.addEventListener(type, lift);
+  }
+  // A long press would otherwise open the phone's context menu over the controls.
+  ui.controls.addEventListener('contextmenu', (event) => event.preventDefault());
+
+  window.addEventListener('keydown', (event) => {
+    const dir = KEY_DIR[event.key];
+    if (dir) {
+      if (!playing()) return;
+      event.preventDefault();
+      if (!keysHeld.includes(dir)) {
+        keysHeld.push(dir);
+        steer();
+      }
+      return;
+    }
+    if (!playing()) return;
     if (event.key === 'j' || event.key === 'J') actionA();
     if ((event.key === 'k' || event.key === 'K') && !event.repeat) pressB();
   });
   window.addEventListener('keyup', (event) => {
+    const dir = KEY_DIR[event.key];
+    if (dir) {
+      // Letting go of the newer key carries on in the direction still held.
+      const at = keysHeld.indexOf(dir);
+      if (at !== -1) keysHeld.splice(at, 1);
+      steer();
+      return;
+    }
     if (event.key === 'k' || event.key === 'K') letGoB();
+  });
+  // Keys released while the window was not focused never send a keyup.
+  window.addEventListener('blur', () => {
+    keysHeld.length = 0;
+    touchDir = null;
+    steer();
+    letGoB();
   });
 }
 
