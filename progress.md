@@ -126,7 +126,13 @@ secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
       120x144 mint block cells, fitted whole to the screen in a double-line frame; the
       title sits over its sky and the menu is a double-bordered window over its foot,
       sized from the frame height so the hut stays in view on short screens. Screenshot
-      `2026-10-04-v2-hideout-ending-picture.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      `2026-10-04-v2-hideout-ending-picture.png`.
+      Then (user: "look at ASCII art on Pinterest") redrawn as classic ASCII art after
+      looking at Pinterest and asciiart.eu: the dithered blocks read as pixel art, real
+      ASCII art is line drawing with a lot of black. `tools/hideout-art.py` now draws
+      64x78: 45-degree mountains with snow, tiered pines, hut/smoke/path/student from
+      hand-made pieces, only the moon shaded with a character ramp; tiers t1-t5 retuned
+      for thin lines. Screenshot `2026-10-04-v2-hideout-ascii-art.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
       describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);

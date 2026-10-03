@@ -506,15 +506,16 @@ header.hud-bar {
 .hideout > :not(.scene) { position: relative; z-index: 1; }
 
 /*
- * The hideout is an illustration in a frame, like a game's ending picture: a hut on a
- * hill under a full moon, a student walking the lit path up to it. Painted in grayscale
- * (tools/hideout-art.py) and dithered into block characters of the title's one mint; depth is glyph coverage
- * times five brightness tiers (t1 darkest). 120 x 144 cells, sized to fit the screen
- * whole. Decoration only, so it takes no clicks.
+ * The hideout is a picture in a frame, like a game's ending screen: a hut on a hill
+ * under a full moon, a student walking the path up to it. ASCII art in the classic
+ * manner (tools/hideout-art.py): mountains, pines, hut and path as line drawing, only
+ * the moon shaded with a density ramp, a lot of black left alone. One mint; depth is
+ * five brightness tiers (t1 darkest). 64 x 78 cells, sized to fit the screen whole.
+ * Decoration only, so it takes no clicks.
  */
 .hideout {
-  /* Consolas is 0.55em wide: 120 columns over 144 rows. */
-  --scene-aspect: 0.4582;
+  /* Consolas is 0.55em wide: 64 columns over 78 rows. */
+  --scene-aspect: 0.4511;
   --scene-h: min(calc(100dvh - 1.5rem), calc((100vw - 1rem) / var(--scene-aspect)));
   --scene-w: calc(var(--scene-h) * var(--scene-aspect));
   --scene-gap: calc((100dvh - var(--scene-h)) / 2);
@@ -539,17 +540,17 @@ header.hud-bar {
    * that draws a backslash as a won sign and block characters at double width.
    */
   font-family: Consolas, "Courier New", monospace;
-  font-size: calc(var(--scene-h) / 144);
+  font-size: calc(var(--scene-h) / 78);
   line-height: 1;
   text-align: left;
   color: var(--self);
 }
 .hideout-art i { font-style: normal; }
-.hideout-art .t1 { color: rgba(127, 212, 193, 0.16); }
-.hideout-art .t2 { color: rgba(127, 212, 193, 0.30); }
-.hideout-art .t3 { color: rgba(127, 212, 193, 0.48); }
-.hideout-art .t4 { color: rgba(127, 212, 193, 0.72); }
-.hideout-art .t5 { color: var(--self); text-shadow: 0 0 0.6em rgba(127, 212, 193, 0.4); }
+.hideout-art .t1 { color: rgba(127, 212, 193, 0.22); }
+.hideout-art .t2 { color: rgba(127, 212, 193, 0.38); }
+.hideout-art .t3 { color: rgba(127, 212, 193, 0.58); }
+.hideout-art .t4 { color: rgba(127, 212, 193, 0.82); }
+.hideout-art .t5 { color: var(--self); text-shadow: 0 0 0.5em rgba(127, 212, 193, 0.55); }
 .hideout-head { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
 .hideout-head > * { text-shadow: 0 0 0.4em var(--bg), 0 0 0.8em var(--bg); }
 .hideout h2 { margin: 0; letter-spacing: 0.3em; }
