@@ -14,9 +14,8 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 10 (자동 배포) 진행 중. 저장소 쪽(`deploy/install.sh`, `ci.yml`의
-`deploy` 잡)은 작성됨, 콘솔 ①~⑤는 아직. Phase 9 수동 재배포는 건너뜀: 서버에는 토러스 이전
-버전(`bdacabd` 코드)이 떠 있고, 첫 자동 배포가 토러스를 올린다.
+**현재 단계:** Phase 10 (자동 배포) 동작 중 (2026-10-03). `main` push → 테스트 → 배포가
+자동으로 돈다. 남은 확인: 문서만 바뀐 push가 배포를 건너뛰는지, 깨진 jar가 롤백되는지.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
@@ -27,8 +26,10 @@ IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지
 `mariadb105` 클라이언트가 `--ssl`로 8.4에 정상 접속. Phase 7: systemd + Nginx, 첫 배포.
 Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-console` 404,
 `/api/ranking`이 RDS의 결과 행을 읽음. 사용자가 브라우저로 플레이 확인(2026-10-03).
+Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase 10: 첫 자동 배포 `4e331af`
+(토러스 월드) 성공, SSM 명령 Success, 공인 IP smoke 전부 통과.
 
-**다음 한 걸음:** Phase 10 콘솔 ①~⑤ → `main` push → Actions의 deploy 잡 확인.
+**다음 한 걸음:** Phase 10 남은 확인 두 가지. 그다음 (선택) SSH 포트 닫기, HTTPS.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
@@ -109,7 +110,8 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 | GitHub 배포 역할 | `deploy` (arn:aws:iam::495791792486:role/deploy, 인라인 정책 `deploy`) |
 | EC2 인스턴스 역할 | battle-royal-ec2 (AmazonSSMManagedInstanceCore + `read-releases`) |
 | 접속 URL | http://54.116.237.112/ |
-| 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (그 뒤 커밋은 문서뿐) |
+| 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (수동) |
+| 첫 자동 배포 | 2026-10-03 / `4e331af` (토러스 월드), Actions run 37082984097 |
 
 ---
 
@@ -124,9 +126,9 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 - [x] **Phase 6** DB 사용자 만들기 (2026-10-03)
 - [x] **Phase 7** 첫 배포 (jar, env, systemd, Nginx) (2026-10-03)
 - [x] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB) (2026-10-03)
-- [ ] **Phase 9** 재배포 절차 한 번 연습
+- [~] **Phase 9** 재배포 절차 한 번 연습 (건너뜀, Phase 10이 대신함)
 - [ ] (선택) 도메인 + HTTPS
-- [ ] **Phase 10** 자동 배포 (GitHub Actions + OIDC + S3 + SSM)
+- [x] **Phase 10** 자동 배포 (GitHub Actions + OIDC + S3 + SSM) (2026-10-03)
 - [ ] (선택) SSH 포트 닫기 (SSM Session Manager로 접속)
 
 ---
@@ -645,6 +647,7 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 | 날짜 | 증상 | 원인 | 해결 |
 |---|---|---|---|
 | 2026-10-02 | RDS 생성 화면: `mysql-8.0.46 reached RDS end of standard support on Jul 31, 2026 and requires engine lifecycle support` | 문서를 쓸 때 8.0을 골랐는데 그사이 표준 지원이 끝났다. EOL 버전을 새로 만들면 Extended Support(vCPU 시간당 과금)가 강제된다 | 8.4로 생성. Phase 6에서 `caching_sha2_password`와 `mariadb105` 클라이언트 호환을 확인할 것 |
+| 2026-10-03 | 첫 자동 배포에서 `Not authorized to perform sts:AssumeRoleWithWebIdentity` | 이 저장소의 OIDC 토큰 `sub`가 **불변 식별자** 형식이었다: `repo:mhoo999@144771457/battle-royal@1395286633:ref:refs/heads/main`. 콘솔 마법사는 이름만 쓰는 `repo:mhoo999/battle-royal:...`로 조건을 만들었다 | `gh api repos/mhoo999/battle-royal/actions/oidc/customization/sub`로 실제 형식을 확인하고 신뢰 정책 `sub`를 그 값으로 바꿈. 숫자 ID는 저장소를 지우고 같은 이름으로 다시 만들어도 재사용되지 않아 더 안전하다 |
 | 2026-10-02 | SSH `Connection timed out`. 같은 IP에서 80번은 즉시 거부(인스턴스까지 닿음), github.com:22는 열림 | sg-web의 "my ssh" 규칙 Type이 SSH가 아니라 **HTTPS(443)**로 저장됨. Source IP는 맞았다 | Type을 SSH로 수정. 포트별로 시험해 회선 문제와 규칙 문제를 갈랐다. 콘솔 목록보다 인스턴스 **Security 탭**의 실제 규칙을 볼 것 |
 | 2026-09-29 | (로컬 리허설) Nginx 뒤에서 **브라우저만** WebSocket 403. Node smoke는 통과 | Spring의 same-origin 검사는 Origin과 "앱이 보기에 자기 주소"를 비교한다. Tomcat은 `X-Forwarded-Proto`만 있으면 포트를 80으로 가정한다. Node는 Origin을 안 보내서 검사를 안 탔다 | Nginx에서 `Host $http_host`, `X-Forwarded-Port $server_port` 전달 |
 

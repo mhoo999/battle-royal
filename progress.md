@@ -6,8 +6,8 @@ V1 Multiplayer Core
 
 ## Current Task
 
-Torus world done locally (2026-10-03), not yet deployed. Next: redeploy it to AWS
-(Phase 9).
+Continuous deployment live (2026-10-03): a push to `main` tests, then deploys to EC2.
+The torus world is deployed. Next: confirm the docs-only skip and the rollback.
 
 ## Completed
 
@@ -85,6 +85,10 @@ Torus world done locally (2026-10-03), not yet deployed. Next: redeploy it to AW
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] Continuous deployment (2026-10-03): `deploy` job after the tests in `ci.yml`.
+      OIDC role, jar to S3, `deploy/install.sh` run over SSM, rollback to
+      `app.jar.prev` if the new jar does not answer in 2 minutes. Docs-only pushes do
+      not deploy. First run deployed `4e331af`; remote smoke all passed.
 - [x] Torus world (2026-10-03): rooms on a wrapping grid, 3x3 for 1–2 players and about
       7 rooms per other player beyond (`WorldSize`). Doors always reach the facing wall;
       no neighbours share a layout; a fresh login starts with nobody next door. Grows at
@@ -156,8 +160,8 @@ Nothing.
 
 ## Next
 
-1. AWS Phase 9: redeploy the torus build with the procedure in
-   `docs/AWS_DEPLOYMENT.md` §4 Phase 9 (keep `app.jar.prev` for rollback).
+1. Phase 10 leftovers in `docs/AWS_DEPLOYMENT.md`: a docs-only push should skip the
+   deploy; a jar that does not start should roll back to `app.jar.prev`.
 3. Later, user's idea: two EC2 instances with rolling deploys that keep players. The
    world lives in one JVM, so this needs a world handoff or rooms pinned to servers
    (CLAUDE.md §10) — a design task of its own, not started.
@@ -173,6 +177,11 @@ Nothing.
 
 ## Recent Decisions
 
+- **Deploys go through OIDC + S3 + SSM, not SSH.** Runner IPs change, so SSH would have
+  meant opening port 22 to the world; this way the repo holds no keys and the server
+  opens no port. CD before a second server: the hard part of two servers is the
+  in-memory world, and only the last pipeline step changes. Every deploy drops all
+  players and resets the world, hence no deploy for docs-only pushes.
 - **RDS runs MySQL 8.4, not 8.0.** 8.0 left RDS standard support on 2026-07-31 and a
   new 8.0 instance forces paid Extended Support. No code change; local rehearsal was
   on 8.0.
