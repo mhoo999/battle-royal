@@ -138,7 +138,14 @@ secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
       tarp strung over a bedroll and a pack, no chimney smoke or lit window, the moon
       the only light; a dim treeline behind and pines in front half over its walls, a
       winding trail, barbed wire cut where the trail passes. Screenshot
-      `2026-10-04-v2-hideout-ruin-in-woods.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      `2026-10-04-v2-hideout-ruin-in-woods.png`.
+      Then (user: "better quality, the title's mood, big buttons in the middle") the
+      hideout front copies the title screen: block-letter HIDEOUT in the same font and
+      shadow (`.logo`), a red 隠れ家 rule (`.logo-rule`), big centred buttons, no frame.
+      The picture runs along the foot of the screen (64x36, under half the height): a big
+      moon with the ruin, pines and treeline cut out of it in black, the moon's face with
+      the title's red offset. Pages hide the heading. Screenshot
+      `2026-10-04-v2-hideout-title-style.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
       describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);

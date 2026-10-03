@@ -1,12 +1,13 @@
 """
-The hideout picture, drawn as ASCII art: a ruin in the island's woods under a full
-moon, a tarp strung from its broken wall over a bedroll, barbed wire across the foreground, a student
-with the issued day pack walking up the path to spend the night there.
+The hideout picture, drawn as ASCII art: a big moon rising behind the island's woods,
+and in front of it, black against the light, the ruin someone is hiding in, a tarp
+strung from its broken wall, pines on either side, barbed wire along the ground, a
+student with the issued day pack standing at the edge of it.
 
-Line art in the classic manner: mountains at 45 degrees as / and \\, pines as stacked
-boughs, the ruin, tarp, wire and path drawn from hand-made pieces, stars as . * +, and a lot
-of black left alone. Only the moon is shaded, with a density ramp of characters. One
-colour; depth is five brightness tiers, t1 darkest, t5 the moon, the only light.
+Silhouette against the moon, in the manner of the boldest ASCII landscapes: the moon is
+shaded with a density ramp of characters, and whatever stands in front of it is cut out
+of it as black, outlined where it leaves the moon for the dark. One colour, five
+brightness tiers, t1 darkest, t5 the moon's face.
 
 Run from a scratch directory: python tools/hideout-art.py
 Writes hideout-art.txt (the <pre> body for #hideout .hideout-art in index.html) and
@@ -16,10 +17,12 @@ import math
 import random
 import sys
 
-W, H = 64, 78
-rng = random.Random(4)
+W, H = 64, 36
+BS = chr(92)  # a backslash
+rng = random.Random(7)
 ch = [[' '] * W for _ in range(H)]
 tier = [[0] * W for _ in range(H)]
+solid = [[False] * W for _ in range(H)]       # stands in front of the moon
 
 
 def put(x, y, c, t):
@@ -28,194 +31,141 @@ def put(x, y, c, t):
         tier[y][x] = t if c != ' ' else 0
 
 
-def stamp(x, y, lines, t, solid=False):
-    """Text at (x, y). Spaces leave what is underneath unless solid, which clears the
-    span between each line's first and last mark, so a shape hides what is behind it."""
-    for dy, line in enumerate(lines):
-        marks = [i for i, c in enumerate(line) if c != ' ']
-        if not marks:
-            continue
-        for dx in range(marks[0], marks[-1] + 1):
-            c = line[dx]
-            if c != ' ' or solid:
-                put(x + dx, y + dy, c if c != '`' or True else c, t)
+# --- the moon: big, low, shaded by a density ramp, craters lighter
+RAMP = ' .:-=+*#%@'
+MX, MY, MR = 31, 19, 11.5
+ASPECT = 1.82                      # columns per row for a round shape
+CRATERS = [(-4.5, -3.5, 2.6), (3.5, 2.0, 2.2), (-1.0, 5.0, 1.6), (6.0, -4.5, 1.4),
+           (-7.0, 2.5, 1.5), (1.5, -6.5, 1.2)]
+
+
+def moon_at(x, y):
+    dx, dy = (x - MX) / ASPECT, y - MY
+    d = math.hypot(dx, dy)
+    if d > MR:
+        return None
+    b = 1.0 - 0.3 * (d / MR) ** 4
+    for cx, cy, r in CRATERS:
+        k = math.hypot(dx - cx, dy - cy) / r
+        if k < 1:
+            b -= 0.45 * (1 - k * k)
+    b += rng.uniform(-0.04, 0.04)
+    i = max(1, min(len(RAMP) - 1, round(b * (len(RAMP) - 1))))
+    return RAMP[i], 5 if i >= 7 else 4 if i >= 4 else 3
 
 
 # --- stars, kept off the moon
-MX, MY, MR = 42, 16, 6.0
-ASPECT = 1.82                      # columns per row for a round shape
-for _ in range(38):
-    x, y = rng.randrange(W), rng.randrange(0, 28)
-    if math.hypot((x - MX) / ASPECT, y - MY) < MR + 2.5:
+for _ in range(34):
+    x, y = rng.randrange(W), rng.randrange(0, 20)
+    if math.hypot((x - MX) / ASPECT, y - MY) < MR + 2:
         continue
-    c = rng.choice('......*+')
-    put(x, y, c, 4 if c in '*+' else 3)
-for x, y in ((8, 4), (24, 11), (5, 17)):
-    stamp(x - 1, y - 1, [' . ', '-*-', " ' "], 4)
+    c = rng.choice('.....*+')
+    put(x, y, c, 4 if c in '*+' else 2)
+for x, y in ((6, 3), (57, 6)):
+    for dx, dy, c in ((0, -1, '.'), (-1, 0, '-'), (0, 0, '*'), (1, 0, '-'), (0, 1, "'")):
+        put(x + dx, y + dy, c, 4)
 
-# --- the moon: a disc shaded by a density ramp, craters lighter
-RAMP = ' .:-=+*#%@'
-CRATERS = [(-2.6, -1.8, 1.7), (2.0, 1.4, 1.5), (-0.6, 3.2, 1.1), (3.4, -2.6, 0.9)]
-for y in range(H):
-    for x in range(W):
-        dx, dy = (x - MX) / ASPECT, y - MY
-        d = math.hypot(dx, dy)
-        if d > MR:
-            continue
-        b = 1.0 - 0.35 * (d / MR) ** 4
-        for cx, cy, r in CRATERS:
-            k = math.hypot(dx - cx, dy - cy) / r
-            if k < 1:
-                b -= 0.42 * (1 - k * k)
-        i = max(1, min(len(RAMP) - 1, round(b * (len(RAMP) - 1))))
-        put(x, y, RAMP[i], 5 if i >= 6 else 4)
-for a in range(0, 360, 9):           # a broken ring of light round it
-    r = MR + 1.3
-    x = round(MX + math.cos(math.radians(a)) * r * ASPECT)
-    y = round(MY + math.sin(math.radians(a)) * r)
-    if rng.random() < 0.5 and ch[y][x] == ' ':
-        put(x, y, '.', 2)
+# --- what stands in front of the moon, as shapes: '#' solid, anything else a mark
+edges = {}                          # (x, y) -> (char, tier): outlines and details
 
 
-# --- mountains: every slope 45 degrees, peaks /\, snow under the high ones
-def range_(peaks, t, snow=0, clear_below=0):
-    top = {}
-    for x in range(W):
-        best = None
-        for px, py in peaks:
-            if x <= px:
-                y, c = py + (px - x), '/'
+def shape(x0, y0, rows, t):
+    for dy, row in enumerate(rows):
+        for dx, c in enumerate(row):
+            x, y = x0 + dx, y0 + dy
+            if not (0 <= x < W and 0 <= y < H) or c == ' ':
+                continue
+            solid[y][x] = True
+            if c == '#':
+                edges.pop((x, y), None)     # in front of whatever was drawn before
             else:
-                y, c = py + (x - px - 1), '\\'
-            if best is None or y < best[0]:
-                best = (y, c)
-        top[x] = best
-    for x in range(W):
-        y, c = top[x]
-        for yy in range(y, min(H, y + clear_below + 1)):
-            put(x, yy, ' ', 0)
-        put(x, y, c, t)
-    for px, py in peaks:
-        for k in range(1, snow + 1):
-            for x in range(px - k + 1, px + k + 1):
-                if top[x][0] < py + k and rng.random() < 0.8:
-                    put(x, py + k, ':' if (x + k) % 2 else '.', t + 2)
-    return top
-
-
-far = range_([(9, 21), (20, 26), (31, 25), (59, 22)], 2, snow=3, clear_below=30)
-near = range_([(4, 32), (17, 31), (28, 34), (40, 32), (56, 30)], 2, clear_below=40)
-
-
-# --- pines: tiers of boughs, each flaring out at its foot, needles as dots inside
-BS = chr(92)  # a backslash
+                edges[(x, y)] = (c, t)
 
 
 def pine(cx, base, tiers, t):
+    """Tiers of boughs, each flaring at its foot; solid, its edges drawn."""
     rows, w = [], 0
     for k in range(tiers):
         w = max(0, w - 2)
         for r in range(3):
             if r < 2:
-                rows.append('/' + ' ' * w + BS)
+                rows.append('/' + '#' * w + BS)
                 w += 2
             else:
-                rows.append('/_' + ' ' * max(0, w - 2) + '_' + BS)
-    y0 = base - len(rows)
+                rows.append('/_' + '#' * max(0, w - 2) + '_' + BS)
+    rows.append(' ' * (len(rows[-1]) // 2 - 1) + '||')
     for i, row in enumerate(rows):
-        x0 = cx - len(row) // 2 + 1
-        stamp(x0, y0 + i, [row], t, solid=True)
-        for x in range(x0 + 2, x0 + len(row) - 2):
-            if (x * 7 + i * 3) % 5 == 0:
-                put(x, y0 + i, "'", max(1, t - 1))
-    stamp(cx, base, ['||'], t, solid=True)
+        shape(cx - len(row) // 2 + 1, base - len(rows) + 1 + i, [row], t)
 
 
+# the treeline along the far side of the clearing, small and dense
+for cx in range(-2, W + 3, 4):
+    pine(cx + rng.randint(-1, 1), 31, rng.choice((1, 2, 2, 3)), 2)
 
-# --- the ruin: what is left of a concrete house, a tarp strung from its broken wall
-# to a stub of another, a bedroll and a pack under it, in the woods where it is hard
-# to see. Somewhere to hide for a night.
+# the ruin: a broken two-storey wall whose window holes let the moon through, a stub
+# of another wall, a tarp strung between them over where someone sleeps. A space
+# inside the walls is a hole; '#' is wall.
 RUIN = [
-    r"     _    ,                           ",
-    r"    | |  /|_                          ",
-    r"    | |_/   |,                        ",
-    r"    |       | \                       ",
-    r"    |  .--. |                         ",
-    r"    |  |  | |         _               ",
-    r"    |  '--' |--..__  | |_             ",
-    r"    |       |      ``|   |            ",
-    r"    |  .--. |~~--..__|   |`-._        ",
-    r"    |  |  | |        |   |    `-._    ",
-    r"    |  |  | |  _____ |   |  [#]   `\  ",
-    r" .,;|__|__|_|_(_____)|___|_________\;.",
+    r"      ,                                 ",
+    r"     /|                                 ",
+    r"    |#|  _                              ",
+    r"   |##|_|#|  ,                          ",
+    r"   |#########|                          ",
+    r"   |##.--.###|                          ",
+    r"   |##|  |###|                          ",
+    r"   |##'--'###|           ,_             ",
+    r"   |#########|           |#|_           ",
+    r"   |#########|~-._       |###|          ",
+    r"   |##.--.###|####`~-._  |###|-._       ",
+    r"   |##|  |###|#########`-|###|###`-._   ",
+    r" ,.|##|  |###|_.:,#######|###|_.,####`\ ",
 ]
-HX, HY = 10, 34
-# a treeline behind it, so it stands in the woods, not out on open ground
-for cx in range(1, W, 5):
-    pine(cx + rng.randint(-1, 1), HY + len(RUIN) - 2, rng.choice((2, 3, 3, 4)), 1)
-stamp(HX, HY, RUIN, 4, solid=True)
-for y, row in enumerate(RUIN):        # the tarp and what lies under it, a shade dimmer
-    for x, c in enumerate(row):
-        if c in '~`-._' and y >= 6 and HX + x > HX + 12:
-            put(HX + x, HY + y, c, 3)
-GROUND = HY + len(RUIN) - 1
-for x in range(0, W):
-    if ch[GROUND][x] == ' ':
-        put(x, GROUND, '_' if 8 < x < 56 else '.', 2)
-for x, y, c in ((7, GROUND, ':'), (8, GROUND - 1, '.'), (49, GROUND, ';'), (50, GROUND - 1, ','),
-                (51, GROUND, '.'), (6, GROUND - 1, ',')):          # rubble at the feet of it
-    put(x, y, c, 3)
+RX, RY = 13, H - 4 - len(RUIN) + 1
+shape(RX, RY, RUIN, 4)
 
-DOOR = HX + 15                      # the gap under the tarp
+# the big pines framing it, near and dark
+pine(4, 32, 7, 3)
+pine(58, 32, 8, 3)
 
-# --- a trail through the undergrowth, winding up to the ruin, footprints of earlier nights
-TRAIL = {}
-for i, y in enumerate(range(GROUND + 1, H)):
-    mid = DOOR + 2 + 3 * math.sin(i / 3.5)
-    half = 1 + i // 5
-    TRAIL[y] = (round(mid - half), round(mid + half))
-    for x in range(TRAIL[y][0], TRAIL[y][1] + 1):
-        put(x, y, ' ', 0)
-    put(TRAIL[y][0] - 1, y, ',' if i % 2 else '.', 2)
-    put(TRAIL[y][1] + 1, y, '.' if i % 2 else ',', 2)
-    if i % 3 == 1:
-        put(round(mid) + (1 if i % 2 else -1), y, "'", 3)
-
-# --- the student, back to us, the issued day pack on, walking up
-stamp(DOOR + 1, GROUND + 1, [" _ ", "(_)", "[#]", "/ " + BS], 4, solid=True)
-
-# --- the woods it hides in: pines in front, half over its walls, and the tall pair
-pine(11, GROUND + 4, 4, 3)
-pine(51, GROUND + 5, 5, 3)
-pine(2, GROUND + 12, 7, 3)
-pine(61, GROUND + 10, 7, 3)
-for x in range(W):                     # undergrowth at the foot of the trees
-    for y in range(GROUND - 1, GROUND + 9):
-        if ch[y][x] == ' ' and not (TRAIL.get(y, (0, -1))[0] - 1 <= x <= TRAIL.get(y, (0, -1))[1] + 1):
-            if rng.random() < 0.06:
-                put(x, y, rng.choice("^v\"'"), 2)
-
-# --- barbed wire across the foreground, cut where the trail goes through
-FY = GROUND + 8
-for y in (FY, FY + 2):
-    gap = TRAIL[y]
+# the ground: everything below is solid, a ragged edge of grass on top
+GROUND = H - 4
+for y in range(GROUND, H):
     for x in range(W):
-        if gap[0] - 2 <= x <= gap[1] + 2:
-            continue
-        put(x, y, 'x' if x % 3 == 0 else '-', 3)
-    put(gap[0] - 2, y + 1, BS, 3)           # the cut ends hang down
-    put(gap[1] + 2, y + 1, '/', 3)
-for x in range(6, W, 9):
-    if TRAIL[FY][0] - 3 <= x <= TRAIL[FY][1] + 3:
-        continue
-    for y in range(FY - 1, FY + 4):
-        put(x, y, '|' if y > FY - 1 else '+', 3)
+        solid[y][x] = True
+for x in range(W):
+    edges[(x, GROUND)] = (rng.choice("_,'\"_.^_"), 2)
 
-# --- grass, sparse
-for _ in range(80):
-    x, y = rng.randrange(W), rng.randrange(GROUND + 1, H)
-    if ch[y][x] == ' ':
-        put(x, y, rng.choice(",'\"`"), 2 if y < GROUND + 12 else 1)
+# --- paint: moon first, then cut out what stands before it, then the marks
+for y in range(H):
+    for x in range(W):
+        m = moon_at(x, y)
+        if m and not solid[y][x]:
+            put(x, y, *m)
+        elif solid[y][x]:
+            put(x, y, ' ', 0)
+for (x, y), (c, t) in edges.items():
+    put(x, y, c, t)
+
+# the student at the foot of the trail, back to us, the day pack on
+for dy, row in enumerate([" _ ", "(_)", "[#]", "/ " + BS]):
+    for dx, c in enumerate(row):
+        if c != ' ':
+            put(44 + dx, GROUND - 3 + dy, c, 5)
+
+# barbed wire along the ground, on posts, cut and sagging where the trail goes in
+WY = GROUND + 2
+for x in range(W):
+    if 42 <= x <= 48:
+        continue
+    put(x, WY, 'x' if x % 3 == 0 else '-', 3)
+put(41, WY + 1, BS, 3)
+put(49, WY + 1, '/', 3)
+for x in range(3, W, 9):
+    if 39 <= x <= 51:
+        continue
+    put(x, WY - 1, '+', 3)
+    put(x, WY, '|', 3)
+    put(x, WY + 1, '|', 3)
 
 
 # --- emit

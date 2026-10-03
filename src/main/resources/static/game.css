@@ -506,31 +506,19 @@ header.hud-bar {
 .hideout > :not(.scene) { position: relative; z-index: 1; }
 
 /*
- * The hideout is a picture in a frame, like a game's ending screen: a ruin hidden in
- * the island's woods under a full moon, a tarp strung over a bedroll, barbed wire cut
- * where the trail goes through, a student walking up to spend the night. ASCII art in the classic
- * manner (tools/hideout-art.py): mountains, pines, ruin and trail as line drawing, only
- * the moon shaded with a density ramp, a lot of black left alone. One mint; depth is
- * five brightness tiers (t1 darkest). 64 x 78 cells, sized to fit the screen whole.
+ * The hideout's picture, across the foot of the screen behind everything: a big moon
+ * rising behind the island's woods, the ruin someone hides in and the pines black
+ * against it (tools/hideout-art.py). ASCII art in the title's one mint, the moon's face
+ * with the title's red offset. 64 x 36 cells, as wide as the screen allows.
  * Decoration only, so it takes no clicks.
  */
-.hideout {
-  /* Consolas is 0.55em wide: 64 columns over 78 rows. */
-  --scene-aspect: 0.4511;
-  --scene-h: min(calc(100dvh - 1.5rem), calc((100vw - 1rem) / var(--scene-aspect)));
-  --scene-w: calc(var(--scene-h) * var(--scene-aspect));
-  --scene-gap: calc((100dvh - var(--scene-h)) / 2);
-}
 .scene {
   position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: var(--scene-w);
-  height: var(--scene-h);
-  overflow: hidden;
-  border: 3px double rgba(127, 212, 193, 0.45);
-  box-shadow: 0.3rem 0.3rem 0 rgba(224, 108, 117, 0.25);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
   pointer-events: none;
   user-select: none;
 }
@@ -541,7 +529,8 @@ header.hud-bar {
    * that draws a backslash as a won sign and block characters at double width.
    */
   font-family: Consolas, "Courier New", monospace;
-  font-size: calc(var(--scene-h) / 78);
+  /* 64 columns of a 0.55em-wide font fill the width; 36 rows stay under half the height. */
+  font-size: min(2.8vw, 15px, calc(48vh / 36));
   line-height: 1;
   text-align: left;
   color: var(--self);
@@ -551,10 +540,13 @@ header.hud-bar {
 .hideout-art .t2 { color: rgba(127, 212, 193, 0.38); }
 .hideout-art .t3 { color: rgba(127, 212, 193, 0.58); }
 .hideout-art .t4 { color: rgba(127, 212, 193, 0.82); }
-.hideout-art .t5 { color: var(--self); text-shadow: 0 0 0.5em rgba(127, 212, 193, 0.55); }
+.hideout-art .t5 {
+  color: var(--self);
+  text-shadow: 0.15em 0.15em 0 rgba(224, 108, 117, 0.45), 0 0 0.6em rgba(127, 212, 193, 0.35);
+}
 .hideout-head { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
 .hideout-head > * { text-shadow: 0 0 0.4em var(--bg), 0 0 0.8em var(--bg); }
-.hideout h2 { margin: 0; letter-spacing: 0.3em; }
+.hideout-head .logo-rule { margin: 0; }
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
 .hideout-body { display: flex; gap: 0.75rem; width: min(100%, 24rem); }
@@ -592,46 +584,40 @@ header.hud-bar {
 }
 .trader-list button:disabled { opacity: 0.35; cursor: default; }
 /*
- * The hideout's front: a column of buttons over the sky, the ruin and the moon left in
- * view below them. Solid, so they stand in front of the picture.
+ * The hideout's front, laid out like the title screen: the block-letter heading and its
+ * red rule, then big buttons in the middle, the picture below and behind them.
+ * Solid, so they stand in front of it.
  */
-.hideout[data-page="home"] {
-  justify-content: flex-end;
-  padding-block: calc(var(--scene-gap) + 1.25rem);
-}
-.hideout[data-page="home"] .hideout-head { margin-bottom: auto; }
-/* The menu is a window over the foot of the picture. */
+.hideout[data-page="home"] { justify-content: flex-start; padding-top: max(1.5rem, 7vh); gap: 1.25rem; }
 .hideout-menu {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5em;
-  /* Sized by the picture, so a short frame gets a smaller window and the ruin shows. */
-  font-size: min(1rem, calc(var(--scene-h) / 60));
-  width: min(calc(var(--scene-w) - 2.5rem), 16em);
-  padding: 0.9em 0.9em 0.6em;
-  background: rgba(11, 14, 15, 0.82);
-  border: 3px double rgba(127, 212, 193, 0.45);
+  gap: 0.7rem;
+  width: min(100%, 20rem);
 }
 .hideout-menu[hidden], .hideout-page[hidden] { display: none; }
 .menu-button {
   width: 100%;
-  padding: 0.75em 1em;
-  font-size: inherit;
+  padding: 1rem;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 2px;
   color: var(--ink);
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
+  font-size: 1.05rem;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
   cursor: pointer;
 }
-.menu-button small { margin-left: 0.4em; letter-spacing: 0.05em; color: var(--dim); }
+.menu-button small { margin-left: 0.4em; font-size: 0.75em; letter-spacing: 0.05em; color: var(--dim); }
 .menu-button:active { background: rgba(127, 212, 193, 0.12); }
-#set-out { border-color: var(--self); color: var(--self); }
+#set-out {
+  border-color: var(--self);
+  color: var(--self);
+  box-shadow: 0.2rem 0.2rem 0 rgba(224, 108, 117, 0.35), 0 0 1rem rgba(127, 212, 193, 0.15);
+}
 #set-out:disabled { opacity: 0.4; cursor: default; }
 #hideout-back, .to-home { background: var(--bg); padding: 0.25rem 0.75rem; }
-.hideout-menu #hideout-back { font-size: 0.8em; }
 
 /* 창고 and 상점: a page over the picture, which dims behind it. */
 .hideout-page {
@@ -643,6 +629,9 @@ header.hud-bar {
 }
 .hideout-page .hideout-body { width: 100%; }
 .hideout-page .trader-list { width: 100%; }
+/* A page needs the room; the heading stays on the front. */
+.hideout:not([data-page="home"]) .hideout-head .logo,
+.hideout:not([data-page="home"]) .hideout-head .logo-rule { display: none; }
 .hideout:not([data-page="home"]) .scene { opacity: 0.3; }
 
 #loot {
