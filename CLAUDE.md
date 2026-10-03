@@ -85,7 +85,7 @@ obstacles, doors.
 
 Hidden: enemy HP, equipped item, ammunition, cooldown, next action, whether a cabinet
 is occupied, anyone standing in a bush you are not also standing in, and **what a
-floor item is** — every one is `$` until you loot it. That is what looting is for.
+floor item is** — every one is the same crate until you loot it. That is what looting is for.
 
 Never expose hidden enemy state to the client.
 
@@ -197,7 +197,7 @@ future requirements. See `docs/ARCHITECTURE.md` for the current package layout.
 ASCII-inspired, not ASCII-implemented: a CSS Grid of individual cells, not one `<pre>`.
 
 ```
-△   player      ▲   enemy       $   floor item
+△   player      ▲   enemy       ⊞   floor item (a crate, drawn in CSS)
 ■   cabinet     ▒   bush        +   door       •   shot
 ```
 

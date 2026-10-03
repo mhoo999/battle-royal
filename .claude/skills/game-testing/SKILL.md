@@ -49,9 +49,9 @@ change touched; the full list:
 
 1. Lobby shows the top-10 ranking; enter a name and start
 2. Both players move; each sees the other on the right tile and facing
-3. B picks up a `$` (hold B; releasing or moving cancels) — the item's kind is only
+3. B picks up a crate (hold B; releasing or moving cancels) — the item's kind is only
    known once in hand
-4. Swap: the old item stays on the floor as `$`
+4. Swap: the old item stays on the floor as a crate
 5. A attacks (bare hands work) → B's board flashes red, A's flashes white
 6. A kills B → B's death screen names killer and weapon ("주먹에 맞고" for fists)
 7. 처음으로 → lobby with the name prefilled; the result is highlighted in the top

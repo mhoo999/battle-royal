@@ -115,9 +115,10 @@ function paint(snapshot) {
 
   for (const item of snapshot.items) {
     const cell = cells[item.y * GRID + item.x];
+    // Only that something lies here: a crate, drawn by CSS. What is in it, you find
+    // out by looting it.
     cell.classList.add('has-item');
-    // Only that something lies here. What it is, you find out by looting it.
-    cell.textContent = '$';
+    cell.textContent = '';
   }
 
   for (const other of snapshot.players) {

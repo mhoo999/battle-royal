@@ -328,6 +328,7 @@ header.hud-bar {
 }
 
 .cell {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -342,7 +343,25 @@ header.hud-bar {
 .t-cabinet { color: var(--cabinet); background: var(--cabinet-bg); }
 .t-bush    { color: var(--bush); background: rgba(63, 107, 70, 0.14); }
 
+/*
+ * A floor item is a crate: an outlined square with a strap across it, drawn rather
+ * than typed so it looks the same in every font and cannot pass for the solid ■ of a
+ * cabinet. Someone standing on it keeps their triangle; the crate dims behind them.
+ */
 .cell.has-item  { color: var(--item); }
+.cell.has-item::before {
+  content: '';
+  position: absolute;
+  inset: 22%;
+  --strap: max(1px, calc(var(--cell) * 0.07));
+  border: var(--strap) solid var(--item);
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--item), var(--item)) center / var(--strap) 100% no-repeat,
+    linear-gradient(var(--item), var(--item)) center / 100% var(--strap) no-repeat;
+}
+.cell.has-item.has-self::before,
+.cell.has-item.has-enemy::before { opacity: 0.3; }
 .cell.has-enemy { color: var(--enemy); }
 .cell.has-self  { color: var(--self); }
 /* Your own cabinet, on your screen only; others see a cabinet like any other. */

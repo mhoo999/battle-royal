@@ -91,6 +91,9 @@ Next: game bugs; see a broken jar roll back when the user picks the moment.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] Floor items drawn as a crate (2026-10-03), not `$`: a player said `$` read as
+      money. CSS-drawn outline and strap, so it cannot pass for a cabinet's ■ and looks
+      the same in every font; it dims under a player standing on it.
 - [x] Input (2026-10-03): touch zones instead of buttons — the left half of the
       controls strip steers by the thumb's side of the drawn cross (slide to turn),
       the right half is whichever of A/B is nearer; on a phone the strip fills the
