@@ -65,7 +65,8 @@ Next: game bugs; see a broken jar roll back when the user picks the moment.
 - [x] Step 7 disconnect grace: 15s in the world, hittable; same token reconnects to
       the same player; expiry kills with no killer. Token retired on death.
       Client auto-retries 15× at 1s. When that runs out or the token is refused, a
-      "연결이 끊긴 사이 게임이 끝났다" overlay with 처음으로 replaces the frozen board;
+      "자고 있는 사이에 야생 동물에 당해 끔찍한 시체가 되었다." overlay (user's
+      wording) with 처음으로 replaces the frozen board;
       coming back to the page (or online) retries at once (2026-10-03).
 - [x] Step 7 results: `GameResult` saved on every death via `DeathListener` →
       `ResultRecorder` (own writer thread). `GET /api/ranking`, top 10 on the lobby.

@@ -528,7 +528,7 @@ function showDisconnected() {
   forgetSession();
   sessionToken = null;
   lastResult = null;
-  ui.deadCause.textContent = '연결이 끊긴 사이 게임이 끝났다. 15초 안에 돌아오지 못하면 탈락한다.';
+  ui.deadCause.textContent = '자고 있는 사이에 야생 동물에 당해 끔찍한 시체가 되었다.';
   ui.deadRecord.hidden = true;
   ui.dead.hidden = false;
 }
