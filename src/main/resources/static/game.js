@@ -71,6 +71,7 @@ const ui = {
   btnA: el('btn-a'), btnB: el('btn-b'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
+  deadRecord: el('dead-record'),
   restart: el('restart'),
   loot: el('loot'), lootFill: el('loot-fill'),
   ranking: el('ranking'), rankingList: el('ranking-list'),
@@ -262,14 +263,21 @@ const releaseB = () => send({ type: 'RELEASE_B' });
 /*
  * A dropped socket leaves the player standing in the world for 15 seconds (the server's
  * grace period). Retrying once a second for that long brings them back if the network
- * does. The server refuses the token once the player is dead, which ends the retries.
+ * does. The server refuses the token once the player is gone, which ends the retries.
+ *
+ * Running out of tries means the grace period has passed too, so the game is over
+ * either way and the player is told so rather than left on a frozen board. A phone
+ * may freeze timers while the page is hidden, so coming back to the page retries at
+ * once instead of waiting out a timer that may not have run.
  */
 const RECONNECT_MS = 1000;
 const RECONNECT_TRIES = 15;
 const CLOSE_REFUSED = 1003;
 let reconnectTries = 0;
+let sessionToken = null;
 
 function connect(token) {
+  sessionToken = token;
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${scheme}://${location.host}/ws/game?token=${encodeURIComponent(token)}`);
   socket = ws;
@@ -309,8 +317,7 @@ function connect(token) {
     }
     ui.state.className = 'state';
     if (event.code === CLOSE_REFUSED || reconnectTries >= RECONNECT_TRIES) {
-      forgetSession();
-      ui.state.textContent = '연결이 끊어졌습니다';
+      showDisconnected();
       return;
     }
     reconnectTries++;
@@ -318,6 +325,18 @@ function connect(token) {
     setTimeout(() => { if (socket === ws) connect(token); }, RECONNECT_MS);
   });
 }
+
+/** Back on the page, or back online, with the socket down: try now. */
+function retryIfDropped() {
+  if (document.visibilityState !== 'visible') return;
+  if (ui.game.hidden || !ui.dead.hidden || sessionToken === null) return;
+  if (socket && socket.readyState !== WebSocket.CLOSED) return;
+  // Any retry still waiting on a timer sees a newer socket and stands down.
+  connect(sessionToken);
+}
+
+document.addEventListener('visibilitychange', retryIfDropped);
+window.addEventListener('online', retryIfDropped);
 
 // --- Survival clock --------------------------------------------------------
 
@@ -495,6 +514,22 @@ function showDeath(message) {
   ui.deadScore.textContent = message.score;
   ui.deadKills.textContent = message.kills;
   ui.deadTime.textContent = (message.survivedSeconds ?? Math.round((Date.now() - startedAt) / 1000)) + 's';
+  ui.deadRecord.hidden = false;
+  ui.dead.hidden = false;
+}
+
+/*
+ * The game ended while the socket was down: the 15-second grace ran out, or the server
+ * restarted. The final numbers never arrived, so there is no record to show, and no
+ * claim that one was saved: a restart saves nothing.
+ */
+function showDisconnected() {
+  stopClock();
+  forgetSession();
+  sessionToken = null;
+  lastResult = null;
+  ui.deadCause.textContent = '연결이 끊긴 사이 게임이 끝났다. 15초 안에 돌아오지 못하면 탈락한다.';
+  ui.deadRecord.hidden = true;
   ui.dead.hidden = false;
 }
 

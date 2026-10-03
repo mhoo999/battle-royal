@@ -218,6 +218,8 @@ input, button {
   margin-bottom: 0.5rem;
 }
 
+.record[hidden] { display: none; }
+
 .record-title {
   margin: 0;
   color: var(--dim);
