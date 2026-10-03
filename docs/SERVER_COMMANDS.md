@@ -121,6 +121,21 @@ FROM game_result;
 
 `ended_at`은 UTC다(한국 시간 = +9시간).
 
+**PC에서 바로 (터널 없이):** `scripts\db-query.ps1 -Sql "SELECT ..."` — SSM으로 서버에 SQL을
+보내 결과를 받아 온다. `aws login --profile battle-royal`이 되어 있어야 한다.
+
+**`/etc/battle-royal/env`를 `source`하지 말 것.** `DB_URL`의 `&`를 bash가 백그라운드 실행으로
+읽어서 값이 비고, mysql이 로컬 소켓으로 붙으려다 `ERROR 2002`가 난다. 값은 텍스트로 읽는다:
+
+```bash
+val() { sudo grep "^$1=" /etc/battle-royal/env | cut -d= -f2-; }
+host=$(val DB_URL | sed -E 's#jdbc:mysql://([^:/?]+).*##')
+MYSQL_PWD="$(val DB_PASSWORD)" mysql --ssl -h "$host" -u "$(val DB_USERNAME)" battleroyal
+```
+
+**지울 때는 한글 이름 말고 id로.** `SELECT id, HEX(nickname) ...`로 바이트를 확인하고
+`DELETE ... WHERE id IN (...)`. 인코딩이 꼬이면 이름 조건이 엉뚱한 행을 잡는다.
+
 ---
 
 ## 5. 서버 상태

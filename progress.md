@@ -90,6 +90,10 @@ Portfolio screenshots: `docs/images/README.md`, rule in CLAUDE.md §16.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] Ranking cleanup (2026-10-03): a `~name` plays unranked (`UNRANKED_PREFIX`) and
+      smoke uses `~alpha`/`~bravo`/`~reconnect`, so production smoke leaves no rows
+      (checked). Deleted 20 test rows from the live DB at the user's word, leaving only
+      유승훈's two games. `scripts/db-query.ps1` runs SQL on RDS over SSM.
 - [x] A death is seen (2026-10-03): `FELL` event with the tile only, to whoever could
       see the victim at the moment of death (worked out before the cabinet flag is
       cleared, since the dead are invisible to `canSee`). Client: ✕ on the tile for 1s,
@@ -186,10 +190,6 @@ Nothing.
 
 V1 is done when someone new can play ten minutes without being told how. Left:
 
-1. **Ranking cleanup.** The live ranking mixes test rows (smoke names `alpha`, `bravo`,
-   `reconnect`, `first`, `second`) with real play. Delete them (user confirms the list
-   first; deletes are permanent) and stop smoke runs against production from writing
-   results — proposed: nicknames starting with `~` are unranked, and smoke uses them.
 2. Real-phone check of the touch zones and held-move cadence (automation cannot measure
    timers in a background tab); take the phone-over-HTTPS screenshot then.
 3. Friends' feedback as it comes.
