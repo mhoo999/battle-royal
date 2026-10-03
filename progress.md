@@ -8,7 +8,8 @@ V1 Multiplayer Core
 
 Continuous deployment live (2026-10-03): a push to `main` tests, then deploys to EC2.
 Live at https://battleroyale.site (2026-10-03), deployed on every push to `main`.
-Next: SQL Workbench into RDS over SSM port forwarding; see a broken jar roll back.
+RDS is viewable from Workbench over SSM port forwarding (AWS_DEPLOYMENT §11).
+Next: game bugs; see a broken jar roll back when the user picks the moment.
 
 ## Completed
 

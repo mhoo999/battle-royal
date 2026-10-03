@@ -30,8 +30,7 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase 10: 첫 자동 배포 `4e331af`
 (토러스 월드) 성공, SSM 명령 Success, 공인 IP smoke 전부 통과.
 
-**다음 한 걸음:** Workbench로 RDS 보기(SSM 포트 포워딩). Phase 10 롤백 확인은 사용자가
-시점을 정함. 2026-10-03부터 접속 주소는 **https://battleroyale.site** 이다.
+**다음 한 걸음:** Phase 10 롤백 확인(사용자가 시점을 정함). DB는 §11로 본다. 2026-10-03부터 접속 주소는 **https://battleroyale.site** 이다.
 
 > **SSH 포트는 닫혀 있다(2026-10-03).** sg-web의 인바운드는 HTTP 80 하나뿐이다. 서버
 > 접속은 **EC2 → 인스턴스 → Connect → Session Manager**. `.pem` 키는 비상용으로만
@@ -711,3 +710,32 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 - 이력서 한 줄 예: *Spring Boot WebSocket 실시간 게임 서버를 EC2(Nginx + systemd)와
   RDS MySQL로 배포. DB는 보안 그룹 참조로 웹 서버에서만 접근, 앱은 루프백에만 바인드.
   리버스 프록시 뒤 WebSocket same-origin 403을 로컬 리허설로 사전에 발견·수정.*
+
+---
+
+## 11. DB 직접 보기 — SSM 포트 포워딩 + MySQL Workbench
+
+RDS는 퍼블릭 액세스가 없고 SSH도 닫혀 있다. PC의 `127.0.0.1:13306`을 EC2를 거쳐 RDS
+3306으로 잇는다. 포트는 하나도 열지 않는다.
+
+PC 준비(한 번): AWS CLI v2(2.37.9로 확인), Session Manager 플러그인. 설치 전에 연 터미널은
+새 PATH를 모르니 새로 연다. 이 PC의 `default` 프로필에는 다른 액세스 키가 있어서 손대지
+않고 **`battle-royal` 프로필**을 따로 쓴다.
+
+```powershell
+aws login --profile battle-royal --region ap-northeast-2      # 브라우저로 admin + MFA, 임시 자격 증명
+aws ssm start-session --profile battle-royal --region ap-northeast-2 `
+  --target i-02d65fab4965cb3c4 `
+  --document-name AWS-StartPortForwardingSessionToRemoteHost `
+  --parameters '{\"host\":[\"battle-royal-db.c1caasea602e.ap-northeast-2.rds.amazonaws.com\"],\"portNumber\":[\"3306\"],\"localPortNumber\":[\"13306\"]}'
+# "Waiting for connections..." 이 창은 켜 둔다
+```
+
+Workbench(새 UI, Database Connection Configuration): Host `127.0.0.1`(`localhost`는 IPv6로
+먼저 가서 실패할 수 있다), Port `13306`, User `battleroyal`, Default Schema `battleroyal`,
+SSL **Required**, Connection Method `mysql`(SSH 아님). 2026-10-03 연결 확인(8.4.11).
+
+- `Access denied ... @'172.31.34.211'`이면 경로는 끝까지 닿은 것이고 비밀번호 문제다. 앱이
+  쓰는 값은 서버의 `/etc/battle-royal/env`에 있다.
+- SSM 세션은 약 20분 쓰지 않으면 끊긴다. `aws login` 자격 증명이 만료되면 다시 로그인한다.
+- `battleroyal`은 DELETE/UPDATE 권한이 있다. 실제 랭킹이 바로 바뀐다.
