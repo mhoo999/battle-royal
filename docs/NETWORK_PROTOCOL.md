@@ -15,11 +15,27 @@ per-player 필터링에는 raw `TextWebSocketHandler` + Jackson이 더 단순하
 ### `POST /api/session`
 
 ```json
-요청   { "nickname": "kang" }
-응답   { "token": "<uuid>", "playerId": "p-17" }
+요청   { "nickname": "kang" }                          게스트
+응답   { "token": "<uuid>", "playerId": "p-17", "nickname": "~kang" }
 ```
 
-닉네임은 trim 후 1~12자. 공백만인 값은 400. 중복은 허용한다.
+**게스트**(로그인 안 함): 닉네임은 trim 후 1~12자, 공백만이면 400. 서버가 앞에 `~`를
+붙여 **랭킹에 남지 않게** 한다(이미 붙어 있으면 다시 붙이지 않는다). 중복은 허용한다.
+
+**로그인한 계정**: 요청 본문은 무시하고 계정의 닉네임으로 플레이한다. 닉네임을 아직
+정하지 않았으면 409. (V2 브랜치)
+
+### `GET /api/me`, `POST /api/me/nickname` (V2 브랜치)
+
+```json
+GET   → { "signedIn": false, "nickname": null }       누구나
+POST  { "nickname": "shuya" } → { "signedIn": true, "nickname": "shuya" }   로그인 필요(아니면 401)
+```
+
+구글 로그인은 `/oauth2/authorization/google`로 시작하고 `openid` 범위만 요청한다. 계정에는
+구글의 `sub`와 닉네임만 저장한다(이메일·이름 없음). 계정 닉네임은 1~12자, 계정끼리
+중복 불가(409), `~`로 시작할 수 없고(400), 한 번 정하면 바꾸지 않는다(409). 세션 쿠키는
+`SameSite=Lax`, 운영에서는 `Secure`. CSRF 토큰은 쓰지 않는다(`SecurityConfig` 주석).
 
 ### `GET /api/ranking?limit=20`
 

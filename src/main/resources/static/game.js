@@ -67,7 +67,8 @@ const el = (id) => document.getElementById(id);
 
 const ui = {
   lobby: el('lobby'), lobbyForm: el('lobby-form'), nickname: el('nickname'),
-  lobbyError: el('lobby-error'),
+  lobbyError: el('lobby-error'), accountName: el('account-name'), start: el('start'),
+  googleLogin: el('google-login'), logoutForm: el('logout-form'),
   game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
   board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
@@ -473,10 +474,72 @@ function forgetSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* none */ }
 }
 
+// --- Account -------------------------------------------------------------
+
+/*
+ * Who the browser is signed in as. Signed out, the lobby is the guest form plus the
+ * Google button. Signed in without a nickname, the same form picks one. Signed in with
+ * one, the name field gives way to the account's nickname.
+ */
+let me = { signedIn: false, nickname: null };
+
+async function loadMe() {
+  try {
+    const response = await fetch('/api/me');
+    if (response.ok) me = await response.json();
+  } catch (e) { /* offline: stay a guest */ }
+  paintAccount();
+}
+
+function choosingNickname() {
+  return me.signedIn && !me.nickname;
+}
+
+function paintAccount() {
+  const named = me.signedIn && !!me.nickname;
+  ui.accountName.hidden = !named;
+  ui.accountName.textContent = me.nickname ?? '';
+  ui.nickname.hidden = named;
+  ui.nickname.placeholder = choosingNickname() ? '닉네임 정하기' : '이름';
+  ui.nickname.setAttribute('aria-label', ui.nickname.placeholder);
+  ui.start.textContent = choosingNickname() ? '확인' : 'START';
+  ui.googleLogin.hidden = me.signedIn;
+  ui.logoutForm.hidden = !me.signedIn;
+}
+
+async function chooseNickname(typed) {
+  if (!typed) {
+    ui.lobbyError.textContent = '닉네임을 입력하세요';
+    return;
+  }
+  ui.lobbyError.textContent = '';
+  try {
+    const response = await fetch('/api/me/nickname', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: typed }),
+    });
+    if (response.status === 409) {
+      ui.lobbyError.textContent = '이미 쓰는 닉네임입니다';
+      await loadMe();
+      return;
+    }
+    if (!response.ok) {
+      ui.lobbyError.textContent = '닉네임은 1~12자, ~로 시작할 수 없습니다';
+      return;
+    }
+    me = await response.json();
+    paintAccount();
+  } catch (e) {
+    ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
+  }
+}
+
 // --- Screens -------------------------------------------------------------
 
 async function beginSession(typed) {
-  if (!typed) {
+  // Signed in, the server plays the account's own nickname and needs nothing typed.
+  if (!me.signedIn && !typed) {
     ui.lobbyError.textContent = '아이디를 입력하세요';
     return;
   }
@@ -486,7 +549,7 @@ async function beginSession(typed) {
     const response = await fetch('/api/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: typed }),
+      body: JSON.stringify(me.signedIn ? {} : { nickname: typed }),
     });
     if (!response.ok) {
       ui.lobbyError.textContent = (await response.text()) || '시작할 수 없습니다';
@@ -569,9 +632,12 @@ function restart() {
   ui.dead.hidden = true;
   ui.game.hidden = true;
   ui.lobby.hidden = false;
-  ui.nickname.value = nickname;
-  ui.nickname.focus();
-  ui.nickname.select();
+  // A guest's name came back with its ~; offer it again without one.
+  ui.nickname.value = me.signedIn ? '' : nickname.replace(/^~/, '');
+  if (!ui.nickname.hidden) {
+    ui.nickname.focus();
+    ui.nickname.select();
+  }
   loadRanking();
 }
 
@@ -743,10 +809,12 @@ buildBoard();
 wireInput();
 ui.lobbyForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  beginSession(ui.nickname.value.trim());
+  if (choosingNickname()) chooseNickname(ui.nickname.value.trim());
+  else beginSession(ui.nickname.value.trim());
 });
 ui.restart.addEventListener('click', restart);
 loadRanking();
+loadMe();
 const resumable = savedSession();
 if (resumable) {
   enterGame(resumable);

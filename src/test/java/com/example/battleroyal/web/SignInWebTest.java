@@ -1,0 +1,90 @@
+package com.example.battleroyal.web;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * The sign-in surface as a browser sees it: what is open to guests, what needs Google,
+ * and which nickname a session plays under.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+class SignInWebTest {
+
+    @Autowired
+    private MockMvc mvc;
+
+    private static RequestPostProcessor google(String subject) {
+        return oidcLogin().idToken(token -> token.subject(subject));
+    }
+
+    private static String nickname(String name) {
+        return "{\"nickname\":\"" + name + "\"}";
+    }
+
+    @Test
+    void theGameAndTheRankingStayOpenToGuests() throws Exception {
+        mvc.perform(get("/")).andExpect(status().isOk());
+        mvc.perform(get("/api/ranking")).andExpect(status().isOk());
+        mvc.perform(get("/api/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signedIn").value(false));
+    }
+
+    @Test
+    void aGuestSessionPlaysUnranked() throws Exception {
+        mvc.perform(post("/api/session").contentType(MediaType.APPLICATION_JSON)
+                        .content(nickname("kang")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("~kang"));
+    }
+
+    @Test
+    void choosingANicknameNeedsASignIn() throws Exception {
+        mvc.perform(post("/api/me/nickname").contentType(MediaType.APPLICATION_JSON)
+                        .content(nickname("kang")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void aSignedInAccountPicksANicknameThenPlaysUnderIt() throws Exception {
+        mvc.perform(get("/api/me").with(google("g-web-1")))
+                .andExpect(jsonPath("$.signedIn").value(true))
+                .andExpect(jsonPath("$.nickname").doesNotExist());
+
+        mvc.perform(post("/api/session").with(google("g-web-1")))
+                .andExpect(status().isConflict());
+
+        mvc.perform(post("/api/me/nickname").with(google("g-web-1"))
+                        .contentType(MediaType.APPLICATION_JSON).content(nickname("shuya")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("shuya"));
+
+        // The body is ignored once signed in: an account cannot play under another name.
+        mvc.perform(post("/api/session").with(google("g-web-1"))
+                        .contentType(MediaType.APPLICATION_JSON).content(nickname("kiriyama")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("shuya"));
+    }
+
+    @Test
+    void aTakenNicknameIsRefused() throws Exception {
+        mvc.perform(post("/api/me/nickname").with(google("g-web-2"))
+                        .contentType(MediaType.APPLICATION_JSON).content(nickname("noriko")))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/me/nickname").with(google("g-web-3"))
+                        .contentType(MediaType.APPLICATION_JSON).content(nickname("noriko")))
+                .andExpect(status().isConflict());
+    }
+}

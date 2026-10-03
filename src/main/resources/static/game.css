@@ -146,6 +146,32 @@ input, button {
 
 #start:active, #restart:active { background: rgba(127, 212, 193, 0.12); }
 
+/* Signed in: the account's nickname stands where the name field was. */
+.account-name {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--self);
+  text-align: center;
+  letter-spacing: 0.2em;
+}
+.account-name[hidden], #nickname[hidden], #google-login[hidden], #logout-form[hidden] { display: none; }
+
+.account { margin-top: 0.25rem; }
+.link-button {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.link-button:hover { color: var(--ink); }
+
 /* --- Ranking -------------------------------------------------------------- */
 
 .ranking[hidden] { display: none; }

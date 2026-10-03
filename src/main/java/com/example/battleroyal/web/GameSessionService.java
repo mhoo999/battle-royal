@@ -11,22 +11,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Guest sessions. No password, no account, no persistence.
+ * Game sessions: the token a WebSocket presents to say which player it is.
  *
  * <p>The point is server-side identity: the client is handed an opaque token and never
  * tells us who it is. A WebSocket connection presents the token and the server resolves
  * the player, so there is no code path where a client asserts a player id.
  *
- * <p>Nicknames may repeat. They are a label on a scoreboard row, not a login.
+ * <p>Two ways in. A signed-in account plays under its own nickname, which is unique
+ * among accounts. A guest plays a trial under any name, always given the
+ * {@link GameConstants#UNRANKED_PREFIX} so it never reaches the ranking.
  *
  * <p>A token lives as long as the life it was issued for. It survives a dropped socket,
  * which is what lets a reconnect inside the grace period find the same player, and is
  * retired on death, so a reconnect after that cannot bring the player back.
  */
 @Service
-public class GuestSessionService implements DeathListener {
+public class GameSessionService implements DeathListener {
 
-    public record GuestSession(String token, String playerId, String nickname) {
+    /** @param accountId null for a guest */
+    public record GameSession(String token, String playerId, String nickname, Long accountId) {
     }
 
     /** Thrown for a nickname that is blank or the wrong length after trimming. */
@@ -36,32 +39,49 @@ public class GuestSessionService implements DeathListener {
         }
     }
 
-    private final Map<String, GuestSession> byToken = new ConcurrentHashMap<>();
+    private final Map<String, GameSession> byToken = new ConcurrentHashMap<>();
     private final AtomicLong playerSequence = new AtomicLong();
 
-    public GuestSession issue(String rawNickname) {
+    /** A guest trial. Whatever the name, it plays unranked. */
+    public GameSession issueGuest(String rawNickname) {
         String nickname = rawNickname == null ? "" : rawNickname.trim();
-        if (nickname.length() < GameConstants.NICKNAME_MIN_LENGTH
-                || nickname.length() > GameConstants.NICKNAME_MAX_LENGTH) {
-            throw new InvalidNicknameException("Nickname must be "
-                    + GameConstants.NICKNAME_MIN_LENGTH + " to "
-                    + GameConstants.NICKNAME_MAX_LENGTH + " characters after trimming");
+        while (nickname.startsWith(GameConstants.UNRANKED_PREFIX)) {
+            nickname = nickname.substring(GameConstants.UNRANKED_PREFIX.length()).trim();
         }
-
-        GuestSession session = new GuestSession(
-                UUID.randomUUID().toString(),
-                "p-" + playerSequence.incrementAndGet(),
-                nickname);
-        byToken.put(session.token(), session);
-        return session;
+        requireLength(nickname);
+        return issue(GameConstants.UNRANKED_PREFIX + nickname, null);
     }
 
-    public GuestSession resolve(String token) {
+    /** A signed-in account, under the nickname it chose. */
+    public GameSession issueForAccount(long accountId, String nickname) {
+        return issue(nickname, accountId);
+    }
+
+    public GameSession resolve(String token) {
         return token == null ? null : byToken.get(token);
     }
 
     @Override
     public void onDeath(GameEvent.Died died) {
         byToken.values().removeIf(session -> session.playerId().equals(died.playerId()));
+    }
+
+    static void requireLength(String nickname) {
+        if (nickname.length() < GameConstants.NICKNAME_MIN_LENGTH
+                || nickname.length() > GameConstants.NICKNAME_MAX_LENGTH) {
+            throw new InvalidNicknameException("Nickname must be "
+                    + GameConstants.NICKNAME_MIN_LENGTH + " to "
+                    + GameConstants.NICKNAME_MAX_LENGTH + " characters after trimming");
+        }
+    }
+
+    private GameSession issue(String nickname, Long accountId) {
+        GameSession session = new GameSession(
+                UUID.randomUUID().toString(),
+                "p-" + playerSequence.incrementAndGet(),
+                nickname,
+                accountId);
+        byToken.put(session.token(), session);
+        return session;
     }
 }

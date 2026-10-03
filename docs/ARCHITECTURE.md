@@ -27,7 +27,9 @@ com.example.battleroyal
 ├── game/map/      MapTemplate + 템플릿 문자열 상수
 ├── game/loop/     GameLoopService, RoomRegistry (토러스 월드), RoomBroadcaster, DeathListener
 ├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)
-├── web/           SessionController, RankingController, GuestSessionService
+├── web/           SessionController, MeController, RankingController, GameSessionService,
+│                  AccountService (V2: Google sign-in)
+├── config/        WebSocketConfig, SecurityConfig (V2)
 ├── persistence/   GameResult 엔티티 + repository, ResultRecorder
 └── config/        WebSocketConfig, JacksonConfig
 ```
@@ -100,11 +102,12 @@ WS inbound thread              Game loop thread (20Hz)
 실시간 상태(Room, Player, Item, Bullet, Map)는 **서버 메모리에만** 둔다.
 
 DB에 저장하는 것은 `GameResult`뿐이다. 실시간 이동 이벤트를 DB에 쓰지 않는다.
-랭킹은 `GameResult`에 대한 top-N 쿼리다 — 별도 테이블을 두지 않는다. 게스트만
-있으므로 `PlayerAccount`는 아직 없다(계정이 생길 때 추가한다).
+랭킹은 `GameResult`에 대한 top-N 쿼리다 — 별도 테이블을 두지 않는다. V2 브랜치부터
+`Account`(구글 `sub`, 닉네임)가 생겼다. WebSocket은 여전히 게임 세션 토큰으로 인증한다:
+로그인은 토큰을 받기 전 단계(`POST /api/session`)에서만 쓰인다.
 
 사망은 루프 스레드에서 `DeathListener`로 알린다. `game/loop`는 듣는 쪽을 import하지
-않는다. `GuestSessionService`는 토큰을 폐기하고, `ResultRecorder`는 단일 writer
+않는다. `GameSessionService`는 토큰을 폐기하고, `ResultRecorder`는 단일 writer
 스레드에 저장을 넘긴다. **루프 스레드에서 DB를 쓰지 않는다** — 쓰기 하나가 tick보다
 길 수 있다.
 

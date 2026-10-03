@@ -8,8 +8,8 @@ V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
 
 **On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
 to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Next: step 1,
-accounts — Google login (needs an OAuth client from the user's Google Cloud Console)
-with guest play kept as a trial.
+accounts — code done and tested locally (see Completed); waiting on the user's
+Google OAuth client to sign in for real, then step 2 (hideout and stash).
 
 ## Completed
 
@@ -25,7 +25,7 @@ with guest play kept as a trial.
 - [x] `game/loop` — GameLoopService (20Hz thread), RoomRegistry, RoomBroadcaster
 - [x] `ws` — Snapshot, SnapshotFilter, GameWebSocketHandler, SessionRegistry,
       WebSocketSnapshotBroadcaster
-- [x] `web` — GuestSessionService, SessionController
+- [x] `web` — GameSessionService, SessionController
 - [x] Client — lobby, CSS Grid 15x15 renderer, D-pad + A/B, death overlay
 - [x] Movement: 150ms cooldown with a one-slot input buffer
 - [x] Rooms: torus grid sized to the population (replaced the capped linked graph)
@@ -90,6 +90,13 @@ with guest play kept as a trial.
 - [x] AWS deployment Phases 1–8 (2026-10-03): EC2 t3.micro (jar + systemd behind
       Nginx), RDS MySQL 8.4, Elastic IP. Remote smoke all passed; browser play
       confirmed by the user. Values and steps in `docs/AWS_DEPLOYMENT.md`.
+- [x] V2 step 1, accounts (branch `v2`, 2026-10-03): Spring Security OAuth2 client,
+      Google sign-in with the `openid` scope only; `Account` stores Google's `sub` and a
+      unique nickname, nothing else. Lobby: guest form + Google link; signed in, pick a
+      nickname once, then START plays under it. Guests get the `~` prefix (unranked).
+      `GuestSessionService` renamed `GameSessionService`. 202 tests (AccountServiceTest,
+      SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
+      client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).
 - [x] Ranking cleanup (2026-10-03): a `~name` plays unranked (`UNRANKED_PREFIX`) and
       smoke uses `~alpha`/`~bravo`/`~reconnect`, so production smoke leaves no rows
       (checked). Deleted 20 test rows from the live DB at the user's word, leaving only
@@ -154,7 +161,7 @@ Step 6 and HUD: `./gradlew test` green, smoke all passed, user verified cabinets
 and clock in the browser.
 
 Step 7: `./gradlew test` green (new: ScoreRulesTest 7, RoomRegistryTest grace and
-room-score cases, GuestSessionServiceTest, GameResultRepositoryTest 2). Smoke all
+room-score cases, GameSessionServiceTest, GameResultRepositoryTest 2). Smoke all
 passed including the new reconnect check (same room, same tile). Live server: the
 three smoke players died 15s after their sockets closed ("did not come back in
 time") and `/api/ranking` returned them best-first.

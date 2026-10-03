@@ -1,0 +1,12 @@
+package com.example.battleroyal.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface AccountRepository extends JpaRepository<Account, Long> {
+
+    Optional<Account> findByGoogleSubject(String googleSubject);
+
+    boolean existsByNickname(String nickname);
+}

@@ -3,8 +3,8 @@ package com.example.battleroyal.ws;
 import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Direction;
 import com.example.battleroyal.game.loop.RoomRegistry;
-import com.example.battleroyal.web.GuestSessionService;
-import com.example.battleroyal.web.GuestSessionService.GuestSession;
+import com.example.battleroyal.web.GameSessionService;
+import com.example.battleroyal.web.GameSessionService.GameSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -37,12 +37,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private static final int SEND_TIME_LIMIT_MS = 5_000;
     private static final int SEND_BUFFER_BYTES = 64 * 1024;
 
-    private final GuestSessionService guests;
+    private final GameSessionService guests;
     private final RoomRegistry rooms;
     private final SessionRegistry sessions;
     private final ObjectMapper mapper;
 
-    public GameWebSocketHandler(GuestSessionService guests, RoomRegistry rooms,
+    public GameWebSocketHandler(GameSessionService guests, RoomRegistry rooms,
                                 SessionRegistry sessions, ObjectMapper mapper) {
         this.guests = guests;
         this.rooms = rooms;
@@ -53,7 +53,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
         String token = tokenOf(session);
-        GuestSession guest = guests.resolve(token);
+        GameSession guest = guests.resolve(token);
         if (guest == null) {
             log.debug("Rejecting socket with unknown token");
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unknown session token"));

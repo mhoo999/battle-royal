@@ -29,10 +29,17 @@
     섬을 돌아다니며 필요한 물자를 확보하고, <em>생존하라</em>
   </p>
   <form id="lobby-form" autocomplete="off">
-    <input id="nickname" name="nickname" maxlength="12" placeholder="이름" aria-label="이름" required>
+    <p id="account-name" class="account-name" hidden></p>
+    <input id="nickname" name="nickname" maxlength="12" placeholder="이름" aria-label="이름">
     <button id="start" type="submit">START</button>
   </form>
   <p id="lobby-error" class="error" role="alert"></p>
+  <div class="account">
+    <a id="google-login" class="link-button" href="/oauth2/authorization/google">Google로 로그인</a>
+    <form id="logout-form" method="post" action="/logout" hidden>
+      <button class="link-button" type="submit">로그아웃</button>
+    </form>
+  </div>
   <section id="ranking" class="ranking" hidden>
     <p class="ranking-title">생존자 명부 TOP 10</p>
     <ol id="ranking-list"></ol>
