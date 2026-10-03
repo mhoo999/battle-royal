@@ -209,6 +209,10 @@ input, button {
   word-break: keep-all;
 }
 
+/* Emphasis in red, not italics: Korean fonts have no italic, so the browser slants the
+   glyphs and they look broken. */
+.cause em { font-style: normal; color: var(--enemy); }
+
 /* The caption and the numbers read as one record, so they sit tight together. */
 .record {
   display: flex;
