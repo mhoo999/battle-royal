@@ -14,9 +14,9 @@ restart refunds). Step 3 is done: two private exits per trip, a compass, B held 
 get out, the haul into the stash. Step 4 is done: trader (sell, buy), money, and the
 ranking by the value of what was found and brought out; the hideout has an ASCII hut
 under the moon behind it. That completes V2.0's loop (§7) except stash upgrades, which
-§7 puts in V2.1. Next: rehearse the new tables on local MySQL 8.4, add the Google
-client secret to the server env, then merge `v2` into `main` as v2.0 (ask first: it
-deploys).
+§7 puts in V2.1. MySQL 8.4 rehearsal done (2026-10-04, below). Next: add
+GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET to `/etc/battle-royal/env` on EC2 (user: it is a
+secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
 
 ## Completed
 
@@ -256,6 +256,12 @@ Nothing.
 
 ## Known Issues
 
+- **The lobby ranking starts empty after v2.0.** It now ranks accounts by haul; the V1
+  `game_result` rows stay in the table but nothing reads them.
+- **`stash_item.location` and `sortie.outcome` are MySQL ENUM columns.** `ddl-auto=update`
+  never alters them, so adding a Location or Outcome value needs a manual `ALTER TABLE`
+  first. `kind`, the one that grows, is a VARCHAR (see Recent Decisions).
+
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
   needs a restart, and Chrome caches `game.js`/`game.css`: fetch them with
   `cache: 'reload'` (or hard-reload) before testing a client change. Background tabs
@@ -263,6 +269,13 @@ Nothing.
   tab; check it on a real phone.
 
 ## Recent Decisions
+
+- **MySQL 8.4 rehearsal for v2.0 (2026-10-04).** Docker MySQL 8.4 with the V1 schema and
+  rows (V1 prod jar from `main`), then the V2 prod jar on the same DB: `account`,
+  `stash_item`, `sortie` created, `game_result` and its rows untouched, `account.money`/
+  `haul` default 0, smoke 100% on MySQL. It found `stash_item.kind` made an ENUM, which
+  `update` would freeze at today's kinds; `kind` is now stored as a plain String (an
+  AttributeConverter still got a CHECK listing the names).
 
 - **Only finds count towards the ranking.** Haul = value of extracted items that did
   not leave the stash on that trip; otherwise a stash pistol walked in and out would farm

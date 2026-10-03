@@ -32,9 +32,13 @@ public class StashItem {
     @Column(name = "account_id", nullable = false)
     private Long accountId;
 
-    @Enumerated(EnumType.STRING)
+    /*
+     * The kind's name in a plain VARCHAR, not @Enumerated: that makes MySQL an ENUM column
+     * (H2 a CHECK) listing today's kinds, and ddl-auto=update never alters a column it has
+     * made, so every item added after the table exists would be refused.
+     */
     @Column(nullable = false, length = 16)
-    private ItemKind kind;
+    private String kind;
 
     private int ammo;
 
@@ -56,7 +60,7 @@ public class StashItem {
 
     public StashItem(Long accountId, ItemKind kind, int ammo) {
         this.accountId = accountId;
-        this.kind = kind;
+        this.kind = kind.name();
         this.ammo = ammo;
         this.location = Location.STASH;
     }
@@ -70,7 +74,7 @@ public class StashItem {
     }
 
     public ItemKind kind() {
-        return kind;
+        return ItemKind.valueOf(kind);
     }
 
     public int ammo() {
