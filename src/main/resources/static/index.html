@@ -153,25 +153,35 @@
   <h2>거점</h2>
   <p class="hideout-who"><span id="hideout-name"></span>의 창고</p>
   <p class="purse">돈 <b id="money">0</b>원 · 가져온 가치 <b id="haul">0</b></p>
-  <section class="hideout-body">
-    <div class="inv-col">
-      <p class="inv-title">창고 <span id="stash-count"></span></p>
-      <ol id="stash-list" class="slots stash"></ol>
+  <!-- The hideout's front: the picture, and where to go from here. -->
+  <nav id="hideout-home" class="hideout-menu">
+    <button id="go-stash" class="menu-button" type="button">창고 <small id="stash-count"></small></button>
+    <button id="go-shop" class="menu-button" type="button">상점</button>
+    <button id="set-out" class="menu-button" type="button">섬으로 <small id="carry-count"></small></button>
+    <button id="hideout-back" class="link-button" type="button">뒤로</button>
+  </nav>
+  <section id="hideout-stash" class="hideout-page" hidden>
+    <div class="hideout-body">
+      <div class="inv-col">
+        <p class="inv-title">창고</p>
+        <ol id="stash-list" class="slots stash"></ol>
+      </div>
+      <div class="inv-col">
+        <p class="inv-title">가져갈 것</p>
+        <ol id="loadout-list" class="slots"></ol>
+      </div>
     </div>
-    <div class="inv-col">
-      <p class="inv-title">가져갈 것</p>
-      <ol id="loadout-list" class="slots"></ol>
-    </div>
+    <p id="hideout-hint" class="inv-hint"></p>
+    <button class="link-button to-home" type="button">거점으로</button>
   </section>
-  <p id="hideout-hint" class="inv-hint"></p>
-  <button id="sell" class="sell" type="button" hidden></button>
-  <section class="trader">
-    <p class="inv-title">상인</p>
+  <section id="hideout-shop" class="hideout-page trader" hidden>
+    <p class="inv-title">사기</p>
     <ol id="trader-list" class="trader-list"></ol>
+    <p class="inv-title">팔기</p>
+    <ol id="sell-list" class="trader-list"></ol>
+    <button class="link-button to-home" type="button">거점으로</button>
   </section>
   <p id="hideout-error" class="error" role="alert"></p>
-  <button id="set-out" type="button">섬으로</button>
-  <button id="hideout-back" class="link-button" type="button">뒤로</button>
 </div>
 
 <div id="dead" class="overlay" hidden>

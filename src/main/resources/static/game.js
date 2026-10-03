@@ -77,7 +77,9 @@ const ui = {
   hideout: el('hideout'), hideoutName: el('hideout-name'), stashList: el('stash-list'),
   stashCount: el('stash-count'), loadoutList: el('loadout-list'), hideoutHint: el('hideout-hint'),
   hideoutError: el('hideout-error'), setOut: el('set-out'), hideoutBack: el('hideout-back'),
-  money: el('money'), haul: el('haul'), sell: el('sell'), traderList: el('trader-list'),
+  money: el('money'), haul: el('haul'), traderList: el('trader-list'), sellList: el('sell-list'),
+  hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
+  carryCount: el('carry-count'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
   dead: el('dead'), deadScore: el('dead-score'), deadKills: el('dead-kills'),
   deadTime: el('dead-time'), deadCause: el('dead-cause'), deadName: el('dead-name'),
@@ -987,10 +989,11 @@ function wireBag() {
 // --- Hideout ---------------------------------------------------------------
 
 /*
- * A signed-in account's way onto the island. The stash on the left, three slots to
- * carry out on the right: pick a stash item, then the slot it goes in; tap a filled
- * slot to leave it at home. "섬으로" sets out with exactly that. Nothing taken out
- * comes back except by extraction or a server restart; dying loses it.
+ * A signed-in account's way onto the island. The front is the picture and a menu:
+ * 창고 opens the stash beside three slots to carry out (pick a stash item, then the
+ * slot it goes in; tap a filled slot to leave it at home), 상점 opens the trader, and
+ * 섬으로 sets out with exactly what is in the slots. Nothing taken out comes back
+ * except by extraction or a server restart; dying loses it.
  */
 let stash = [];             // [{ id, kind, ammo, price }]
 let hideoutView = null;     // the last /api/hideout answer
@@ -1002,6 +1005,7 @@ async function openHideout() {
   ui.hideoutName.textContent = me.nickname ?? '';
   stashPick = null;
   loadout = [null, null, null];
+  showHideoutPage('home');
   try {
     const response = await fetch('/api/hideout');
     if (!response.ok) {
@@ -1023,7 +1027,18 @@ function applyHideout(view) {
   ui.money.textContent = view.money;
   ui.haul.textContent = view.haul;
   if (stashPick !== null && !stashEntry(stashPick)) stashPick = null;
+  // Whatever was sold no longer goes out.
+  loadout = loadout.map((id) => (id !== null && stashEntry(id) ? id : null));
   paintHideout();
+}
+
+/** 'home', 'stash' or 'shop'. The picture dims behind a page. */
+function showHideoutPage(page) {
+  ui.hideout.dataset.page = page;
+  ui.hideoutHome.hidden = page !== 'home';
+  ui.hideoutStash.hidden = page !== 'stash';
+  ui.hideoutShop.hidden = page !== 'shop';
+  ui.hideoutError.textContent = '';
 }
 
 /*
@@ -1046,6 +1061,32 @@ function paintTrader() {
     buy.textContent = '사기';
     buy.disabled = full || hideoutView.money < offer.price;
     li.append(name, price, buy);
+    return li;
+  }));
+  paintSellList();
+}
+
+/** The stash as the trader sees it: what each thing fetches. */
+function paintSellList() {
+  if (stash.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'inv-hint';
+    li.textContent = '팔 것이 없다';
+    ui.sellList.replaceChildren(li);
+    return;
+  }
+  ui.sellList.replaceChildren(...stash.map((entry) => {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    name.textContent = slotText(entry);
+    const price = document.createElement('span');
+    price.className = 'price';
+    price.textContent = `${entry.price}원`;
+    const sell = document.createElement('button');
+    sell.type = 'button';
+    sell.dataset.sell = entry.id;
+    sell.textContent = '팔기';
+    li.append(name, price, sell);
     return li;
   }));
 }
@@ -1089,13 +1130,12 @@ function paintHideout() {
   }
   ui.loadoutList.replaceChildren(...loadout.map((id, i) =>
     slotButton(id === null ? null : stashEntry(id), 'loadout', i, i === 0)));
-  const picked = stashPick === null ? null : stashEntry(stashPick);
-  ui.sell.hidden = picked === null;
-  if (picked) ui.sell.textContent = `${slotText(picked)} 팔기 · ${picked.price}원`;
+  const carrying = loadout.filter((id) => id !== null).length;
+  ui.carryCount.textContent = carrying > 0 ? `${carrying}개` : '빈손';
   paintTrader();
   ui.hideoutHint.textContent = stash.length === 0
     ? '첫 출발은 빈손이다. 탈출하면 가져온 것이 여기 쌓인다.'
-    : stashPick !== null ? '넣을 칸을 고르거나 상인에게 파세요' : '창고에서 고른 뒤 칸을 고르세요 · 채운 칸을 누르면 빼기';
+    : stashPick !== null ? '넣을 칸을 고르세요' : '창고에서 고른 뒤 칸을 고르세요 · 채운 칸을 누르면 빼기';
 }
 
 function pickInHideout(from, index) {
@@ -1143,12 +1183,18 @@ function wireHideout() {
     pickInHideout(button.dataset.from, Number(button.dataset.index));
   });
   ui.setOut.addEventListener('click', setOut);
-  ui.sell.addEventListener('click', () => {
-    if (stashPick !== null) trade('/api/hideout/sell', { itemId: stashPick });
-  });
+  el('go-stash').addEventListener('click', () => showHideoutPage('stash'));
+  el('go-shop').addEventListener('click', () => showHideoutPage('shop'));
+  for (const button of ui.hideout.querySelectorAll('.to-home')) {
+    button.addEventListener('click', () => showHideoutPage('home'));
+  }
   ui.traderList.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-kind]');
     if (button && !button.disabled) trade('/api/hideout/buy', { kind: button.dataset.kind });
+  });
+  ui.sellList.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-sell]');
+    if (button) trade('/api/hideout/sell', { itemId: Number(button.dataset.sell) });
   });
   ui.hideoutBack.addEventListener('click', () => {
     ui.hideout.hidden = true;

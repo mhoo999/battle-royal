@@ -550,17 +550,7 @@ header.hud-bar {
 .purse { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .purse b { font-weight: normal; color: var(--item); font-variant-numeric: tabular-nums; }
 
-/* The trader: what a picked stash item fetches, and what is for sale. */
-.sell {
-  padding: 0.4rem 1rem;
-  background: transparent;
-  border: 1px solid var(--item);
-  border-radius: 2px;
-  color: var(--item);
-  cursor: pointer;
-}
-.sell[hidden] { display: none; }
-.trader { width: min(100%, 24rem); }
+/* The trader: what is for sale, and what each stash item fetches. */
 .trader-list {
   margin: 0;
   padding: 0;
@@ -587,19 +577,47 @@ header.hud-bar {
   cursor: pointer;
 }
 .trader-list button:disabled { opacity: 0.35; cursor: default; }
-#set-out {
-  width: min(100%, 18rem);
-  padding: 0.85rem 1rem;
-  /* Solid, so it stands in front of the hut drawn behind it. */
+/*
+ * The hideout's front: a column of buttons over the sky, the hut and the moon left in
+ * view below them. Solid, so they stand in front of the picture.
+ */
+.hideout[data-page="home"] { justify-content: flex-start; padding-top: max(3rem, 10vh); }
+.hideout-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: min(100%, 15rem);
+}
+.hideout-menu[hidden], .hideout-page[hidden] { display: none; }
+.menu-button {
+  width: 100%;
+  padding: 0.8rem 1rem;
   background: var(--bg);
-  border: 1px solid var(--self);
+  border: 1px solid var(--line);
   border-radius: 2px;
-  color: var(--self);
+  color: var(--ink);
   letter-spacing: 0.3em;
+  text-indent: 0.3em;
   cursor: pointer;
 }
+.menu-button small { margin-left: 0.4em; letter-spacing: 0.05em; color: var(--dim); }
+.menu-button:active { background: rgba(127, 212, 193, 0.12); }
+#set-out { border-color: var(--self); color: var(--self); }
 #set-out:disabled { opacity: 0.4; cursor: default; }
-#hideout-back { background: var(--bg); padding: 0.25rem 0.75rem; }
+#hideout-back, .to-home { background: var(--bg); padding: 0.25rem 0.75rem; }
+
+/* 창고 and 상점: a page over the picture, which dims behind it. */
+.hideout-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: min(100%, 24rem);
+}
+.hideout-page .hideout-body { width: 100%; }
+.hideout-page .trader-list { width: 100%; }
+.hideout:not([data-page="home"]) .hideout-art { opacity: 0.35; }
 
 #loot {
   height: 4px;

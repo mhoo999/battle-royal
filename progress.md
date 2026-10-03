@@ -113,7 +113,13 @@ secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
       the title's red offset only on the moon and lit window; 64 columns across the foot of
       the screen with sky above, so 섬으로/뒤로 (solid background) stand in front of the hut
       and the moon sits in the trader list's empty middle. Screenshot
-      `2026-10-04-v2-hideout-mono-behind-buttons.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      `2026-10-04-v2-hideout-mono-behind-buttons.png`.
+      Then (user: "a menu over the picture") the hideout became a front and two pages:
+      the front is 창고 (stash count) / 상점 / 섬으로 (what is carried) / 뒤로 over the sky
+      with the hut and moon in view; 창고 is stash + three slots, 상점 is 사기 plus a 팔기
+      list of every stash item (selling one that was in a slot takes it out of the slot);
+      each page has 거점으로, the picture dims behind it. Client only. Screenshot
+      `2026-10-04-v2-hideout-menu.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
       describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
