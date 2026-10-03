@@ -52,7 +52,8 @@ buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 
 상인(D11). 창고 항목의 `price`가 상인이 사 주는 값이자 그 아이템의 가치이고, `trader`는
 상인이 파는 목록과 값이다. 값은 서버만 정한다(`ItemValues`). 팔면 그 아이템은 사라지고 돈이
-는다. 사면 돈이 줄고 탄약이 가득 찬 새 아이템이 창고에 들어온다. 거부는 409와 한국어 사유:
+는다. 사면 돈이 줄고 새 아이템이 창고에 들어온다 — 총은 빈 채로(`ammo` 0), 탄약 묶음(`ROUNDS`,
+`BOLTS`)은 가득 차서. 거부는 409와 한국어 사유:
 창고에 없는(나가 있거나 남의) 아이템, 상인이 팔지 않는 물건, 돈 부족, 창고가 가득 참(사기만 —
 탈출은 가득 차도 다 들어온다).
 
@@ -190,7 +191,7 @@ GET /ws/game?token=<uuid>
 `players[]`의 각 항목은 `id`/`x`/`y`/`direction`/`alive`만 가진다.
 
 `self.item`: `KNIFE | BAT | PISTOL | CROSSBOW | MEDKIT | PAN | SPOON | CUP | DOLL |
-RECORDER | REGISTER`, or null for empty hands. `YOU_DIED.weapon` is null for a
+RECORDER | REGISTER | ROUNDS | BOLTS` (V2: the last two are ammunition bundles), or null for empty hands. `YOU_DIED.weapon` is null for a
 bare-hand kill.
 
 **V2: 인벤토리 3칸.** `self.inventory`는 칸 순서대로 `{kind, ammo}` 또는 빈 칸 `null`,
@@ -206,7 +207,7 @@ bare-hand kill.
 `actionA`/`actionB`는 서버가 계산한 현재 유효 행동 **토큰**이다. 표시 문구가 아니다.
 
 ```
-actionA   ATTACK | FIRE | HEAL | null
+actionA   ATTACK | FIRE | HEAL | RELOAD | null      (RELOAD: V2, an empty gun and its bundle carried)
 actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 ```
 

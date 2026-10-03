@@ -103,14 +103,14 @@ public final class GameConstants {
     public static final int PISTOL_RANGE = 10;
     public static final int PISTOL_DAMAGE = 25;
     public static final int PISTOL_COOLDOWN_TICKS = 8;
-    /** Rounds a pistol comes with. There is no reload: the last shot uses it up. */
+    /** Rounds a pistol holds, and a bundle of rounds carries. Empty, it stays in hand. */
     public static final int PISTOL_MAGAZINE = 6;
 
     /** Shorter, slower and scarcer than the pistol, but three bolts make a kill. */
     public static final int CROSSBOW_RANGE = 7;
     public static final int CROSSBOW_DAMAGE = 40;
     public static final int CROSSBOW_COOLDOWN_TICKS = 30;
-    /** Bolts a crossbow comes with; like the pistol, the last one uses it up. */
+    /** Bolts a crossbow holds, and a bundle of bolts carries. */
     public static final int CROSSBOW_BOLTS = 3;
 
     /**

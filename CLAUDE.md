@@ -68,7 +68,7 @@ deliberately; do not reverse one without saying so first.
 | "Fast projectiles" with speed, travel and collision | Shots resolve **instantly** along a line; `•` is a 100ms flourish | A moving entity adds tunnelling and interpolation for no gameplay gain at this tile size |
 | "Knife, Pistol, Medkit" as the whole item set | Also a **Bat** and **Crossbow**, and school-trip **junk** (Pan, Spoon, Cup, Doll, Recorder, Register); spawns often roll **nothing** | A real weapon should be a lucky find, as in *Battle Royale*; junk is for laughs, mostly on the death screen |
 | A only with an item | **Empty hands punch** (5 damage); junk never hits softer than a fist | There is no drop action, so junk weaker than a fist would trap its holder |
-| "Reload" in the V1 list | **No reload.** A pistol comes with 6 rounds and the last shot uses it up | A gun is a lucky find, not a permanent upgrade; reload may return with an ammo system |
+| "Reload" in the V1 list | **No reload.** A pistol comes with 6 rounds and the last shot uses it up | A gun is a lucky find, not a permanent upgrade. **V2 replaces this:** an empty gun stays in hand and reloads from a separate ammunition bundle, which the trader sells apart from the gun (`docs/GAME_RULES.md`) |
 
 ---
 
@@ -356,7 +356,7 @@ Recorded in `progress.md` under Recent Decisions. Current standing decisions:
 - Full room visibility except bushes
 - Enemy HP, item and ammo hidden
 - One-item inventory; a swap drops the previous item
-- No reload: a pistol's last round uses it up
+- No reload in V1: a pistol's last round uses it up. V2: an empty gun stays and reloads from an ammo bundle
 - One floor item or none per room; a room restocks only while it sits empty
 - No entry invulnerability
 - Real-time state in memory, results in the relational DB

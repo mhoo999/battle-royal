@@ -108,9 +108,11 @@ deploys).
 - [x] Ammo system (branch `v2`, 2026-10-03, user's call): an empty pistol/crossbow stays in
       hand (A does nothing); ROUNDS/BOLTS bundles take a slot, A=RELOAD fills the empty gun
       (RELOAD_TICKS 30); bundles spawn on the island; trader sells guns empty and ammo apart.
-      Hideout art redrawn as generated block art (scratchpad `hut_art.py` style). 256 tests.
-      NOT YET: browser look at the new art + screenshot; GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md
-      still say "no reload" and list old prices — update them next.
+      Hideout art redrawn again (2026-10-04) for contrast: lit snow peaks, a cratered moon,
+      pine silhouettes, chimney smoke, a lit window spilling onto the ground — one CSS class
+      per layer in `game.css`. Checked in the browser, screenshot
+      `2026-10-04-v2-hideout-moonlit-hut.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);
       `account.money` and `account.haul` (default 0 so `ddl-auto=update` can add them to
@@ -304,7 +306,8 @@ Nothing.
   my numbers, not playtested.
 - **No reload.** User's call (2026-09-28). A pistol comes with 6 rounds; the last shot
   uses it up after the strike, so a kill with it still names the pistol. Consumed like
-  a medkit, not dropped. Reload may return with an ammo system.
+  a medkit, not dropped. **V2 replaces it** (user, 2026-10-03): an empty gun stays,
+  ROUNDS/BOLTS bundles reload it, the trader sells guns empty and ammunition apart.
 - **A room holds one floor item or none.** User's call: loot should mean travelling.
   One roll at creation; a hit lands on one of the map's 4 `*` tiles, chosen per roll.
   Weights are in `GameConstants.LOOT_WEIGHT_*` and GAME_RULES §8.

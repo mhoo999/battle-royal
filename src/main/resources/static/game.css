@@ -529,24 +529,32 @@ header.hud-bar {
   pointer-events: none;
   user-select: none;
 }
-.hideout-art .star      { color: #5d6f73; }
-.hideout-art .moon      { color: #f2e3b3; text-shadow: 0 0 0.6em rgba(229, 192, 123, 0.7); }
-.hideout-art .halo      { color: rgba(229, 192, 123, 0.28); }
-.hideout-art .snow      { color: #9fb1b4; }
-.hideout-art .far       { color: #3d5157; }
-.hideout-art .far-shade { color: #2a383c; }
-.hideout-art .mid       { color: #27383d; }
-.hideout-art .mid-shade { color: #1c292d; }
-.hideout-art .near      { color: #152024; }
-.hideout-art .tree      { color: #0e1618; }
-.hideout-art .hut       { color: #4a3a2e; }
-.hideout-art .hut-shade { color: #2c221b; }
-.hideout-art .dark      { color: #0b0e0f; }
-.hideout-art .lit       { color: #f0b860; text-shadow: 0 0 0.8em rgba(240, 184, 96, 0.8); }
-.hideout-art .glow      { color: rgba(216, 166, 87, 0.35); }
-.hideout-art .smoke     { color: #4d5c60; }
-.hideout-art .ground    { color: #11191b; }
-.hideout-art .grass     { color: var(--bush); }
+.hideout-art .star       { color: #4f6064; }
+.hideout-art .star-hi    { color: #9fb4b8; }
+.hideout-art .moon       { color: #f4e6bd; text-shadow: 0 0 0.8em rgba(240, 214, 150, 0.6); }
+.hideout-art .moon-shade { color: #d4c08f; }
+.hideout-art .halo       { color: rgba(229, 200, 130, 0.22); }
+.hideout-art .snow       { color: #d5e2e3; }
+.hideout-art .snow-shade { color: #8399a0; }
+.hideout-art .far        { color: #2a3b41; }
+.hideout-art .far-lit    { color: #3f565d; }
+.hideout-art .mid        { color: #1a282c; }
+.hideout-art .mid-lit    { color: #22353a; }
+.hideout-art .pine-far   { color: #142024; }
+.hideout-art .pine       { color: #070b0c; }
+.hideout-art .near       { color: #0e1619; }
+.hideout-art .roof       { color: #6b4a33; }
+.hideout-art .roof-shade { color: #4e3524; }
+.hideout-art .roof-edge  { color: #2d1f16; }
+.hideout-art .hut        { color: #4a3526; }
+.hideout-art .hut-shade  { color: #33241a; }
+.hideout-art .dark       { color: #090706; }
+.hideout-art .lit        { color: #ffc56b; text-shadow: 0 0 1em rgba(255, 180, 80, 0.9); }
+.hideout-art .lit-bar    { color: #8a5a2a; }
+.hideout-art .glow       { color: rgba(255, 180, 90, 0.26); }
+.hideout-art .smoke      { color: #56666b; }
+.hideout-art .grass      { color: #24423a; }
+.hideout-art .firefly    { color: #d8e88a; text-shadow: 0 0 0.6em rgba(216, 232, 138, 0.9); }
 .hideout h2 { margin: 0; letter-spacing: 0.3em; }
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
