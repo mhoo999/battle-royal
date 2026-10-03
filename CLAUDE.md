@@ -397,6 +397,9 @@ screenshot as part of finishing it, not afterwards.
   (`2026-10-03-floor-crate.png`). Never overwrite an older one: the series is the story.
 - **Index:** add a line to `docs/images/README.md` — file, date, what it shows, and the
   commit or feature it belongs to.
+- **Mark the point:** draw a red box (3 px, `#ff3b30`) around what the shot is there to
+  prove — the one rule, setting or result a reader should look at. One or two boxes,
+  not a dozen. Console shots especially; a game screen that speaks for itself needs none.
 - **Size:** crop to what matters and keep each file under about 300 KB. Phone layouts at
   390 px wide, desktop at the game's own width, not the whole monitor.
 - **Before committing, look at it.** Nothing that is not already written in
