@@ -14,7 +14,9 @@
 
 ## 0. 현재 상태
 
-**현재 단계:** Phase 9 (재배포 연습) 시작 전.
+**현재 단계:** Phase 10 (자동 배포) 진행 중. 저장소 쪽(`deploy/install.sh`, `ci.yml`의
+`deploy` 잡)은 작성됨, 콘솔 ①~⑤는 아직. Phase 9 수동 재배포는 건너뜀: 서버에는 토러스 이전
+버전(`bdacabd` 코드)이 떠 있고, 첫 자동 배포가 토러스를 올린다.
 
 **완료:** 로컬 리허설 (§4 Phase 0). Phase 1 (2026-10-02): 루트 MFA, 관리자 IAM
 사용자 `admin-myeonghoon`(MFA), 예산 `battle-royal-monthly` $5. 계정은 크레딧 방식
@@ -26,8 +28,7 @@ IP, SSH 접속. Phase 5 (2026-10-03): Corretto 21.0.12.1, Nginx 기본 페이지
 Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-console` 404,
 `/api/ranking`이 RDS의 결과 행을 읽음. 사용자가 브라우저로 플레이 확인(2026-10-03).
 
-**다음 한 걸음:** Phase 9 — 버그 하나를 고쳐 §4 Phase 9 절차로 재배포. 재부팅 내성
-(`sudo reboot` 후 자동 기동)은 아직 확인 기록이 없다.
+**다음 한 걸음:** Phase 10 콘솔 ①~⑤ → `main` push → Actions의 deploy 잡 확인.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
@@ -122,7 +123,8 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 - [x] **Phase 8** 동작 확인 (브라우저 두 대, smoke, DB) (2026-10-03)
 - [ ] **Phase 9** 재배포 절차 한 번 연습
 - [ ] (선택) 도메인 + HTTPS
-- [ ] (선택) SSH 대신 SSM, 배포 자동화
+- [ ] **Phase 10** 자동 배포 (GitHub Actions + OIDC + S3 + SSM)
+- [ ] (선택) SSH 포트 닫기 (SSM Session Manager로 접속)
 
 ---
 
@@ -452,6 +454,121 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 
 ---
 
+### Phase 10 — 자동 배포 (GitHub Actions + OIDC + S3 + SSM)
+
+**목표:** `main`에 push → 테스트 통과 → 자동으로 서버에 배포. Phase 9의 수동 절차를
+그대로 기계가 하게 만든다.
+
+**왜 이 방식인가 (SSH 배포가 아니라):**
+- GitHub Actions 러너의 IP는 매번 바뀐다. SSH로 배포하려면 22번을 전 세계에 열어야
+  하는데, 이는 "SSH는 내 IP만"이라는 원칙(Phase 2)과 충돌한다.
+- OIDC를 쓰면 GitHub에 **장기 AWS 키도, `.pem` 키도 저장하지 않는다.** 워크플로가 실행될
+  때마다 AWS가 이 저장소의 `main` 브랜치에만 몇 분짜리 임시 권한을 준다.
+- 서버는 SSM Agent(AL2023 기본 설치)로 명령을 받는다. 들어오는 포트를 하나도 열지
+  않는다. 나중에 22번을 닫을 수 있다(§8 개선 후보 2).
+
+```
+ git push main
+     │
+     ▼
+ GitHub Actions ── test 잡 (기존 CI: 단위 테스트, smoke, jar)
+     │   needs: test, main push일 때만, 문서만 바뀐 커밋은 건너뜀
+     ▼
+ deploy 잡 ── OIDC로 임시 자격 증명 (역할: battle-royal-github-deploy)
+     │  ① jar + deploy/install.sh 를 S3 releases/<커밋>/ 에 업로드
+     │  ② SSM send-command (AWS-RunShellScript) → EC2
+     ▼
+ EC2 (인스턴스 역할: battle-royal-ec2)
+     S3에서 받기 → app.jar.prev 백업 → 교체 → restart → 127.0.0.1:8080 확인
+     실패하면 app.jar.prev로 되돌리고 실패로 끝냄
+     │
+     ▼
+ deploy 잡 ── 결과 확인 → 공인 IP로 smoke
+```
+
+**배포하지 않는 경우:** 문서만 바뀐 커밋(`docs/**`, `*.md`). 배포는 서버를 재시작해
+**접속자 전원을 끊고 월드를 초기화한다.** `progress.md`만 고쳤는데 플레이어가 튕기면
+안 된다.
+
+#### 콘솔에서 할 일 (사용자)
+
+**① S3 버킷**
+- **S3 → Create bucket**, 이름 `battle-royal-deploy-495791792486`(전역 고유해야 해서
+  계정 ID를 붙임), 리전 서울
+- **Block all public access 켬**(기본값), 나머지 기본값
+- 만든 뒤 **Management → Create lifecycle rule**: 이름 `expire-releases`, prefix
+  `releases/`, *Expire current versions of objects* **14일**. 옛 jar가 쌓여 요금이 늘지
+  않게 한다.
+
+**② GitHub OIDC 공급자** (계정에 한 번만)
+- **IAM → Identity providers → Add provider** → **OpenID Connect**
+- Provider URL `https://token.actions.githubusercontent.com`, Audience `sts.amazonaws.com`
+
+**③ GitHub용 역할 `battle-royal-github-deploy`**
+- **IAM → Roles → Create role** → **Web identity** → 위 공급자, Audience
+  `sts.amazonaws.com`, GitHub organization `mhoo999`, repository `battle-royal`,
+  branch `main`
+- 권한은 정책을 바로 붙이지 않고, 만든 뒤 **Add permissions → Create inline policy →
+  JSON**으로 아래를 넣는다. 이름 `deploy`.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::battle-royal-deploy-495791792486/releases/*" },
+    { "Effect": "Allow", "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ec2:ap-northeast-2:495791792486:instance/i-02d65fab4965cb3c4",
+        "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript" ] },
+    { "Effect": "Allow", "Action": "ssm:GetCommandInvocation", "Resource": "*" }
+  ]
+}
+```
+
+- **Trust relationships** 탭에서 `sub` 조건이 `repo:mhoo999/battle-royal:ref:refs/heads/main`
+  인지 확인한다. 다른 저장소나 브랜치, PR은 이 역할을 쓸 수 없어야 한다.
+
+**④ EC2용 역할 `battle-royal-ec2`**
+- **IAM → Roles → Create role** → **AWS service → EC2** → 권한
+  `AmazonSSMManagedInstanceCore`
+- 만든 뒤 인라인 정책 `read-releases`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::battle-royal-deploy-495791792486/releases/*" }
+  ]
+}
+```
+
+- **EC2 → 인스턴스 선택 → Actions → Security → Modify IAM role** → `battle-royal-ec2`
+- 몇 분 뒤 **Systems Manager → Fleet Manager**에 인스턴스가 **Online**으로 보이면 된다.
+  안 보이면 서버에서 `sudo systemctl restart amazon-ssm-agent`.
+
+**⑤ GitHub 저장소 변수** (비밀이 아니라서 Secrets가 아니라 Variables)
+- GitHub 저장소 → **Settings → Secrets and variables → Actions → Variables**
+
+  | 이름 | 값 |
+  |---|---|
+  | `AWS_ROLE_ARN` | ③ 역할의 ARN |
+  | `DEPLOY_BUCKET` | `battle-royal-deploy-495791792486` |
+  | `INSTANCE_ID` | `i-02d65fab4965cb3c4` |
+  | `PUBLIC_URL` | `http://54.116.237.112` |
+
+#### 저장소에서 할 일 (Claude)
+- `deploy/install.sh`: 서버에서 실행되는 배포 스크립트. 백업, 교체, 재시작, 헬스 체크,
+  실패 시 되돌리기.
+- `.github/workflows/ci.yml`에 `deploy` 잡 추가.
+
+완료 기준: 작은 변경을 `main`에 push → Actions에서 deploy 잡 성공 → 브라우저에 반영.
+문서만 바꾼 push에서는 deploy 잡이 건너뛰어짐. 일부러 깨진 배포(헬스 체크 실패)에서
+`app.jar.prev`로 되돌아감.
+
+---
+
 ## 5. (선택) 도메인 + HTTPS
 
 지금은 필수가 아니다. 휴대폰 브라우저 일부가 HTTP 페이지에 경고를 띄우는 정도.
@@ -476,6 +593,7 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 | 2026-09-29 | EC2 1대 + RDS MySQL, ALB·Redis 없음 | 게임 월드가 한 JVM 메모리에 있다. 두 번째 서버가 필요할 때 다시 본다 | ECS/Fargate, Elastic Beanstalk |
 | 2026-09-29 | RDS for MySQL 8.0 | 결과·랭킹만 저장. 채용 시장에서 흔함 | PostgreSQL (드라이버와 URL만 바꾸면 된다) |
 | 2026-10-02 | MySQL 8.0 → **8.4** | 8.0은 RDS 표준 지원 종료(2026-07-31), 새로 만들면 Extended Support 과금. 8.4가 현재 LTS. Connector/J는 Boot가 관리하는 버전이라 코드 변경 없음. 로컬 리허설은 8.0으로만 했다 | 8.0 + Extended Support |
+| 2026-10-03 | 자동 배포는 OIDC + S3 + SSM | 러너 IP가 매번 바뀌어 SSH 배포는 22번을 전 세계에 열어야 한다. OIDC는 장기 키가 없고 SSM은 들어오는 포트가 없다. 서버 두 대보다 먼저: 두 대의 진짜 과제는 메모리 속 월드(방 고정·핸드오프)이고 파이프라인은 마지막 배포 단계만 바뀐다 | GitHub Actions + SSH, CodeDeploy |
 | 2026-09-29 | jar + systemd, Docker 안 씀 | 한 대에 컨테이너 런타임은 옮길 것만 늘린다 | Docker Compose |
 | 2026-09-29 | Nginx 앞단, 앱은 127.0.0.1 | 8080을 인터넷에 열지 않는다. HTTPS 붙일 자리 | 앱을 80에 직접 |
 | 2026-09-29 | 기본 VPC, RDS 퍼블릭 액세스 끔 | 서버 한 대에 서브넷 설계는 과하다. DB는 여전히 인터넷에서 못 닿는다 | 커스텀 VPC + 프라이빗 서브넷 |

@@ -60,3 +60,90 @@ jobs:
           name: battle-royal-jar
           path: build/libs/*.jar
           retention-days: 7
+
+  # Pushes to main go live. Credentials come from GitHub's OIDC token, so the repo
+  # holds no AWS keys and no SSH key; the server takes the release over SSM with no
+  # inbound port open. See docs/AWS_DEPLOYMENT.md Phase 10.
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # One deploy at a time; a newer push waits rather than cutting one off midway.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ap-northeast-2
+      BUCKET: ${{ vars.DEPLOY_BUCKET }}
+      INSTANCE: ${{ vars.INSTANCE_ID }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # A deploy restarts the server, which drops everyone and resets the world. Not
+      # worth it for a commit that only touches documentation.
+      - name: Decide whether this push changes the server
+        id: changes
+        run: |
+          before='${{ github.event.before }}'
+          if ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$before" "$GITHUB_SHA" | grep -qvE '^docs/|\.md$'; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Documentation only; not deploying."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v8
+        if: steps.changes.outputs.deploy == 'true'
+        with:
+          name: battle-royal-jar
+          path: dist
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        if: steps.changes.outputs.deploy == 'true'
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      - name: Upload the release
+        if: steps.changes.outputs.deploy == 'true'
+        run: |
+          jar=$(ls dist/*.jar | grep -v -- '-plain.jar$' | head -n 1)
+          aws s3 cp "$jar" "s3://$BUCKET/releases/$GITHUB_SHA/app.jar" --only-show-errors
+          aws s3 cp deploy/install.sh "s3://$BUCKET/releases/$GITHUB_SHA/install.sh" --only-show-errors
+
+      - name: Install on the server
+        if: steps.changes.outputs.deploy == 'true'
+        run: |
+          params=$(jq -n --arg b "$BUCKET" --arg c "$GITHUB_SHA" --arg r "$AWS_REGION" '{commands: [
+            "aws s3 cp s3://\($b)/releases/\($c)/install.sh /tmp/install.sh --region \($r) --only-show-errors",
+            "bash /tmp/install.sh \($b) \($c)"]}')
+          id=$(aws ssm send-command --instance-ids "$INSTANCE" \
+            --document-name AWS-RunShellScript --comment "deploy $GITHUB_SHA" \
+            --parameters "$params" --query Command.CommandId --output text)
+          echo "SSM command $id"
+
+          status=Pending
+          for _ in $(seq 1 60); do
+            sleep 5
+            status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in Pending|InProgress|Delayed) ;; *) break ;; esac
+          done
+
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+            --query '[StandardOutputContent, StandardErrorContent]' --output text || true
+          echo "status: $status"
+          [ "$status" = Success ]
+
+      - name: Check the public page
+        if: steps.changes.outputs.deploy == 'true'
+        run: curl -sf --max-time 10 "${{ vars.PUBLIC_URL }}/" | grep -q '<title>BATTLE ROYALE</title>'
