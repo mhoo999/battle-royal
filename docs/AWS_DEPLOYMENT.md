@@ -30,7 +30,11 @@ Phase 8 일부: 로컬에서 smoke 전부 통과(공인 IP, Nginx 경유), `/h2-
 Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase 10: 첫 자동 배포 `4e331af`
 (토러스 월드) 성공, SSM 명령 Success, 공인 IP smoke 전부 통과.
 
-**다음 한 걸음:** Phase 10 롤백 확인(접속자가 끊기니 사용자가 시점을 정함). 그다음 (선택) SSH 포트 닫기, HTTPS.
+**다음 한 걸음:** Phase 10 롤백 확인(접속자가 끊기니 사용자가 시점을 정함).
+
+> **SSH 포트는 닫혀 있다(2026-10-03).** sg-web의 인바운드는 HTTP 80 하나뿐이다. 서버
+> 접속은 **EC2 → 인스턴스 → Connect → Session Manager**. `.pem` 키는 비상용으로만
+> 보관한다. 비상시 sg-web에 SSH 22를 My IP로 잠깐 다시 열면 된다. 그다음 (선택) SSH 포트 닫기, HTTPS.
 
 > **이 PC의 SSH:** Windows OpenSSH 클라이언트가 설치되어 있지 않다. Git의 것을 쓴다:
 > `& "C:\Program Files\Git\usr\bin\ssh.exe" -i "$env:USERPROFILE\.ssh\battle-royal.pem" ec2-user@54.116.237.112`
@@ -130,7 +134,7 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 - [~] **Phase 9** 재배포 절차 한 번 연습 (건너뜀, Phase 10이 대신함)
 - [ ] (선택) 도메인 + HTTPS
 - [x] **Phase 10** 자동 배포 (GitHub Actions + OIDC + S3 + SSM) (2026-10-03)
-- [ ] (선택) SSH 포트 닫기 (SSM Session Manager로 접속)
+- [x] (선택) SSH 포트 닫기 (SSM Session Manager로 접속) (2026-10-03)
 
 ---
 
@@ -657,7 +661,8 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 | 증상 | 먼저 볼 것 |
 |---|---|
 | PowerShell에서 `ssh`를 찾을 수 없음 | Windows OpenSSH 클라이언트 미설치. Git의 `C:\Program Files\Git\usr\bin\ssh.exe`를 쓰거나, 관리자 PowerShell에서 `Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0` |
-| SSH 타임아웃 | sg-web 22번이 **현재** 내 IP인지. 인스턴스가 Running인지 |
+| SSH 타임아웃 | 2026-10-03부터 22번은 **닫혀 있는 게 정상**이다. Session Manager로 접속한다. 키로 들어가야 하면 sg-web에 SSH 22를 My IP로 잠깐 연다 |
+| (22번을 열어 둔 상태에서) SSH 타임아웃 | sg-web 22번이 **현재** 내 IP인지. 인스턴스가 Running인지 |
 | SSH `Permission denied (publickey)` | 사용자 이름 `ec2-user`, 키 파일, Windows 키 권한(icacls) |
 | RDS 접속이 멈춤 → 타임아웃 | sg-db 소스가 sg-web인지, EC2가 sg-web에 속해 있는지, 같은 VPC인지 |
 | `Access denied for user` | 사용자/비밀번호, `GRANT`, DB 이름 `battleroyal` 존재 여부 |
