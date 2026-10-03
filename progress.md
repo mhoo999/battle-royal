@@ -119,7 +119,14 @@ secret), then merge `v2` into `main` as v2.0 (ask first: it deploys).
       with the hut and moon in view; 창고 is stash + three slots, 상점 is 사기 plus a 팔기
       list of every stash item (selling one that was in a slot takes it out of the slot);
       each page has 거점으로, the picture dims behind it. Client only. Screenshot
-      `2026-10-04-v2-hideout-menu.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
+      `2026-10-04-v2-hideout-menu.png`.
+      Then (user: "behind the buttons, mono, like a Princess Maker ending picture") the
+      picture became a framed illustration: painted in grayscale by `tools/hideout-art.py`
+      (hut, full moon, a student with a day pack walking the lit path), dithered into
+      120x144 mint block cells, fitted whole to the screen in a double-line frame; the
+      title sits over its sky and the menu is a double-bordered window over its foot,
+      sized from the frame height so the hut stays in view on short screens. Screenshot
+      `2026-10-04-v2-hideout-ending-picture.png`. GAME_RULES/NETWORK_PROTOCOL/CLAUDE.md now
       describe reload and the new prices. 256 tests.
 - [x] V2 trader and value ranking (branch `v2`, 2026-10-03): `ItemValues` price table
       (a gun's value falls with each shot; the trader sells gear at 3x, no junk);

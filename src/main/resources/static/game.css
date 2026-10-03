@@ -503,43 +503,55 @@ header.hud-bar {
 
 /* The hideout: the stash on the left, what to carry out on the right. */
 .hideout { gap: 0.75rem; }
-.hideout > :not(.hideout-art) { position: relative; z-index: 1; }
+.hideout > :not(.scene) { position: relative; z-index: 1; }
 
 /*
- * A shabby hut in the hills under a full moon, filling the hideout behind the panel, drawn
- * like the title: block characters in the one mint, the moon and the lit window
- * carrying the title's red offset. Generated; depth is only how dense the glyph is and
- * how much moonlight its tier gets (t1 darkest, t5 the moon). Decoration only, so it
- * takes no clicks and scales with the screen.
+ * The hideout is an illustration in a frame, like a game's ending picture: a hut on a
+ * hill under a full moon, a student walking the lit path up to it. Painted in grayscale
+ * (tools/hideout-art.py) and dithered into block characters of the title's one mint; depth is glyph coverage
+ * times five brightness tiers (t1 darkest). 120 x 144 cells, sized to fit the screen
+ * whole. Decoration only, so it takes no clicks.
  */
-.hideout-art {
+.hideout {
+  /* Consolas is 0.55em wide: 120 columns over 144 rows. */
+  --scene-aspect: 0.4582;
+  --scene-h: min(calc(100dvh - 1.5rem), calc((100vw - 1rem) / var(--scene-aspect)));
+  --scene-w: calc(var(--scene-h) * var(--scene-aspect));
+  --scene-gap: calc((100dvh - var(--scene-h)) / 2);
+}
+.scene {
   position: fixed;
   left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--scene-w);
+  height: var(--scene-h);
+  overflow: hidden;
+  border: 3px double rgba(127, 212, 193, 0.45);
+  box-shadow: 0.3rem 0.3rem 0 rgba(224, 108, 117, 0.25);
+  pointer-events: none;
+  user-select: none;
+}
+.hideout-art {
   margin: 0;
   /*
    * Named outright: on a Korean page the generic monospace falls back to a Korean font
    * that draws a backslash as a won sign and block characters at double width.
    */
   font-family: Consolas, "Courier New", monospace;
-  /* 64 columns span the screen: the hut sits behind the buttons at the foot. */
-  font-size: min(2.8vw, 13px);
+  font-size: calc(var(--scene-h) / 144);
   line-height: 1;
   text-align: left;
   color: var(--self);
-  pointer-events: none;
-  user-select: none;
 }
 .hideout-art i { font-style: normal; }
-.hideout-art .t1 { color: rgba(127, 212, 193, 0.07); }
-.hideout-art .t2 { color: rgba(127, 212, 193, 0.14); }
-.hideout-art .t3 { color: rgba(127, 212, 193, 0.24); }
-.hideout-art .t4 { color: rgba(127, 212, 193, 0.38); }
-.hideout-art .t5 {
-  color: rgba(127, 212, 193, 0.55);
-  text-shadow: 0.15em 0.15em 0 rgba(224, 108, 117, 0.3), 0 0 0.8em rgba(127, 212, 193, 0.3);
-}
+.hideout-art .t1 { color: rgba(127, 212, 193, 0.16); }
+.hideout-art .t2 { color: rgba(127, 212, 193, 0.30); }
+.hideout-art .t3 { color: rgba(127, 212, 193, 0.48); }
+.hideout-art .t4 { color: rgba(127, 212, 193, 0.72); }
+.hideout-art .t5 { color: var(--self); text-shadow: 0 0 0.6em rgba(127, 212, 193, 0.4); }
+.hideout-head { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.hideout-head > * { text-shadow: 0 0 0.4em var(--bg), 0 0 0.8em var(--bg); }
 .hideout h2 { margin: 0; letter-spacing: 0.3em; }
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
@@ -581,18 +593,29 @@ header.hud-bar {
  * The hideout's front: a column of buttons over the sky, the hut and the moon left in
  * view below them. Solid, so they stand in front of the picture.
  */
-.hideout[data-page="home"] { justify-content: flex-start; padding-top: max(3rem, 10vh); }
+.hideout[data-page="home"] {
+  justify-content: flex-end;
+  padding-block: calc(var(--scene-gap) + 1.25rem);
+}
+.hideout[data-page="home"] .hideout-head { margin-bottom: auto; }
+/* The menu is a window over the foot of the picture. */
 .hideout-menu {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
-  width: min(100%, 15rem);
+  gap: 0.5em;
+  /* Sized by the picture, so a short frame gets a smaller window and the hut shows. */
+  font-size: min(1rem, calc(var(--scene-h) / 60));
+  width: min(calc(var(--scene-w) - 2.5rem), 16em);
+  padding: 0.9em 0.9em 0.6em;
+  background: rgba(11, 14, 15, 0.82);
+  border: 3px double rgba(127, 212, 193, 0.45);
 }
 .hideout-menu[hidden], .hideout-page[hidden] { display: none; }
 .menu-button {
   width: 100%;
-  padding: 0.8rem 1rem;
+  padding: 0.75em 1em;
+  font-size: inherit;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 2px;
@@ -606,6 +629,7 @@ header.hud-bar {
 #set-out { border-color: var(--self); color: var(--self); }
 #set-out:disabled { opacity: 0.4; cursor: default; }
 #hideout-back, .to-home { background: var(--bg); padding: 0.25rem 0.75rem; }
+.hideout-menu #hideout-back { font-size: 0.8em; }
 
 /* 창고 and 상점: a page over the picture, which dims behind it. */
 .hideout-page {
@@ -617,7 +641,7 @@ header.hud-bar {
 }
 .hideout-page .hideout-body { width: 100%; }
 .hideout-page .trader-list { width: 100%; }
-.hideout:not([data-page="home"]) .hideout-art { opacity: 0.35; }
+.hideout:not([data-page="home"]) .scene { opacity: 0.3; }
 
 #loot {
   height: 4px;
