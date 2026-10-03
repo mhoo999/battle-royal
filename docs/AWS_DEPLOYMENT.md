@@ -12,6 +12,8 @@
 
 ---
 
+> 운영 중 자주 쓰는 서버 명령은 `docs/SERVER_COMMANDS.md`에 모아 두었다.
+
 ## 0. 현재 상태
 
 **현재 단계:** Phase 10 (자동 배포) 동작 중 (2026-10-03). `main` push → 테스트 → 배포가
@@ -717,6 +719,9 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 
 RDS는 퍼블릭 액세스가 없고 SSH도 닫혀 있다. PC의 `127.0.0.1:13306`을 EC2를 거쳐 RDS
 3306으로 잇는다. 포트는 하나도 열지 않는다.
+
+**보통은 `scripts\db-tunnel.cmd` 더블클릭이면 된다.** 로그인이 만료됐으면 `aws login`을
+띄우고 터널을 연다. 아래는 그 안에서 하는 일이다.
 
 PC 준비(한 번): AWS CLI v2(2.37.9로 확인), Session Manager 플러그인. 설치 전에 연 터미널은
 새 PATH를 모르니 새로 연다. 이 PC의 `default` 프로필에는 다른 액세스 키가 있어서 손대지

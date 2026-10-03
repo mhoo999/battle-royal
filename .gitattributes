@@ -1,5 +1,6 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
+*.cmd text eol=crlf
 *.jar binary
 # Copied as-is to the Linux server; a CRLF there breaks systemd and the env file.
 /deploy/** text eol=lf

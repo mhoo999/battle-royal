@@ -8,7 +8,8 @@ V1 Multiplayer Core
 
 Continuous deployment live (2026-10-03): a push to `main` tests, then deploys to EC2.
 Live at https://battleroyale.site (2026-10-03), deployed on every push to `main`.
-RDS is viewable from Workbench over SSM port forwarding (AWS_DEPLOYMENT §11).
+RDS is viewable from Workbench over SSM port forwarding (`scripts/db-tunnel.cmd`,
+AWS_DEPLOYMENT §11). Everyday server commands: `docs/SERVER_COMMANDS.md`.
 Next: game bugs; see a broken jar roll back when the user picks the moment.
 
 ## Completed
@@ -63,7 +64,9 @@ Next: game bugs; see a broken jar roll back when the user picks the moment.
       30s cap) — `ScoreRules`
 - [x] Step 7 disconnect grace: 15s in the world, hittable; same token reconnects to
       the same player; expiry kills with no killer. Token retired on death.
-      Client auto-retries 15× at 1s.
+      Client auto-retries 15× at 1s. When that runs out or the token is refused, a
+      "연결이 끊긴 사이 게임이 끝났다" overlay with 처음으로 replaces the frozen board;
+      coming back to the page (or online) retries at once (2026-10-03).
 - [x] Step 7 results: `GameResult` saved on every death via `DeathListener` →
       `ResultRecorder` (own writer thread). `GET /api/ranking`, top 10 on the lobby.
 - [x] Own rank under the top 10 after a death ("⋮" then "25 kang 37"), asked by the
@@ -178,10 +181,15 @@ Nothing.
 - A Medkit at full HP is spent for nothing. An "only when hurt" rule was tried and
   reverted: not in the docs, and `SnapshotFilterTest` expects `HEAL` at full HP.
 - `bootRun` copies static resources at build time; editing `src/main/resources/static`
-  needs a restart.
+  needs a restart, and Chrome caches `game.js`/`game.css`: fetch them with
+  `cache: 'reload'` (or hard-reload) before testing a client change.
 
 ## Recent Decisions
 
+- **A game that ended while the socket was down says so, without a record.** The
+  client cannot tell an expired grace (result saved) from a server restart (nothing
+  saved), so the overlay claims neither. Grace stays 15s: the user was offered 30–60s
+  for phones and did not take it.
 - **Deploys go through OIDC + S3 + SSM, not SSH.** Runner IPs change, so SSH would have
   meant opening port 22 to the world; this way the repo holds no keys and the server
   opens no port. CD before a second server: the hard part of two servers is the
