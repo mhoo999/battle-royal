@@ -342,6 +342,86 @@ class HideoutServiceTest {
         assertEquals(0, sorties.count());
     }
 
+    // --- The trader's errands ------------------------------------------------
+
+    private void skipQuests(int count) {
+        Account account = accounts.findById(me).orElseThrow();
+        for (int i = 0; i < count; i++) {
+            account.nextQuest();
+        }
+        accounts.save(account);
+    }
+
+    @Test
+    void theFirstErrandIsADeliveryHandedOverFromTheStash() {
+        QuestLedger.QuestView first = hideout.view(me).quest();
+        assertEquals(1, first.step());
+        assertEquals(10, first.total());
+        assertEquals("첫 납품", first.title());
+        assertEquals(List.of(new QuestLedger.Need(ItemKind.SPOON, 1, 0)), first.deliver());
+        assertFalse(first.ready());
+        assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me),
+                "nothing to hand over yet");
+
+        StashItem spoon = stash(me, ItemKind.SPOON, 0);
+        StashItem knife = stash(me, ItemKind.KNIFE, 0);
+        assertTrue(hideout.view(me).quest().ready());
+
+        HideoutService.StashView after = hideout.deliverQuest(me);
+
+        assertTrue(items.findById(spoon.id()).isEmpty(), "the spoon went to the trader");
+        assertTrue(items.findById(knife.id()).isPresent(), "nothing else did");
+        assertEquals(30, after.money());
+        assertEquals("소풍 준비물", after.quest().title());
+    }
+
+    @Test
+    void killsFromATripCountTowardsAKillErrandWhetherItEndsInDeathOrEscape() {
+        skipQuests(5);      // 사냥: three kills
+        assertEquals("사냥", hideout.view(me).quest().title());
+        assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me),
+                "a kill errand is not handed over");
+
+        GameSession died = hideout.setOut(me, "shuya", List.of());
+        hideout.onDeath(new GameEvent.Died(died.playerId(), "shuya", 0, 2, 0, "kang", null));
+        assertEquals(2, hideout.view(me).quest().killsDone());
+
+        GameSession out = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(out.playerId(), "shuya", 0, 1, 0, List.of()));
+
+        HideoutService.StashView after = hideout.view(me);
+        assertEquals("출석 확인", after.quest().title(), "done, and the next one taken");
+        assertEquals(0, after.quest().killsDone(), "kills start over for the next errand");
+        assertEquals(200, after.money());
+        assertEquals(List.of(ItemKind.ROUNDS), after.stash().stream()
+                .map(HideoutService.StashEntry::kind).toList(), "the rounds came with it");
+        assertEquals(6, after.stash().getFirst().ammo());
+    }
+
+    @Test
+    void anErrandsRewardItemLandsInTheStashEvenWhenItIsFull() {
+        skipQuests(3);      // 음악 시간: two recorders, a small bag
+        stash(me, ItemKind.RECORDER, 0);
+        stash(me, ItemKind.RECORDER, 0);
+        for (int i = 2; i < GameConstants.STASH_CAPACITY; i++) {
+            stash(me, ItemKind.CUP, 0);
+        }
+
+        HideoutService.StashView after = hideout.deliverQuest(me);
+
+        assertEquals(GameConstants.STASH_CAPACITY - 1, after.stash().size(),
+                "two recorders out, a bag in");
+        assertTrue(after.stash().stream().anyMatch(e -> e.kind() == ItemKind.SMALL_BAG));
+    }
+
+    @Test
+    void afterTheLastErrandThereIsNoneLeft() {
+        skipQuests(10);
+
+        assertNull(hideout.view(me).quest());
+        assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me));
+    }
+
     @Test
     void theStashSaysHowBigItIs() {
         assertEquals(GameConstants.STASH_CAPACITY, hideout.view(me).capacity());

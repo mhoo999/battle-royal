@@ -72,6 +72,11 @@ public class HideoutController {
         return hideout.sell(named(user).id(), request.itemId());
     }
 
+    @PostMapping("/quest/deliver")
+    public StashView deliverQuest(@AuthenticationPrincipal OidcUser user) {
+        return hideout.deliverQuest(named(user).id());
+    }
+
     @PostMapping("/stash-upgrade")
     public StashView growStash(@AuthenticationPrincipal OidcUser user) {
         return hideout.growStash(named(user).id());

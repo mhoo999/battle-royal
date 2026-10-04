@@ -55,6 +55,16 @@ public class Account {
     @Column(name = "stash_size", nullable = false)
     private int stashSize;
 
+    /** Which of the trader's errands is under way (Quests.ALL); its size once all are done. */
+    @ColumnDefault("0")
+    @Column(name = "quest_step", nullable = false)
+    private int questStep;
+
+    /** Kills counted towards the errand under way, since it was taken. */
+    @ColumnDefault("0")
+    @Column(name = "quest_kills", nullable = false)
+    private int questKills;
+
     protected Account() {
     }
 
@@ -116,10 +126,30 @@ public class Account {
         this.stashSize++;
     }
 
-    /** A new season (D12): everyone back to the same starting line. */
+    public int questStep() {
+        return questStep;
+    }
+
+    public int questKills() {
+        return questKills;
+    }
+
+    public void addQuestKills(int kills) {
+        this.questKills += kills;
+    }
+
+    /** The errand under way is done: the next one starts from no kills. */
+    public void nextQuest() {
+        this.questStep++;
+        this.questKills = 0;
+    }
+
+    /** A new season (D12): everyone back to the same starting line, errands included. */
     public void resetForSeason() {
         this.money = 0;
         this.haul = 0;
         this.stashSize = 0;
+        this.questStep = 0;
+        this.questKills = 0;
     }
 }

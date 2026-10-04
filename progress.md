@@ -118,6 +118,12 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       창고 page (user): laid out like 상점, 가져갈 것 4x4 on the left, the stash 4x4 on the
       right, both paged. The loadout's cell count follows the carry slots, so bags bought
       later only need more slots. Stash grids now show its capacity, no locked next tier.
+- [x] **V2.2 quests (2026-10-04, user's choices, draft list approved as is):** the trader's
+      ten errands in order (`Quests.ALL`), deliveries from the stash (`POST
+      /api/hideout/quest/deliver`) and kills counted when a trip ends, death included;
+      money and sometimes an item, wiped each season. `Account.questStep`/`questKills`
+      (columns `quest_step`, `quest_kills`, default 0), `QuestLedger`, an errand panel on
+      top of 상점. Not deployed yet.
 - [x] **V2.2 room kinds (2026-10-04, user chose this first):** six layouts after places on
       the film's island — CLASSROOM, CLINIC, LIGHTHOUSE, FOREST, VILLAGE, BEACH — so 14 in
       all. Each keeps the shipped-template rules (2 cabinets, 4 spawns, exactly 2 bush
@@ -345,8 +351,9 @@ Nothing.
    from the next season; season 1's deadline is stored in `season.ends_at`.
 3. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
    (the last two drop everyone).
-4. V2.2+ (V2_PLAN §7): special maps and PvE, quests, more room kinds, a player market.
-   Needs a planning session first; nothing decided.
+4. **Deploy quests — ask first.** Adds `account.quest_step` and `quest_kills` (default 0).
+   V2.2 so far: new rooms (live), quests (built). Left: special maps and PvE, a player
+   market — planning first.
 5. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
    this more pressing: a restart costs players their gear.
 

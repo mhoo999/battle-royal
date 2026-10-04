@@ -31,7 +31,11 @@ per-player 필터링에는 raw `TextWebSocketHandler` + Jackson이 더 단순하
 GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ],
           "capacity": 10, "upgrade": { "capacity": 20, "price": 500 },
           "out": false, "money": 135, "haul": 165,
-          "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ] }
+          "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ],
+          "quest": { "step": 1, "total": 10, "title": "첫 납품",
+                     "deliver": [ { "kind": "SPOON", "count": 1, "have": 0 } ],
+                     "kills": 0, "killsDone": 0, "money": 30, "reward": null,
+                     "rewardAmmo": null, "ready": false } }
 POST  { "loadout": [ 11, null, 12 ], "bag": 13 }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
@@ -59,6 +63,17 @@ buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 `BOLTS`)은 가득 차서. 거부는 409와 한국어 사유:
 창고에 없는(나가 있거나 남의) 아이템, 상인이 팔지 않는 물건, 돈 부족, 창고가 가득 참(사기만 —
 탈출은 가득 차도 다 들어온다).
+
+### `POST /api/hideout/quest/deliver` (V2.2, 로그인 필요)
+
+```json
+(본문 없음)  → 위의 GET과 같은 거점 화면
+```
+
+지금 의뢰가 납품이면 창고에서 필요한 것을(오래된 것부터) 상인에게 넘기고 보상을 받는다. GET의
+`quest`가 지금 의뢰(모두 끝났으면 `null`)이고, `ready`가 지금 넘길 수 있는지다. 처치 의뢰는
+판이 끝날 때(사망·탈출) 서버가 센다 — 따로 부를 것이 없다. 거부는 409: 납품할 의뢰가 없음,
+창고에 모자람.
 
 ### `POST /api/hideout/stash-upgrade` (V2.1, 로그인 필요)
 

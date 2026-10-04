@@ -73,9 +73,13 @@ public class HideoutService implements DepartureListener {
     public record StashUpgrade(int capacity, int price) {
     }
 
-    /** @param upgrade null once the biggest stash is bought */
+    /**
+     * @param upgrade null once the biggest stash is bought
+     * @param quest   the trader's errand under way, null once all are done
+     */
     public record StashView(List<StashEntry> stash, int capacity, StashUpgrade upgrade,
-                            boolean out, long money, long haul, List<ItemValues.Offer> trader) {
+                            boolean out, long money, long haul, List<ItemValues.Offer> trader,
+                            QuestLedger.QuestView quest) {
     }
 
     /** Thrown for a sale or purchase the rules do not allow; the message says why. */
@@ -154,7 +158,8 @@ public class HideoutService implements DepartureListener {
                 : null;
         return new StashView(stash, capacity(account), upgrade,
                 sorties.existsByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT),
-                account.money(), account.haul(), ItemValues.STOCK);
+                account.money(), account.haul(), ItemValues.STOCK,
+                QuestLedger.view(account, items));
     }
 
     private static int capacity(Account account) {
@@ -173,6 +178,14 @@ public class HideoutService implements DepartureListener {
                 throw new TradeRefusedException("돈이 모자랍니다");
             }
             account.growStash();
+            return viewInside(accountId);
+        });
+    }
+
+    /** Hands the errand's items to the trader from the stash, and takes the reward. */
+    public StashView deliverQuest(long accountId) {
+        return tx.execute(status -> {
+            QuestLedger.deliver(accounts.lockById(accountId).orElseThrow(), items);
             return viewInside(accountId);
         });
     }
@@ -337,6 +350,9 @@ public class HideoutService implements DepartureListener {
                     }
                     sortie.end(Sortie.Outcome.DIED, clock.instant());
                     items.deleteAll(items.findBySortieId(sortieId));
+                    // Kills count for an errand even on a trip that ended badly.
+                    QuestLedger.addKills(accounts.lockById(sortie.accountId()).orElseThrow(),
+                            died.kills(), items);
                 });
             } catch (RuntimeException e) {
                 // Left out: the next start-up hands the gear back rather than losing it.
@@ -355,7 +371,7 @@ public class HideoutService implements DepartureListener {
         List<Item> carried = extracted.carried();
         writer.execute(() -> {
             try {
-                tx.executeWithoutResult(status -> settle(sortieId, carried));
+                tx.executeWithoutResult(status -> settle(sortieId, carried, extracted.kills()));
             } catch (RuntimeException e) {
                 // Left out: the next start-up hands back what was taken out, at least.
                 log.error("Could not close sortie {} as extracted", sortieId, e);
@@ -363,7 +379,7 @@ public class HideoutService implements DepartureListener {
         });
     }
 
-    private void settle(long sortieId, List<Item> carried) {
+    private void settle(long sortieId, List<Item> carried, int kills) {
         Sortie sortie = sorties.findById(sortieId).orElseThrow();
         if (sortie.outcome() != Sortie.Outcome.OUT) {
             return;     // closed by a season's end: what came out went with the wipe
@@ -384,7 +400,9 @@ public class HideoutService implements DepartureListener {
             }
         }
         // Only what was found counts towards the ranking (D5).
-        accounts.lockById(sortie.accountId()).orElseThrow().addHaul(found);
+        Account account = accounts.lockById(sortie.accountId()).orElseThrow();
+        account.addHaul(found);
+        QuestLedger.addKills(account, kills, items);
         // Taken out and not brought back: left in a crate somewhere, so lost.
         items.deleteAll(wentOut.values());
     }

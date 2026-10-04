@@ -88,6 +88,7 @@ class SeasonServiceTest {
         account.addHaul(haul);
         account.earn(money);
         account.growStash();
+        account.nextQuest();
         return accounts.save(account);
     }
 
@@ -139,6 +140,7 @@ class SeasonServiceTest {
             assertEquals(0, account.haul());
             assertEquals(0, account.money());
             assertEquals(0, account.stashSize(), "back to the plain box");
+            assertEquals(0, account.questStep(), "errands start over");
         }
         assertEquals(0, items.count());
         assertEquals(4, accounts.count(), "accounts and nicknames stay");

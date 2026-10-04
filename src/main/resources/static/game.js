@@ -92,6 +92,8 @@ const ui = {
   money: el('money'), haul: el('haul'), traderList: el('trader-list'), sellList: el('sell-list'),
   deal: el('deal'), dealName: el('deal-name'), dealButton: el('deal-button'),
   grow: el('grow'), growName: el('grow-name'), growButton: el('grow-button'),
+  questStep: el('quest-step'), questTitle: el('quest-title'), questGoal: el('quest-goal'),
+  questReward: el('quest-reward'), questDeliver: el('quest-deliver'),
   hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
   carryCount: el('carry-count'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
@@ -1256,6 +1258,39 @@ function paintTrader() {
     return li;
   }));
   paintDeal();
+  paintQuest();
+}
+
+/*
+ * The trader's errand (V2.2). A delivery is handed over with 납품 once the stash holds
+ * everything; a kill errand completes by itself when a trip ends with enough kills.
+ */
+function paintQuest() {
+  const quest = hideoutView.quest;
+  if (!quest) {
+    ui.questStep.textContent = '';
+    ui.questTitle.textContent = '모든 의뢰 완료';
+    ui.questGoal.textContent = '이번 시즌에 상인이 맡길 일은 더 없다.';
+    ui.questReward.textContent = '';
+    ui.questDeliver.hidden = true;
+    return;
+  }
+  ui.questStep.textContent = `${quest.step}/${quest.total}`;
+  ui.questTitle.textContent = quest.title;
+  const goal = quest.deliver.length > 0
+    ? quest.deliver.map((need) => {
+      const span = document.createElement('span');
+      span.textContent = `${ITEM_LABEL[need.kind]} ${Math.min(need.have, need.count)}/${need.count}`;
+      if (need.have >= need.count) span.className = 'done';
+      return span;
+    })
+    : [`${quest.kills}명 처치 (${quest.killsDone}/${quest.kills}) · 판이 끝나면 센다`];
+  ui.questGoal.replaceChildren(...goal.flatMap((part, i) => (i === 0 ? [part] : [' · ', part])));
+  const item = quest.reward
+    ? ` + ${slotText({ kind: quest.reward, ammo: quest.rewardAmmo })}` : '';
+  ui.questReward.textContent = `보상 ${quest.money}원${item}`;
+  ui.questDeliver.hidden = quest.deliver.length === 0;
+  ui.questDeliver.disabled = !quest.ready;
 }
 
 function paintDeal() {
@@ -1449,6 +1484,7 @@ function wireHideout() {
   }
   ui.dealButton.addEventListener('click', closeDeal);
   ui.growButton.addEventListener('click', () => trade('/api/hideout/stash-upgrade', {}));
+  ui.questDeliver.addEventListener('click', () => trade('/api/hideout/quest/deliver', {}));
   ui.hideoutBack.addEventListener('click', () => {
     ui.hideout.hidden = true;
     ui.lobby.hidden = false;

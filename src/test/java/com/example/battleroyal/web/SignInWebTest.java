@@ -103,8 +103,12 @@ class SignInWebTest {
                 .andExpect(jsonPath("$.capacity").value(10))
                 .andExpect(jsonPath("$.upgrade.capacity").value(20))
                 .andExpect(jsonPath("$.upgrade.price").value(500))
+                .andExpect(jsonPath("$.quest.title").value("첫 납품"))
+                .andExpect(jsonPath("$.quest.deliver[0].kind").value("SPOON"))
                 .andExpect(jsonPath("$.out").value(false));
         mvc.perform(post("/api/hideout/stash-upgrade").with(google("g-web-1")))
+                .andExpect(status().isConflict());
+        mvc.perform(post("/api/hideout/quest/deliver").with(google("g-web-1")))
                 .andExpect(status().isConflict());
         String sortie = mvc.perform(post("/api/hideout/sortie").with(google("g-web-1"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"loadout\":[]}"))

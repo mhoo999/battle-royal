@@ -649,6 +649,36 @@ header.hud-bar {
   cursor: pointer;
 }
 #deal-button:disabled, #grow-button:disabled { opacity: 0.35; cursor: default; }
+
+/* The trader's errand: what it asks, how far along, what it pays. */
+.quest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--item);
+  border-radius: 2px;
+  text-align: left;
+  font-size: 0.8rem;
+}
+.quest-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+#quest-title { font-weight: normal; color: var(--item); }
+.quest-goal { margin: 0; color: var(--ink); }
+.quest-goal .done { color: var(--self); }
+.quest-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.quest-reward { color: var(--dim); }
+#quest-deliver {
+  padding: 0.35rem 0.8rem;
+  background: transparent;
+  border: 1px solid var(--self);
+  border-radius: 2px;
+  color: var(--self);
+  cursor: pointer;
+}
+#quest-deliver:disabled { opacity: 0.35; cursor: default; }
+#quest-deliver[hidden] { display: none; }
 /*
  * The hideout's front, laid out like the title screen: the picture, the block-letter
  * heading and its red rule, then one column of buttons of one width.
