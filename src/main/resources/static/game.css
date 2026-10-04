@@ -611,7 +611,8 @@ header.hud-bar {
   border-radius: 2px;
   font-size: 0.85rem;
 }
-.deal[hidden] { display: none; }
+/* Hidden, the bar keeps its room: the page is centred, so it would shift the grids. */
+.deal[hidden] { display: flex; visibility: hidden; }
 #deal-name { color: var(--item); }
 #deal-button {
   padding: 0.5rem 0.9rem;
