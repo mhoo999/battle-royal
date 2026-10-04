@@ -38,7 +38,8 @@ jobs:
       # forged frames. It prints SKIP (not FAIL) when a room happens to hold no item.
       - name: Start the server
         run: |
-          ./gradlew bootRun > server.log 2>&1 &
+          # Outposts off: guards on a random route would fail the walkers at random.
+          ./gradlew bootRun --args='--game.outposts=false' > server.log 2>&1 &
           for i in $(seq 1 90); do
             curl -sf http://localhost:8080/ > /dev/null && exit 0
             sleep 2

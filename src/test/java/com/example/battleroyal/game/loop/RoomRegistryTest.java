@@ -605,6 +605,13 @@ class RoomRegistryTest {
                 assertTrue(room.neighbours().stream().noneMatch(n -> n.map().isOutpost()),
                         "never two outposts side by side");
             }
+            for (int i = 0; i < 12; i++) {
+                for (com.example.battleroyal.game.core.Exit exit : registry.player("p" + i).exits()) {
+                    com.example.battleroyal.game.core.Room room = registry.rooms().stream()
+                            .filter(exit::in).findFirst().orElseThrow();
+                    assertFalse(room.map().isOutpost(), "no way out in front of the guards");
+                }
+            }
         }
         assertTrue(sawOutpost, "some world among twenty has one");
         assertTrue(registry(1).rooms().stream().noneMatch(r -> r.map().isOutpost()),

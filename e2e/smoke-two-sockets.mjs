@@ -13,6 +13,11 @@
  *
  *   node e2e/smoke-two-sockets.mjs
  *
+ * Run it against a server started with --game.outposts=false, as CI does: outpost
+ * guards (V2.2) shoot whoever crosses their line, and a walker routed past one fails
+ * at random. Against the live server, which has outposts, a rare failure on the walk
+ * to the exit can be a guard rather than a bug.
+ *
  * Players are named with a leading ~ so that running this against the live server
  * leaves no rows in the ranking.
  */
@@ -88,7 +93,9 @@ async function until(player, predicate, label, timeoutMs = 3000) {
 /** Breadth-first path over the terrain the server sent us. */
 function pathTo(snapshot, target) {
   const { self, terrain } = snapshot;
-  const blocked = new Set(snapshot.players.map((p) => `${p.x},${p.y}`));
+  // Outpost guards (V2.2) stand in the way like players do.
+  const blocked = new Set([...snapshot.players, ...(snapshot.guards || [])]
+    .map((p) => `${p.x},${p.y}`));
   const start = `${self.x},${self.y}`;
   const goal = `${target.x},${target.y}`;
 

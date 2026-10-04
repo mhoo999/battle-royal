@@ -125,7 +125,12 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       0.5s of sight (range 6, 20 damage, 1.5s), players' visibility rules; down for 60 health
       (3 pistol shots), drop 6 rounds, stand again after 2 min empty. Military loot table.
       Snapshot `guards`, `YOU_DIED.byGuard`. Seeded test worlds have no outposts
-      (`withOutposts(Random)` turns them on). Not deployed yet.
+      (`withOutposts(Random)` turns them on). The first push failed CI's socket smoke:
+      an exit could land in an outpost (even on a guard's post) and walkers walked into
+      guards. Exits now never go in outposts, the smoke treats guards as obstacles, and
+      CI runs it with `--game.outposts=false` (on by default). A local smoke run takes
+      40-110s; a shorter timeout looks like a hang. Against a server with outposts it
+      passed 3 of 4 (once the two walkers never met).
 - [x] **V2.2 quests (2026-10-04, user's choices, draft list approved as is):** the trader's
       ten errands in order (`Quests.ALL`), deliveries from the stash (`POST
       /api/hideout/quest/deliver`) and kills counted when a trip ends, death included;

@@ -20,6 +20,8 @@ import com.example.battleroyal.game.rule.ScoreRules;
 import com.example.battleroyal.game.rule.WorldSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -99,6 +101,16 @@ public class RoomRegistry {
     public RoomRegistry withOutposts(Random random) {
         this.outpostRandom = random;
         return this;
+    }
+
+    /**
+     * {@code game.outposts=false} leaves outposts out of the running server. CI's socket
+     * smoke runs that way: its walkers check the protocol, and a guard shooting one on a
+     * random route would make it fail at random.
+     */
+    @Autowired
+    void configureOutposts(@Value("${game.outposts:true}") boolean enabled) {
+        this.outpostRandom = enabled ? new Random() : null;
     }
 
     /**
@@ -610,7 +622,8 @@ public class RoomRegistry {
                 for (int column = 0; column < grid.columns(); column++) {
                     Room room = cells[row][column];
                     boolean taken = exits.stream().anyMatch(exit -> exit.in(room));
-                    if (room == start || taken) {
+                    // Five seconds standing still in front of the guards is no way out.
+                    if (room == start || taken || room.map().isOutpost()) {
                         continue;
                     }
                     int away = Math.abs(around(origin.row(), row, grid.rows()))
@@ -637,7 +650,8 @@ public class RoomRegistry {
             for (int x = 0; x < GridMap.SIZE; x++) {
                 Pos p = new Pos(x, y);
                 if (room.map().tileAt(p) == TileType.FLOOR && room.crateAt(p) == null
-                        && ActionResolver.doorSideAt(room, p) == null) {
+                        && ActionResolver.doorSideAt(room, p) == null
+                        && !room.map().guardPosts().contains(p)) {
                     candidates.add(p);
                 }
             }
