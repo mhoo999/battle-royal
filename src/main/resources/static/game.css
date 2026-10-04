@@ -421,19 +421,20 @@ header.hud-bar {
 .cell.exit  { color: var(--self); font-weight: bold; }
 /* An errand's mark (V2.2): the trader's colour, the quest panel's gold. */
 .cell.mark  { color: var(--item); font-weight: bold; }
-.compass .mark-label { color: var(--item); }
-.compass .mark-label.after { margin-left: 1em; }
 
-/* Where my exits lie, a needle and a count of rooms for each. */
+
+/* Which way my exits (mint) and errand marks (gold) lie: needles only, no distance. */
 .compass {
+  display: flex;
+  justify-content: center;
+  gap: 0.9em;
   min-height: 1.1em;
   margin: 0;
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
+  font-size: 0.95rem;
   color: var(--self);
-  text-align: center;
 }
-.compass b { font-weight: normal; color: var(--dim); }
+.compass .needle.exit { color: var(--self); }
+.compass .needle.mark { color: var(--item); }
 
 /* Loot gauge: fills while B is held; the server decides when the item lands. */
 /*

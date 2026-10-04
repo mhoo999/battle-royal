@@ -325,31 +325,27 @@ function needle(dx, dy) {
   return [['↖', '↑', '↗'], ['←', '◎', '→'], ['↙', '↓', '↘']][row][col];
 }
 
-/** One compass reading per bearing: a needle and the doors, or "here" in its room. */
-function bearings(list, here) {
+/**
+ * One needle per bearing, the way only, never how far: finding the room is the walk.
+ * In its room the needle becomes the tile's own mark.
+ */
+function needles(list, kind, here) {
   return list.map((b) => {
-    const doors = Math.abs(b.dx) + Math.abs(b.dy);
-    return doors === 0 ? here : `${needle(b.dx, b.dy)} ${doors}`;
-  }).join('  ·  ');
+    const span = document.createElement('span');
+    span.className = `needle ${kind}`;
+    span.textContent = b.dx === 0 && b.dy === 0 ? here : needle(b.dx, b.dy);
+    return span;
+  });
 }
 
-/* Your exits, and the places your errand marked (V2.2), both private to you. */
+/*
+ * Your exits (mint) and the places your errand marked (gold, V2.2), both private to
+ * you. Colour tells them apart; there is no label and no count of rooms.
+ */
 function paintCompass(self) {
-  const marks = self.marks || [];
-  const parts = [];
-  if (self.exits.length > 0) {
-    const label = document.createElement('b');
-    label.textContent = '탈출구 ';
-    parts.push(label, bearings(self.exits, '◎ 이 방'));
-  }
-  if (marks.length > 0) {
-    const label = document.createElement('b');
-    label.className = 'mark-label';
-    label.textContent = '의뢰 ';
-    if (parts.length) label.classList.add('after');
-    parts.push(label, bearings(marks, '✦ 이 방'));
-  }
-  ui.compass.replaceChildren(...parts);
+  ui.compass.replaceChildren(
+    ...needles(self.exits, 'exit', '◎'),
+    ...needles(self.marks || [], 'mark', '✦'));
 }
 
 function setAction(button, letter, label, idleLabel = null) {

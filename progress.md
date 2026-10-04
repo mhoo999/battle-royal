@@ -63,7 +63,8 @@ steps always has something (user). Junk delivery 40원, an escape 50원, then a 
 ammo bundle delivery or one soldier 120원 (`DailyQuests`, worked out from account and
 date). Account columns `daily_day`, `daily_done`, `daily_extracts`, `daily_soldiers`.
 Errands moved from 상점 to their own 의뢰 page (hideout menu), dailies on top with a
-countdown.
+countdown. The compass shows needles only, no labels and no room counts (user: the
+distance made it too easy): exits mint, errand marks gold, ◎ / ✦ once in the room.
 
 **Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
