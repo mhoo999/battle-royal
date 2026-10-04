@@ -123,6 +123,7 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       (`GameSessionService.retireIfNeverAttached`, atomic with the handshake's `attach`),
       sends its gear home and closes it REFUNDED. A player who did attach still blocks a
       second sortie. Two tests that set out twice without attaching now attach first.
+      Deployed 2026-10-04 (`c7f889f`, run 37186778772).
 - [x] **V2.1 seasons (2026-10-04, user's decisions):** 4 weeks ending at midnight Seoul
       (`SEASON_DAYS`), checked each minute by `SeasonService` (`@EnableScheduling`). At the
       deadline account players on the island get `SEASON_OVER` and leave (gear gone), open
@@ -329,21 +330,19 @@ Nothing.
 
 ## Next
 
-1. **Deploy the stuck-sortie fix — ask first** (`main` ahead of origin; tests and a local
-   smoke on 8081 passed).
-2. **Production play check (user).** On https://battleroyale.site, signed in: one trip
+1. **Production play check (user).** On https://battleroyale.site, signed in: one trip
    (sortie, extract, stash), buy a small bag and wear it out (5 slots), buy the 20-slot
    stash once the money is there, and see 시즌 1 · n일 남음 in the lobby and hideout.
    Then `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent
    was not permitted to run it against production).
-3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
+2. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
    the user leans towards about three months later (91 days suggested). A change applies
    from the next season; season 1's deadline is stored in `season.ends_at`.
-4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
+3. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
    (the last two drop everyone).
-5. V2.2+ (V2_PLAN §7): special maps and PvE, quests, more room kinds, a player market.
+4. V2.2+ (V2_PLAN §7): special maps and PvE, quests, more room kinds, a player market.
    Needs a planning session first; nothing decided.
-6. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
+5. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
    this more pressing: a restart costs players their gear.
 
 ## Known Issues
