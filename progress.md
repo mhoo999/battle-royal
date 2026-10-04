@@ -115,6 +115,9 @@ are V2.1. Exact next step: see Next, item 1.
       each side is half its width, so the bag alone is the same size centred. A crate
       emptied by the last TAKE still vanishes on the server, but its six cells stay drawn
       empty (inert) until you move or close; you cannot PUT back into it.
+      창고 page (user): laid out like 상점, 가져갈 것 4x4 on the left, the stash 4x4 on the
+      right, both paged. The loadout's cell count follows the carry slots, so bags bought
+      later only need more slots. Stash grids now show its capacity, no locked next tier.
 - [x] **v2.0 released (2026-10-04):** `v2` fast-forwarded into `main` at `fe948bd`, tag
       `v2.0`, Actions run 37181782549 test + deploy green. Production: `/`, `/api/ranking`
       (`top` empty, as expected), `/api/me` 200, `/h2-console` 404, the new `game.js`

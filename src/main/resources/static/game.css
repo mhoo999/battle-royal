@@ -595,8 +595,6 @@ header.hud-bar {
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
 .hideout-body { display: flex; gap: 0.75rem; width: min(100%, 24rem); text-align: left; }
-.hideout-body.stacked { flex-direction: column; }
-.hideout-body.stacked #loadout-list { width: 60%; }
 
 /* Money, and the haul the ranking counts. */
 .purse { margin: 0; font-size: 0.8rem; color: var(--dim); }

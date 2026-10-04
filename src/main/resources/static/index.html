@@ -163,14 +163,16 @@
     <button id="hideout-back" class="menu-button minor" type="button">뒤로</button>
   </nav>
   <section id="hideout-stash" class="hideout-page" hidden>
-    <div class="hideout-body stacked">
-      <div class="inv-col">
-        <p class="inv-title">창고</p>
-        <ol id="stash-list" class="slots grid" style="--cols: 5"></ol>
-      </div>
+    <div class="hideout-body">
       <div class="inv-col">
         <p class="inv-title">가져갈 것</p>
-        <ol id="loadout-list" class="slots grid" style="--cols: 3"></ol>
+        <ol id="loadout-list" class="slots grid" style="--cols: 4"></ol>
+        <div class="pager" data-for="load"><button type="button" data-pager="load" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="load" data-step="1" aria-label="다음">›</button></div>
+      </div>
+      <div class="inv-col">
+        <p class="inv-title">창고</p>
+        <ol id="stash-list" class="slots grid" style="--cols: 4"></ol>
+        <div class="pager" data-for="stash"><button type="button" data-pager="stash" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="stash" data-step="1" aria-label="다음">›</button></div>
       </div>
     </div>
     <p id="hideout-hint" class="inv-hint"></p>

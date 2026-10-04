@@ -948,7 +948,7 @@ function blankCell(locked) {
  * than left out.
  */
 const PAGE = 16;
-const pages = { crate: 0, inv: 0, offer: 0, sell: 0 };
+const pages = { crate: 0, inv: 0, offer: 0, sell: 0, load: 0, stash: 0 };
 
 /** Shows one page of cells (one per absolute index) in list, and its pager. */
 function paintPage(list, key, cells) {
@@ -1083,8 +1083,6 @@ let hideoutView = null;     // the last /api/hideout answer
 let loadout = [null, null, null];   // stash item ids
 let stashPick = null;       // a stash item id
 let dealPick = null;        // on the 상점 page: { kind } from the stock, or { id } from the stash
-// The stash grid shows the next size up locked (일반 상자 10 -> 큰 상자 20, V2_PLAN D10).
-const STASH_GRID = 20;
 
 async function openHideout() {
   ui.hideoutError.textContent = '';
@@ -1128,19 +1126,17 @@ function showHideoutPage(page) {
   ui.hideoutShop.hidden = page !== 'shop';
   ui.hideoutError.textContent = '';
   dealPick = null;
-  pages.offer = 0;
-  pages.sell = 0;
-  if (hideoutView) paintTrader();
+  for (const key of ['offer', 'sell', 'load', 'stash']) pages[key] = 0;
+  if (hideoutView) paintHideout();
 }
 
 /**
- * The stash as a grid: its items, then free cells up to the capacity, then the next size
- * up locked. A stash let run over its capacity (extraction always fits) grows the grid.
+ * The stash's own cells: its items, then free cells up to the capacity. A stash let run
+ * over its capacity (extraction always fits) has more. The page pads the rest disabled.
  */
-function stashCells(cols, cell, minimum = STASH_GRID) {
-  const shown = Math.max(minimum, Math.ceil(stash.length / cols) * cols);
-  return Array.from({ length: shown }, (_, i) =>
-    i < stash.length ? cell(stash[i]) : blankCell(i >= hideoutView.capacity));
+function stashCells(cell) {
+  const shown = Math.max(hideoutView.capacity, stash.length);
+  return Array.from({ length: shown }, (_, i) => (i < stash.length ? cell(stash[i]) : blankCell(false)));
 }
 
 /*
@@ -1157,12 +1153,11 @@ function paintTrader() {
     button.classList.toggle('selected', !!dealPick && dealPick.kind === offer.kind);
     return li;
   }));
-  // Only the stash's own cells: the page pads the rest disabled, so no page is all locks.
-  paintPage(ui.sellList, 'sell', stashCells(1, (entry) => {
+  paintPage(ui.sellList, 'sell', stashCells((entry) => {
     const li = slotButton(entry, 'sell', entry.id, false);
     li.firstChild.classList.toggle('selected', !!dealPick && dealPick.id === entry.id);
     return li;
-  }, hideoutView.capacity));
+  }));
   paintDeal();
 }
 
@@ -1225,15 +1220,17 @@ function stashEntry(id) {
 
 function paintHideout() {
   const carried = new Set(loadout.filter((id) => id !== null));
-  ui.stashList.replaceChildren(...stashCells(5, (entry) => {
+  // 창고 is laid out like 상점: what goes out on the left (as many cells as the slots
+  // you can carry, more once bags can be bought), the stash on the right.
+  paintPage(ui.loadoutList, 'load', loadout.map((id, i) =>
+    slotButton(id === null ? null : stashEntry(id), 'loadout', i, i === 0)));
+  paintPage(ui.stashList, 'stash', stashCells((entry) => {
     const li = slotButton(entry, 'stash', entry.id, false);
     const button = li.firstChild;
     button.classList.toggle('selected', stashPick === entry.id);
     button.disabled = carried.has(entry.id);
     return li;
   }));
-  ui.loadoutList.replaceChildren(...loadout.map((id, i) =>
-    slotButton(id === null ? null : stashEntry(id), 'loadout', i, i === 0)));
   const carrying = loadout.filter((id) => id !== null).length;
   ui.carryCount.textContent = carrying > 0 ? `${carrying}개` : '빈손';
   paintTrader();
@@ -1283,7 +1280,7 @@ async function setOut() {
 function wireHideout() {
   ui.hideout.addEventListener('click', (event) => {
     if (turnPage(event.target)) {
-      paintTrader();
+      paintHideout();
       return;
     }
     const button = event.target.closest('.slot');
