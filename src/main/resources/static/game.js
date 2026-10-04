@@ -79,6 +79,7 @@ const ui = {
   hideoutError: el('hideout-error'), setOut: el('set-out'), hideoutBack: el('hideout-back'),
   money: el('money'), haul: el('haul'), traderList: el('trader-list'), sellList: el('sell-list'),
   deal: el('deal'), dealName: el('deal-name'), dealButton: el('deal-button'),
+  grow: el('grow'), growName: el('grow-name'), growButton: el('grow-button'),
   hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
   carryCount: el('carry-count'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
@@ -1218,6 +1219,24 @@ function stashEntry(id) {
   return stash.find((entry) => entry.id === id) || null;
 }
 
+/** Stash sizes by slot count (GameConstants.STASH_SIZES). */
+const STASH_NAME = { 10: '일반 상자', 20: '큰 상자', 40: '고급 상자' };
+
+/** The next stash size for sale under the 창고 grids, or a line saying it is the biggest. */
+function paintGrow() {
+  const next = hideoutView.upgrade;
+  const current = STASH_NAME[hideoutView.capacity] || `${hideoutView.capacity}칸`;
+  if (!next) {
+    ui.growName.textContent = `${current} · 가장 큰 창고`;
+    ui.growButton.hidden = true;
+    return;
+  }
+  ui.growName.textContent = `${current} → ${STASH_NAME[next.capacity] || ''} ${next.capacity}칸`;
+  ui.growButton.hidden = false;
+  ui.growButton.textContent = `확장 (${next.price}원)`;
+  ui.growButton.disabled = hideoutView.money < next.price;
+}
+
 function paintHideout() {
   const carried = new Set(loadout.filter((id) => id !== null));
   // 창고 is laid out like 상점: what goes out on the left (as many cells as the slots
@@ -1231,6 +1250,7 @@ function paintHideout() {
     button.disabled = carried.has(entry.id);
     return li;
   }));
+  paintGrow();
   const carrying = loadout.filter((id) => id !== null).length;
   ui.carryCount.textContent = carrying > 0 ? `${carrying}개` : '빈손';
   paintTrader();
@@ -1296,6 +1316,7 @@ function wireHideout() {
     button.addEventListener('click', () => showHideoutPage('home'));
   }
   ui.dealButton.addEventListener('click', closeDeal);
+  ui.growButton.addEventListener('click', () => trade('/api/hideout/stash-upgrade', {}));
   ui.hideoutBack.addEventListener('click', () => {
     ui.hideout.hidden = true;
     ui.lobby.hidden = false;

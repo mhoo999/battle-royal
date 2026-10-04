@@ -68,8 +68,13 @@ public class HideoutService implements DepartureListener {
     public record StashEntry(long id, ItemKind kind, Integer ammo, int price) {
     }
 
-    public record StashView(List<StashEntry> stash, int capacity, boolean out, long money,
-                            long haul, List<ItemValues.Offer> trader) {
+    /** The next stash size on sale: how many slots it holds and what it costs. */
+    public record StashUpgrade(int capacity, int price) {
+    }
+
+    /** @param upgrade null once the biggest stash is bought */
+    public record StashView(List<StashEntry> stash, int capacity, StashUpgrade upgrade,
+                            boolean out, long money, long haul, List<ItemValues.Offer> trader) {
     }
 
     /** Thrown for a sale or purchase the rules do not allow; the message says why. */
@@ -141,9 +146,34 @@ public class HideoutService implements DepartureListener {
                         item.kind().usesAmmo() ? item.ammo() : null,
                         ItemValues.sellPrice(item.kind(), item.ammo())))
                 .toList();
-        return new StashView(stash, GameConstants.STASH_CAPACITY,
+        int size = account.stashSize();
+        StashUpgrade upgrade = size + 1 < GameConstants.STASH_SIZES.size()
+                ? new StashUpgrade(GameConstants.STASH_SIZES.get(size + 1),
+                        GameConstants.STASH_UPGRADE_PRICES.get(size))
+                : null;
+        return new StashView(stash, capacity(account), upgrade,
                 sorties.existsByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT),
                 account.money(), account.haul(), ItemValues.STOCK);
+    }
+
+    private static int capacity(Account account) {
+        return GameConstants.STASH_SIZES.get(account.stashSize());
+    }
+
+    /** Buys the next stash size. For good: the account keeps it. */
+    public StashView growStash(long accountId) {
+        return tx.execute(status -> {
+            Account account = accounts.lockById(accountId).orElseThrow();
+            int size = account.stashSize();
+            if (size + 1 >= GameConstants.STASH_SIZES.size()) {
+                throw new TradeRefusedException("더 큰 창고는 없습니다");
+            }
+            if (!account.spend(GameConstants.STASH_UPGRADE_PRICES.get(size))) {
+                throw new TradeRefusedException("돈이 모자랍니다");
+            }
+            account.growStash();
+            return viewInside(accountId);
+        });
     }
 
     // --- The trader ---------------------------------------------------------
@@ -171,7 +201,7 @@ public class HideoutService implements DepartureListener {
         return tx.execute(status -> {
             Account account = accounts.lockById(accountId).orElseThrow();
             if (items.countByAccountIdAndLocation(accountId, StashItem.Location.STASH)
-                    >= GameConstants.STASH_CAPACITY) {
+                    >= capacity(account)) {
                 throw new TradeRefusedException("창고가 가득 찼습니다");
             }
             if (!account.spend(offer.price())) {

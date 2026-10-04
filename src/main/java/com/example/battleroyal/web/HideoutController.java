@@ -68,6 +68,11 @@ public class HideoutController {
         return hideout.sell(named(user).id(), request.itemId());
     }
 
+    @PostMapping("/stash-upgrade")
+    public StashView growStash(@AuthenticationPrincipal OidcUser user) {
+        return hideout.growStash(named(user).id());
+    }
+
     @PostMapping("/buy")
     public StashView buy(@AuthenticationPrincipal OidcUser user, @RequestBody BuyRequest request) {
         return hideout.buy(named(user).id(), request.kind());

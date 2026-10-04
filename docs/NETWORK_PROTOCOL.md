@@ -29,7 +29,8 @@ per-player 필터링에는 raw `TextWebSocketHandler` + Jackson이 더 단순하
 
 ```json
 GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ],
-          "capacity": 10, "out": false, "money": 135, "haul": 165,
+          "capacity": 10, "upgrade": { "capacity": 20, "price": 500 },
+          "out": false, "money": 135, "haul": 165,
           "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ] }
 POST  { "loadout": [ 11, null, 12 ] }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
@@ -56,6 +57,16 @@ buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 `BOLTS`)은 가득 차서. 거부는 409와 한국어 사유:
 창고에 없는(나가 있거나 남의) 아이템, 상인이 팔지 않는 물건, 돈 부족, 창고가 가득 참(사기만 —
 탈출은 가득 차도 다 들어온다).
+
+### `POST /api/hideout/stash-upgrade` (V2.1, 로그인 필요)
+
+```json
+(본문 없음)  → 위의 GET과 같은 거점 화면
+```
+
+창고를 다음 크기로 늘린다: 일반 상자 10칸 → 큰 상자 20칸(500원) → 고급 상자 40칸(2,000원).
+계정에 영구히 남는다. GET의 `upgrade`가 다음 크기와 값이고, 가장 큰 창고면 `null`. 거부는
+409와 한국어 사유: 돈 부족, 더 큰 창고 없음.
 
 ### `GET /api/me`, `POST /api/me/nickname` (V2 브랜치)
 

@@ -98,7 +98,11 @@ class SignInWebTest {
         mvc.perform(get("/api/hideout").with(google("g-web-1")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.capacity").value(10))
+                .andExpect(jsonPath("$.upgrade.capacity").value(20))
+                .andExpect(jsonPath("$.upgrade.price").value(500))
                 .andExpect(jsonPath("$.out").value(false));
+        mvc.perform(post("/api/hideout/stash-upgrade").with(google("g-web-1")))
+                .andExpect(status().isConflict());
         mvc.perform(post("/api/hideout/sortie").with(google("g-web-1"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"loadout\":[]}"))
                 .andExpect(status().isOk())

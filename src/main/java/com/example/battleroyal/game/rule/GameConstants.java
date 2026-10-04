@@ -73,8 +73,17 @@ public final class GameConstants {
      */
     public static final int CRATE_CAPACITY = 6;
 
-    /** Slots in a hideout stash: the plain box (V2 D10). Bigger boxes come later. */
-    public static final int STASH_CAPACITY = 10;
+    /**
+     * Slots in a hideout stash at each size (V2 D10): the plain box, the big box, the
+     * fine box. Bought in order from the 창고 page and kept for good.
+     */
+    public static final List<Integer> STASH_SIZES = List.of(10, 20, 40);
+
+    /** What each next stash size costs: index 0 buys the big box, 1 the fine box. */
+    public static final List<Integer> STASH_UPGRADE_PRICES = List.of(500, 2_000);
+
+    /** Slots in a stash nobody has upgraded yet. */
+    public static final int STASH_CAPACITY = STASH_SIZES.getFirst();
 
     /** Grace period after a socket drops before the player is killed: 15s. */
     public static final int DISCONNECT_GRACE_TICKS = 300;

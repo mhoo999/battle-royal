@@ -281,6 +281,46 @@ class HideoutServiceTest {
         assertEquals(GameConstants.STASH_CAPACITY, hideout.view(me).capacity());
     }
 
+    private void give(long money) {
+        Account account = accounts.findById(me).orElseThrow();
+        account.earn(money);
+        accounts.save(account);
+    }
+
+    @Test
+    void aBiggerStashIsBoughtInOrderAndKept() {
+        HideoutService.StashView plain = hideout.view(me);
+        assertEquals(new HideoutService.StashUpgrade(20, 500), plain.upgrade());
+        assertThrows(TradeRefusedException.class, () -> hideout.growStash(me), "no money yet");
+        assertEquals(10, hideout.view(me).capacity(), "a refused upgrade changes nothing");
+
+        give(2_600);
+        HideoutService.StashView big = hideout.growStash(me);
+        assertEquals(20, big.capacity());
+        assertEquals(2_100, big.money());
+        assertEquals(new HideoutService.StashUpgrade(40, 2_000), big.upgrade());
+
+        HideoutService.StashView fine = hideout.growStash(me);
+        assertEquals(40, fine.capacity());
+        assertEquals(100, fine.money());
+        assertNull(fine.upgrade(), "nothing bigger");
+        assertThrows(TradeRefusedException.class, () -> hideout.growStash(me));
+    }
+
+    @Test
+    void aBiggerStashHasRoomForMorePurchases() {
+        for (int i = 0; i < GameConstants.STASH_CAPACITY; i++) {
+            stash(me, ItemKind.CUP, 0);
+        }
+        give(500 + 120);
+        assertThrows(TradeRefusedException.class, () -> hideout.buy(me, ItemKind.KNIFE));
+
+        hideout.growStash(me);
+        HideoutService.StashView after = hideout.buy(me, ItemKind.KNIFE);
+
+        assertEquals(GameConstants.STASH_CAPACITY + 1, after.stash().size());
+    }
+
     /** Runs the write on the calling thread so the test can look straight away. */
     private static final class DirectExecutor extends AbstractExecutorService {
         private boolean shutdown;

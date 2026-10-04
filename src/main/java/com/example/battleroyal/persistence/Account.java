@@ -50,6 +50,11 @@ public class Account {
     @Column(nullable = false)
     private long haul;
 
+    /** Which stash size has been bought: 0 is the plain box (GameConstants.STASH_SIZES). */
+    @ColumnDefault("0")
+    @Column(name = "stash_size", nullable = false)
+    private int stashSize;
+
     protected Account() {
     }
 
@@ -101,5 +106,13 @@ public class Account {
 
     public void addHaul(long value) {
         this.haul += value;
+    }
+
+    public int stashSize() {
+        return stashSize;
+    }
+
+    public void growStash() {
+        this.stashSize++;
     }
 }

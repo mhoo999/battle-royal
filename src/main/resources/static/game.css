@@ -614,8 +614,9 @@ header.hud-bar {
 }
 /* Hidden, the bar keeps its room: the page is centred, so it would shift the grids. */
 .deal[hidden] { display: flex; visibility: hidden; }
-#deal-name { color: var(--item); }
-#deal-button {
+#deal-name, #grow-name { color: var(--item); }
+#grow-name small { color: var(--dim); }
+#deal-button, #grow-button {
   padding: 0.5rem 0.9rem;
   background: transparent;
   border: 1px solid var(--self);
@@ -624,7 +625,7 @@ header.hud-bar {
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-#deal-button:disabled { opacity: 0.35; cursor: default; }
+#deal-button:disabled, #grow-button:disabled { opacity: 0.35; cursor: default; }
 /*
  * The hideout's front, laid out like the title screen: the picture, the block-letter
  * heading and its red rule, then one column of buttons of one width.
