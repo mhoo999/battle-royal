@@ -12,7 +12,7 @@ stash in the DB, sorties, two private exits and a compass, extraction, trader, m
 ranking by haul; empty guns reload from ammo bundles. The hideout opens like the title
 screen with a short ASCII banner (`tools/hideout-art.py`); every inventory is a grid,
 the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash upgrades and bags
-(V2.1) are built, not deployed. Exact next step: see Next, item 1.
+(V2.1) are live since 2026-10-04 (`65bdb39`, run 37183382160); seasons are next. Exact next step: see Next, item 1.
 
 ## Completed
 
@@ -124,7 +124,8 @@ the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash
       extraction. Trader 150/450, island 2% / 0.5% (loot table now out of 200, pistol
       kept last for the seeded tests). Hideout: a bag slot beside 가져갈 것; setting out
       takes `bag`. Client: bag slot in the bag window and the 창고 page, keys 1-7.
-      Verified by tests and stubbed browser checks; not yet played against a live server.
+      Verified by tests, stubbed browser checks and smoke on a local server; deployed
+      2026-10-04 (`65bdb39`, run 37183382160), not yet played with a bag in production.
 - [x] **V2.1 stash upgrades (2026-10-04, user's numbers):** `Account.stashSize` (column
       `stash_size`, default 0), 10 → 20 slots for 500원 → 40 for 2,000원
       (`GameConstants.STASH_SIZES` / `STASH_UPGRADE_PRICES`), `POST /api/hideout/stash-upgrade`,
@@ -314,20 +315,16 @@ Nothing.
 
 ## Next
 
-1. **Deploy V2.1 part 1 — ask first, a push to `main` deploys.** Local `main` is ahead of
-   origin with the 창고 grids, stash upgrades and bags (`e8b2c16`..). Smoke passed on a
-   local server with this code (port 8081). On RDS the deploy adds `account.stash_size`
-   (default 0) through `ddl-auto=update`; `SMALL_BAG`/`BIG_BAG` fit the VARCHAR `kind`.
-2. **v2.0 production check (user).** Sign in with Google on https://battleroyale.site
+1. **v2.0 production check (user).** Sign in with Google on https://battleroyale.site
    and do one trip (nickname, hideout, sortie, extract, stash), then
    `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
    permitted to run it against production).
-3. Hideout look, on a real phone: the art is sized from the viewport, never checked off
+2. Hideout look, on a real phone: the art is sized from the viewport, never checked off
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
-4. Left over from V1, whenever convenient: real-phone check of touch input; rollback
+3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-5. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
-6. Later: two EC2 instances with deploys that keep players (world handoff or rooms
+4. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
+5. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.
 
