@@ -11,8 +11,8 @@ The extraction loop (`docs/V2_PLAN.md` §7): Google accounts, crates, three-slot
 stash in the DB, sorties, two private exits and a compass, extraction, trader, money,
 ranking by haul; empty guns reload from ammo bundles. The hideout opens like the title
 screen with a short ASCII banner (`tools/hideout-art.py`); every inventory is a grid,
-the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash upgrades and bags
-(V2.1) are live since 2026-10-04 (`65bdb39`, run 37183382160); seasons are next. Exact next step: see Next, item 1.
+the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash upgrades, bags and
+seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Exact next step: see Next, item 1.
 
 ## Completed
 
@@ -125,7 +125,8 @@ the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash
       (CHAMPION / TOP10 / PARTICIPANT incl. anyone who extracted), then stash items, money,
       haul and stash size are wiped. New tables `season`, `trophy` (tier as VARCHAR).
       `GET /api/season`; lobby ranking shows 시즌 N · n일 남음, the hideout the season and
-      trophies. A late death/extraction after the wipe changes nothing. Not deployed yet.
+      trophies. A late death/extraction after the wipe changes nothing. Deployed 2026-10-04
+      (`1bb3b83`, run 37185346230): **season 1 ends 2026-11-01 00:00 KST**, the first wipe.
 - [x] **V2.1 bags (2026-10-04, user's decisions):** SMALL_BAG +2 / BIG_BAG +4 slots, worn in
       a separate bag slot (TAKE/PUT slot -1, `Bags`), refused while the slots it would
       take away hold anything; dropped with everything on death, carried home on
@@ -323,19 +324,29 @@ Nothing.
 
 ## Next
 
-1. **v2.0 production check (user).** Sign in with Google on https://battleroyale.site
-   and do one trip (nickname, hideout, sortie, extract, stash), then
-   `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
-   permitted to run it against production).
-2. Hideout look, on a real phone: the art is sized from the viewport, never checked off
-   a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
-3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
-   drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-4. **Deploy V2.1 seasons — ask first.** Season 1 opens on the first start after the deploy
-   and ends 28 days later at midnight Seoul. New tables `season`, `trophy` via ddl-auto.
-5. Later: two EC2 instances with deploys that keep players (world handoff or rooms
-   pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
-   players their gear.
+1. **Production play check (user).** On https://battleroyale.site, signed in: one trip
+   (sortie, extract, stash), buy a small bag and wear it out (5 slots), buy the 20-slot
+   stash once the money is there, and see 시즌 1 · n일 남음 in the lobby and hideout.
+   Then `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent
+   was not permitted to run it against production).
+2. **Fix: a sortie whose socket never attaches stays OUT until a restart** (V2_PLAN §8
+   step 2, known gap): the account cannot set out again. Prepared plan, not started:
+   when setting out finds an OUT sortie whose player is not in the game (never joined,
+   or already gone), retire that session's token first, then refund its items and close
+   it REFUNDED, then set out. Retiring the token before refunding is what stops the old
+   session joining later with items that are back in the stash. Needs a way for
+   `HideoutService` to ask whether a player id is live (RoomRegistry lookup across the
+   thread boundary: a concurrent set of joined ids kept by the loop, read-only from web).
+   Test: set out, never join, set out again succeeds and the old token is refused.
+3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
+   the user leans towards about three months later (91 days suggested). A change applies
+   from the next season; season 1's deadline is stored in `season.ends_at`.
+4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
+   (the last two drop everyone).
+5. V2.2+ (V2_PLAN §7): special maps and PvE, quests, more room kinds, a player market.
+   Needs a planning session first; nothing decided.
+6. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
+   this more pressing: a restart costs players their gear.
 
 ## Known Issues
 
@@ -352,6 +363,15 @@ Nothing.
   tab; check it on a real phone.
 
 ## Recent Decisions
+
+- **Seasons (2026-10-04, user).** 4 weeks for season 1, so the first wipe and trophies
+  run in production within a month; likely longer (about 3 months) afterwards. Wipe takes
+  ranking, stash items, money and stash size; trophies by final rank; players on the
+  island at the deadline are sent home. Open sorties close as REFUNDED rather than a new
+  Outcome value, because `sortie.outcome` is a MySQL ENUM that `update` never widens.
+- **Bags and stash upgrades (2026-10-04, user).** Stash 10/20/40 for 500/2,000원, kept per
+  season. Bags are items in their own slot (+2 for 150원, +4 for 450원), lost on death,
+  refused while the slots they would remove hold anything; island 2% / 0.5%.
 
 - **MySQL 8.4 rehearsal for v2.0 (2026-10-04).** Docker MySQL 8.4 with the V1 schema and
   rows (V1 prod jar from `main`), then the V2 prod jar on the same DB: `account`,
