@@ -37,6 +37,7 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-04-v2-quest-panel.png` | 2026-10-04 | 상점 with the trader's errand on top (boxed): 7/10 출석 확인, 인형 0/1 · 출석부 2/2 (done in mint), 보상 150원, 납품 greyed until the stash holds it all. Staged: hideout data stubbed | V2.2 quests |
 | `2026-10-04-v2-outpost-guards.png` | 2026-10-04 | A military outpost on the board (compound boxed): two guards as orange triangles on opposite corners, each facing its line, and a military crate between them. Staged: terrain and guards painted from the template | V2.2 PvE outposts |
 | `2026-10-05-v2-errand-compass.png` | 2026-10-05 | A location errand on the board: the compass line reads 탈출구 ↗ 2 · ↙ 3 then 의뢰 ✦ 이 방 · ↘ 2, and the mark ✦ stands on its tile (both boxed). Staged: snapshot stubbed | V2.2 errand compass |
+| `2026-10-05-v2-errand-ladders.png` | 2026-10-05 | 상점's errand board as three ladders (boxed): 납품 2/6 소풍 준비물 (쉬움, 컵 1/2, 납품), 장소 2/3 수색 (보통), 군인 처치 2/3 소탕 (어려움, 1/3), each with its reward. Staged: hideout data stubbed | V2.2 errands by kind |
 | `2026-10-03-v2-exit-compass.png` | 2026-10-03 | V2 compass above the board (`탈출구 ◎ 이 방 · ↓ 1`) and my own exit `◎` on the floor beside me | V2 step 3, exits and compass |
 | `2026-10-03-v2-extracting.png` | 2026-10-03 | Standing on the exit holding B: [B 탈출], "탈출 중 — B를 떼거나 움직이거나 맞으면 취소", the gauge starting | V2 step 3, extraction |
 | `2026-10-03-v2-extracted.png` | 2026-10-03 | The 탈출 성공 screen with the haul line and the record | V2 step 3, extraction |

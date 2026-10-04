@@ -88,7 +88,8 @@ class SeasonServiceTest {
         account.addHaul(haul);
         account.earn(money);
         account.growStash();
-        account.nextQuest();
+        account.nextQuest(com.example.battleroyal.game.rule.Quests.Category.DELIVERY);
+        account.nextQuest(com.example.battleroyal.game.rule.Quests.Category.SOLDIER);
         return accounts.save(account);
     }
 
@@ -140,7 +141,10 @@ class SeasonServiceTest {
             assertEquals(0, account.haul());
             assertEquals(0, account.money());
             assertEquals(0, account.stashSize(), "back to the plain box");
-            assertEquals(0, account.questStep(), "errands start over");
+            for (com.example.battleroyal.game.rule.Quests.Category category
+                    : com.example.battleroyal.game.rule.Quests.Category.values()) {
+                assertEquals(0, account.questStep(category), "errands start over");
+            }
         }
         assertEquals(0, items.count());
         assertEquals(4, accounts.count(), "accounts and nicknames stay");

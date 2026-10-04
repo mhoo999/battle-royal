@@ -52,6 +52,7 @@ public final class Player {
     private List<Exit> exits = List.of();
     private List<Exit> marks = List.of();
     private int marksReached;
+    private int soldiersDowned;
     private Pos extractPos;
     private long extractDoneTick;
     private boolean extracted;
@@ -377,6 +378,15 @@ public final class Player {
 
     public int marksReached() {
         return marksReached;
+    }
+
+    /** Outpost soldiers this player brought down this trip: for errands, never for score. */
+    public int soldiersDowned() {
+        return soldiersDowned;
+    }
+
+    public void downedSoldier() {
+        soldiersDowned++;
     }
 
     // --- Exits ------------------------------------------------------------

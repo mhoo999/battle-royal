@@ -93,11 +93,12 @@ public final class GuardRules {
         room.markDirty();
     }
 
-    /** A player's blow or shot landing on a guard. */
-    static void wound(Room room, Guard guard, int damage) {
+    /** A player's blow or shot landing on a guard. Bringing one down counts for errands. */
+    static void wound(Room room, Player attacker, Guard guard, int damage) {
         if (!guard.takeDamage(damage)) {
             return;
         }
+        attacker.downedSoldier();
         List<String> witnesses = room.players().stream()
                 .filter(Player::active)
                 .map(Player::id)

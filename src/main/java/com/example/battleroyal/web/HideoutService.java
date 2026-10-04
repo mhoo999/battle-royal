@@ -75,11 +75,11 @@ public class HideoutService implements DepartureListener {
 
     /**
      * @param upgrade null once the biggest stash is bought
-     * @param quest   the trader's errand under way, null once all are done
+     * @param quests  the trader's errands under way, one per kind still to climb
      */
     public record StashView(List<StashEntry> stash, int capacity, StashUpgrade upgrade,
                             boolean out, long money, long haul, List<ItemValues.Offer> trader,
-                            QuestLedger.QuestView quest) {
+                            List<QuestLedger.QuestView> quests) {
     }
 
     /** Thrown for a sale or purchase the rules do not allow; the message says why. */
@@ -351,8 +351,8 @@ public class HideoutService implements DepartureListener {
                     sortie.end(Sortie.Outcome.DIED, clock.instant());
                     items.deleteAll(items.findBySortieId(sortieId));
                     // Kills count for an errand even on a trip that ended badly.
-                    QuestLedger.addKills(accounts.lockById(sortie.accountId()).orElseThrow(),
-                            died.kills(), items);
+                    QuestLedger.addSoldiers(accounts.lockById(sortie.accountId()).orElseThrow(),
+                            died.soldiersDowned(), items);
                 });
             } catch (RuntimeException e) {
                 // Left out: the next start-up hands the gear back rather than losing it.
@@ -371,8 +371,8 @@ public class HideoutService implements DepartureListener {
         List<Item> carried = extracted.carried();
         writer.execute(() -> {
             try {
-                tx.executeWithoutResult(status -> settle(sortieId, carried, extracted.kills(),
-                        extracted.marksReached()));
+                tx.executeWithoutResult(status -> settle(sortieId, carried,
+                        extracted.soldiersDowned(), extracted.marksReached()));
             } catch (RuntimeException e) {
                 // Left out: the next start-up hands back what was taken out, at least.
                 log.error("Could not close sortie {} as extracted", sortieId, e);
@@ -380,7 +380,7 @@ public class HideoutService implements DepartureListener {
         });
     }
 
-    private void settle(long sortieId, List<Item> carried, int kills, int marksReached) {
+    private void settle(long sortieId, List<Item> carried, int soldiers, int marksReached) {
         Sortie sortie = sorties.findById(sortieId).orElseThrow();
         if (sortie.outcome() != Sortie.Outcome.OUT) {
             return;     // closed by a season's end: what came out went with the wipe
@@ -403,7 +403,7 @@ public class HideoutService implements DepartureListener {
         // Only what was found counts towards the ranking (D5).
         Account account = accounts.lockById(sortie.accountId()).orElseThrow();
         account.addHaul(found);
-        QuestLedger.addKills(account, kills, items);
+        QuestLedger.addSoldiers(account, soldiers, items);
         QuestLedger.reachedMarks(account, marksReached, items);
         // Taken out and not brought back: left in a crate somewhere, so lost.
         items.deleteAll(wentOut.values());

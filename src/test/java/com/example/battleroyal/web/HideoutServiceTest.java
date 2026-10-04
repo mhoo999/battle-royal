@@ -345,20 +345,35 @@ class HideoutServiceTest {
 
     // --- The trader's errands ------------------------------------------------
 
-    private void skipQuests(int count) {
+    private void climb(Quests.Category category, int steps) {
         Account account = accounts.findById(me).orElseThrow();
-        for (int i = 0; i < count; i++) {
-            account.nextQuest();
+        for (int i = 0; i < steps; i++) {
+            account.nextQuest(category);
         }
         accounts.save(account);
     }
 
+    private QuestLedger.QuestView errand(Quests.Category category) {
+        return hideout.view(me).quests().stream()
+                .filter(view -> view.category() == category)
+                .findFirst().orElse(null);
+    }
+
     @Test
-    void theFirstErrandIsADeliveryHandedOverFromTheStash() {
-        QuestLedger.QuestView first = hideout.view(me).quest();
-        assertEquals(1, first.step());
-        assertEquals(Quests.ALL.size(), first.total());
-        assertEquals("첫 납품", first.title());
+    void oneErrandOfEachKindIsUnderWayAtOnce() {
+        List<QuestLedger.QuestView> quests = hideout.view(me).quests();
+
+        assertEquals(List.of(Quests.Category.DELIVERY, Quests.Category.VISIT,
+                Quests.Category.SOLDIER), quests.stream().map(QuestLedger.QuestView::category).toList());
+        assertEquals(List.of("첫 납품", "정찰", "첫 교전"),
+                quests.stream().map(QuestLedger.QuestView::title).toList());
+        assertEquals(Quests.Difficulty.EASY, quests.getFirst().difficulty());
+        assertEquals(Quests.LADDERS.get(Quests.Category.DELIVERY).size(), quests.getFirst().total());
+    }
+
+    @Test
+    void aDeliveryIsHandedOverFromTheStash() {
+        QuestLedger.QuestView first = errand(Quests.Category.DELIVERY);
         assertEquals(List.of(new QuestLedger.Need(ItemKind.SPOON, 1, 0)), first.deliver());
         assertFalse(first.ready());
         assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me),
@@ -366,42 +381,62 @@ class HideoutServiceTest {
 
         StashItem spoon = stash(me, ItemKind.SPOON, 0);
         StashItem knife = stash(me, ItemKind.KNIFE, 0);
-        assertTrue(hideout.view(me).quest().ready());
+        assertTrue(errand(Quests.Category.DELIVERY).ready());
 
         HideoutService.StashView after = hideout.deliverQuest(me);
 
         assertTrue(items.findById(spoon.id()).isEmpty(), "the spoon went to the trader");
         assertTrue(items.findById(knife.id()).isPresent(), "nothing else did");
         assertEquals(30, after.money());
-        assertEquals("소풍 준비물", after.quest().title());
+        assertEquals("소풍 준비물", errand(Quests.Category.DELIVERY).title());
+        assertEquals("정찰", errand(Quests.Category.VISIT).title(), "the other ladders untouched");
     }
 
     @Test
-    void killsFromATripCountTowardsAKillErrandWhetherItEndsInDeathOrEscape() {
-        skipQuests(7);      // 사냥: three kills
-        assertEquals("사냥", hideout.view(me).quest().title());
-        assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me),
-                "a kill errand is not handed over");
+    void soldiersAddUpOverTripsWhetherTheyEndInDeathOrEscape() {
+        climb(Quests.Category.SOLDIER, 1);      // 소탕: three soldiers, over any trips
+        assertEquals("소탕", errand(Quests.Category.SOLDIER).title());
 
         GameSession died = hideout.setOut(me, "shuya", List.of());
-        hideout.onDeath(new GameEvent.Died(died.playerId(), "shuya", 0, 2, 0, "kang", null));
-        assertEquals(2, hideout.view(me).quest().killsDone());
+        hideout.onDeath(new GameEvent.Died(died.playerId(), "shuya", 0, 0, 0, null, null, true, 2));
+        assertEquals(2, errand(Quests.Category.SOLDIER).soldiersDone());
 
         GameSession out = hideout.setOut(me, "shuya", List.of());
-        hideout.onExtracted(new GameEvent.Extracted(out.playerId(), "shuya", 0, 1, 0, List.of()));
+        hideout.onExtracted(new GameEvent.Extracted(out.playerId(), "shuya", 0, 5, 0, List.of(), 0, 1));
 
         HideoutService.StashView after = hideout.view(me);
-        assertEquals("출석 확인", after.quest().title(), "done, and the next one taken");
-        assertEquals(0, after.quest().killsDone(), "kills start over for the next errand");
-        assertEquals(200, after.money());
-        assertEquals(List.of(ItemKind.ROUNDS), after.stash().stream()
-                .map(HideoutService.StashEntry::kind).toList(), "the rounds came with it");
-        assertEquals(6, after.stash().getFirst().ammo());
+        assertEquals("초소 함락", errand(Quests.Category.SOLDIER).title());
+        assertEquals(0, errand(Quests.Category.SOLDIER).soldiersDone(), "starts over for the next");
+        assertEquals(450, after.money());
+        assertEquals(List.of(ItemKind.PISTOL), after.stash().stream()
+                .map(HideoutService.StashEntry::kind).toList(), "the pistol came with it");
+    }
+
+    @Test
+    void playerKillsDoNotCountForASoldierErrand() {
+        GameSession out = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(out.playerId(), "shuya", 0, 3, 0, List.of(), 0, 0));
+
+        assertEquals("첫 교전", errand(Quests.Category.SOLDIER).title());
+    }
+
+    @Test
+    void aOneTripSoldierErrandNeedsThemAllInOneTrip() {
+        climb(Quests.Category.SOLDIER, 2);      // 초소 함락: two in one trip
+        GameSession one = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(one.playerId(), "shuya", 0, 0, 0, List.of(), 0, 1));
+        GameSession two = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(two.playerId(), "shuya", 0, 0, 0, List.of(), 0, 1));
+        assertEquals("초소 함락", errand(Quests.Category.SOLDIER).title(), "one and one are not two");
+
+        GameSession both = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(both.playerId(), "shuya", 0, 0, 0, List.of(), 0, 2));
+        assertNull(errand(Quests.Category.SOLDIER), "the ladder is climbed");
     }
 
     @Test
     void anErrandsRewardItemLandsInTheStashEvenWhenItIsFull() {
-        skipQuests(4);      // 음악 시간: two recorders, a small bag
+        climb(Quests.Category.DELIVERY, 2);     // 음악 시간: two recorders, a small bag
         stash(me, ItemKind.RECORDER, 0);
         stash(me, ItemKind.RECORDER, 0);
         for (int i = 2; i < GameConstants.STASH_CAPACITY; i++) {
@@ -417,50 +452,48 @@ class HideoutServiceTest {
 
     @Test
     void aVisitErrandMarksPlacesForTheTripAndAnEscapeHavingReachedThemCompletesIt() {
-        skipQuests(2);      // 정찰: one mark, two doors out
-        assertEquals("정찰", hideout.view(me).quest().title());
-        assertEquals(1, hideout.view(me).quest().visits());
-        assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me));
+        assertEquals("정찰", errand(Quests.Category.VISIT).title());
+        assertEquals(1, errand(Quests.Category.VISIT).visits());
 
         GameSession first = hideout.setOut(me, "shuya", List.of());
         assertEquals(1, first.marks());
         assertEquals(2, first.markDoors());
         hideout.onExtracted(new GameEvent.Extracted(first.playerId(), "shuya", 0, 0, 0,
                 List.of(), 0));
-        assertEquals("정찰", hideout.view(me).quest().title(), "out without the mark: not yet");
+        assertEquals("정찰", errand(Quests.Category.VISIT).title(), "out without the mark: not yet");
 
         GameSession second = hideout.setOut(me, "shuya", List.of());
         hideout.onExtracted(new GameEvent.Extracted(second.playerId(), "shuya", 0, 0, 0,
                 List.of(), 1));
 
-        HideoutService.StashView after = hideout.view(me);
-        assertEquals("첫 피", after.quest().title());
-        assertEquals(80, after.money());
-        assertEquals(0, hideout.setOut(me, "shuya", List.of()).marks(),
-                "a kill errand marks nothing");
+        assertEquals("수색", errand(Quests.Category.VISIT).title());
+        assertEquals(80, hideout.view(me).money());
     }
 
     @Test
     void marksCountOnlyWithinOneTrip() {
-        skipQuests(6);      // 수색: two marks in one trip
+        climb(Quests.Category.VISIT, 1);        // 수색: two marks in one trip
         GameSession one = hideout.setOut(me, "shuya", List.of());
         hideout.onExtracted(new GameEvent.Extracted(one.playerId(), "shuya", 0, 0, 0, List.of(), 1));
         GameSession two = hideout.setOut(me, "shuya", List.of());
         hideout.onExtracted(new GameEvent.Extracted(two.playerId(), "shuya", 0, 0, 0, List.of(), 1));
 
-        assertEquals("수색", hideout.view(me).quest().title(), "one and one do not make two");
+        assertEquals("수색", errand(Quests.Category.VISIT).title(), "one and one do not make two");
 
         GameSession both = hideout.setOut(me, "shuya", List.of());
         hideout.onExtracted(new GameEvent.Extracted(both.playerId(), "shuya", 0, 0, 0, List.of(), 2));
-        assertEquals("사냥", hideout.view(me).quest().title());
+        assertEquals("위험 지역", errand(Quests.Category.VISIT).title());
     }
 
     @Test
-    void afterTheLastErrandThereIsNoneLeft() {
-        skipQuests(Quests.ALL.size());
+    void aClimbedLadderLeavesTheBoardAndMarksNothing() {
+        climb(Quests.Category.VISIT, Quests.LADDERS.get(Quests.Category.VISIT).size());
+        climb(Quests.Category.DELIVERY, Quests.LADDERS.get(Quests.Category.DELIVERY).size());
 
-        assertNull(hideout.view(me).quest());
+        assertNull(errand(Quests.Category.VISIT));
+        assertNull(errand(Quests.Category.DELIVERY));
         assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me));
+        assertEquals(0, hideout.setOut(me, "shuya", List.of()).marks());
     }
 
     @Test

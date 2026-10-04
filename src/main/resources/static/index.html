@@ -190,17 +190,10 @@
     <button class="link-button to-home" type="button">거점으로</button>
   </section>
   <section id="hideout-shop" class="hideout-page trader" hidden>
-    <!-- The trader's errand under way (V2.2): one at a time, in order. -->
-    <div id="quest" class="quest">
-      <div class="quest-head">
-        <span class="inv-title">상인의 의뢰 <span id="quest-step"></span></span>
-        <b id="quest-title"></b>
-      </div>
-      <p id="quest-goal" class="quest-goal"></p>
-      <div class="quest-foot">
-        <span id="quest-reward" class="quest-reward"></span>
-        <button id="quest-deliver" type="button">납품</button>
-      </div>
+    <!-- The trader's errands (V2.2): one of each kind under way, each a ladder. -->
+    <div class="quests">
+      <p class="inv-title">상인의 의뢰</p>
+      <div id="quest-list"></div>
     </div>
     <div class="hideout-body">
       <div class="inv-col">

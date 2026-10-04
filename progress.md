@@ -48,12 +48,14 @@ room in nine, two `Guard`s (own entity, not a `Player`) that turn every 3s and f
 down their line after 0.5s of sight; 60 health, drop 6 rounds, stand again after 2 min
 empty; military loot table; no exits in outposts.
 
-**Errand compass (2026-10-05, built, not deployed).** Outpost enemies are called 군인
-(user). Three location errands inserted (정찰, 수색, 위험 지역; 13 in all): a trip out
-with one gets private marks ✦ some doors away (never the start, an outpost or an exit
-tile), the compass points at them, standing on them all and getting out completes it.
-Inserting shifted `quest_step` meanings: a live account part-way through may redo one
-errand or meet a new one early; season 1's wipe resets it anyway.
+**Errands by kind (2026-10-05, built, not deployed).** Outpost enemies are called 군인
+(user). The trader's errands are three ladders, easy to hard, one of each under way at
+once (user: so a hard kind never blocks an early player): 납품 (6), 장소 (3, private
+marks ✦ some doors away that the compass points at; stand on them all and get out),
+군인 처치 (3, soldiers brought down, counted at the end of a trip). Player-kill errands
+are gone. Account columns `quest_step` (delivery, reused), `quest_visit_step`,
+`quest_soldier_step`, `quest_kills` (now soldiers); a live account mid-way keeps its old
+`quest_step` as a delivery step, and season 1's wipe resets it all anyway.
 
 **Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
@@ -81,9 +83,11 @@ Nothing.
    season; season 1's deadline is stored in `season.ends_at`.
 4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
    (the last two drop everyone).
-5. Player market: **postponed (user, 2026-10-04).** If it comes back: fixed-price listings
+5. Trader reputation (Tarkov-like, user's idea, next after errands): design what it
+   unlocks (discounts, stock) before building.
+6. Player market: **postponed (user, 2026-10-04).** If it comes back: fixed-price listings
    only, no auction (the user does not want auctions yet).
-6. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
+7. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
    this more pressing: a restart costs players the trip they are on (gear is refunded).
 
 ## Known Issues
@@ -120,8 +124,9 @@ Standing decisions; each was the user's call unless marked otherwise.
   sorties, private exits, haul ranking (finds only), seasons with wipes and trophies.
 - **A full stash still takes everything extracted**, and quest reward items too; only
   buying needs a free slot.
-- **Guards are not players**: no score, kills, results or population; their kills do not
-  count for errands. They see by the players' rules.
+- **Guards (군인) are not players**: no score, kills, results or population; bringing one
+  down counts only for the soldier errands. They see by the players' rules.
+- **Errands are three ladders by kind**, one of each under way (2026-10-05).
 - **No player market for now, and no auction** (2026-10-04).
 - **Seasons**: 4 weeks for season 1 so the first wipe runs in production within a month,
   probably about 3 months after (pending, Next 3).

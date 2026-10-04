@@ -1,5 +1,6 @@
 package com.example.battleroyal.persistence;
 
+import com.example.battleroyal.game.rule.Quests;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -55,15 +56,27 @@ public class Account {
     @Column(name = "stash_size", nullable = false)
     private int stashSize;
 
-    /** Which of the trader's errands is under way (Quests.ALL); its size once all are done. */
+    /*
+     * Where each of the trader's ladders stands (Quests.LADDERS): the index of the errand
+     * under way, or the ladder's size once it is climbed. quest_step is the delivery
+     * ladder; it held the one list of errands before they were split by kind.
+     */
     @ColumnDefault("0")
     @Column(name = "quest_step", nullable = false)
-    private int questStep;
+    private int deliveryStep;
 
-    /** Kills counted towards the errand under way, since it was taken. */
+    @ColumnDefault("0")
+    @Column(name = "quest_visit_step", nullable = false)
+    private int visitStep;
+
+    @ColumnDefault("0")
+    @Column(name = "quest_soldier_step", nullable = false)
+    private int soldierStep;
+
+    /** Soldiers counted towards the soldier errand under way, since it was taken. */
     @ColumnDefault("0")
     @Column(name = "quest_kills", nullable = false)
-    private int questKills;
+    private int soldierKills;
 
     protected Account() {
     }
@@ -126,22 +139,32 @@ public class Account {
         this.stashSize++;
     }
 
-    public int questStep() {
-        return questStep;
+    public int questStep(Quests.Category category) {
+        return switch (category) {
+            case DELIVERY -> deliveryStep;
+            case VISIT -> visitStep;
+            case SOLDIER -> soldierStep;
+        };
     }
 
-    public int questKills() {
-        return questKills;
+    public int soldierKills() {
+        return soldierKills;
     }
 
-    public void addQuestKills(int kills) {
-        this.questKills += kills;
+    public void addSoldierKills(int kills) {
+        this.soldierKills += kills;
     }
 
-    /** The errand under way is done: the next one starts from no kills. */
-    public void nextQuest() {
-        this.questStep++;
-        this.questKills = 0;
+    /** That kind's errand is done: the next on its ladder; a soldier errand starts from none. */
+    public void nextQuest(Quests.Category category) {
+        switch (category) {
+            case DELIVERY -> deliveryStep++;
+            case VISIT -> visitStep++;
+            case SOLDIER -> {
+                soldierStep++;
+                soldierKills = 0;
+            }
+        }
     }
 
     /** A new season (D12): everyone back to the same starting line, errands included. */
@@ -149,7 +172,9 @@ public class Account {
         this.money = 0;
         this.haul = 0;
         this.stashSize = 0;
-        this.questStep = 0;
-        this.questKills = 0;
+        this.deliveryStep = 0;
+        this.visitStep = 0;
+        this.soldierStep = 0;
+        this.soldierKills = 0;
     }
 }

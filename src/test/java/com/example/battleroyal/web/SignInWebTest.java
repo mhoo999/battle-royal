@@ -103,8 +103,10 @@ class SignInWebTest {
                 .andExpect(jsonPath("$.capacity").value(10))
                 .andExpect(jsonPath("$.upgrade.capacity").value(20))
                 .andExpect(jsonPath("$.upgrade.price").value(500))
-                .andExpect(jsonPath("$.quest.title").value("첫 납품"))
-                .andExpect(jsonPath("$.quest.deliver[0].kind").value("SPOON"))
+                .andExpect(jsonPath("$.quests[0].category").value("DELIVERY"))
+                .andExpect(jsonPath("$.quests[0].title").value("첫 납품"))
+                .andExpect(jsonPath("$.quests[0].deliver[0].kind").value("SPOON"))
+                .andExpect(jsonPath("$.quests[2].difficulty").value("NORMAL"))
                 .andExpect(jsonPath("$.out").value(false));
         mvc.perform(post("/api/hideout/stash-upgrade").with(google("g-web-1")))
                 .andExpect(status().isConflict());

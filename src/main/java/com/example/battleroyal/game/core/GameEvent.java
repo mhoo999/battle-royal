@@ -58,11 +58,12 @@ public sealed interface GameEvent {
      */
     /** @param byGuard shot by an outpost guard (V2.2); then there is no killer or weapon */
     record Died(String playerId, String nickname, int score, int kills, long survivedTicks,
-                String killerNickname, ItemKind weapon, boolean byGuard) implements GameEvent {
+                String killerNickname, ItemKind weapon, boolean byGuard, int soldiersDowned)
+            implements GameEvent {
 
         public Died(String playerId, String nickname, int score, int kills, long survivedTicks,
                     String killerNickname, ItemKind weapon) {
-            this(playerId, nickname, score, kills, survivedTicks, killerNickname, weapon, false);
+            this(playerId, nickname, score, kills, survivedTicks, killerNickname, weapon, false, 0);
         }
     }
 
@@ -75,8 +76,8 @@ public sealed interface GameEvent {
      *                then the bag if one was worn
      */
     record Extracted(String playerId, String nickname, int score, int kills,
-                     long survivedTicks, List<Item> carried, int marksReached)
-            implements GameEvent {
+                     long survivedTicks, List<Item> carried, int marksReached,
+                     int soldiersDowned) implements GameEvent {
 
         public Extracted {
             carried = List.copyOf(carried);
@@ -84,7 +85,12 @@ public sealed interface GameEvent {
 
         public Extracted(String playerId, String nickname, int score, int kills,
                          long survivedTicks, List<Item> carried) {
-            this(playerId, nickname, score, kills, survivedTicks, carried, 0);
+            this(playerId, nickname, score, kills, survivedTicks, carried, 0, 0);
+        }
+
+        public Extracted(String playerId, String nickname, int score, int kills,
+                         long survivedTicks, List<Item> carried, int marksReached) {
+            this(playerId, nickname, score, kills, survivedTicks, carried, marksReached, 0);
         }
     }
 

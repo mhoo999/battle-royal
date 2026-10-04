@@ -2,6 +2,7 @@ package com.example.battleroyal.web;
 
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.rule.Quests;
+import com.example.battleroyal.game.rule.Quests.Category;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.StashItem;
 import com.example.battleroyal.persistence.StashItemRepository;
@@ -12,9 +13,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * An account's progress through the trader's errands ({@link Quests}). Called inside the
- * caller's transaction with the account row already locked, so two completions cannot
- * pay twice.
+ * An account's progress through the trader's errands ({@link Quests}): one ladder per
+ * kind, one errand of each kind under way. Called inside the caller's transaction with
+ * the account row already locked, so two completions cannot pay twice.
  */
 public final class QuestLedger {
 
@@ -23,48 +24,58 @@ public final class QuestLedger {
     }
 
     /**
-     * The errand under way, as the hideout shows it.
+     * One kind's errand under way, as the hideout shows it.
      *
-     * @param ready true when a delivery can be handed over now
+     * @param step         1-based place on its ladder
+     * @param soldiersDone soldiers counted so far (a one-trip errand counts per trip, so 0)
+     * @param ready        true when a delivery can be handed over now
      */
-    public record QuestView(int step, int total, String title, List<Need> deliver, int kills,
-                     int killsDone, int visits, int money, ItemKind reward, Integer rewardAmmo,
-                     boolean ready) {
+    public record QuestView(Category category, Quests.Difficulty difficulty, int step, int total,
+                            String title, List<Need> deliver, int visits, int soldiers,
+                            boolean soldiersInOneTrip, int soldiersDone, int money,
+                            ItemKind reward, Integer rewardAmmo, boolean ready) {
     }
 
     private QuestLedger() {
     }
 
-    /** @return null once every errand is done */
-    static QuestView view(Account account, StashItemRepository items) {
-        Quests.Quest quest = Quests.at(account.questStep());
-        if (quest == null) {
-            return null;
-        }
+    /** The errand under way of each kind, in ladder order; a climbed ladder is left out. */
+    static List<QuestView> view(Account account, StashItemRepository items) {
         Map<ItemKind, Integer> held = held(account, items);
-        List<Need> needs = new ArrayList<>();
-        boolean ready = quest.isDelivery();
-        for (Map.Entry<ItemKind, Integer> entry : quest.deliver().entrySet()) {
-            int have = held.getOrDefault(entry.getKey(), 0);
-            needs.add(new Need(entry.getKey(), entry.getValue(), have));
-            ready &= have >= entry.getValue();
+        List<QuestView> views = new ArrayList<>();
+        for (Category category : Category.values()) {
+            Quests.Quest quest = Quests.at(category, account.questStep(category));
+            if (quest == null) {
+                continue;
+            }
+            List<Need> needs = new ArrayList<>();
+            boolean ready = category == Category.DELIVERY;
+            for (Map.Entry<ItemKind, Integer> entry : quest.deliver().entrySet()) {
+                int have = held.getOrDefault(entry.getKey(), 0);
+                needs.add(new Need(entry.getKey(), entry.getValue(), have));
+                ready &= have >= entry.getValue();
+            }
+            needs.sort((a, b) -> a.kind().compareTo(b.kind()));
+            views.add(new QuestView(category, quest.difficulty(),
+                    account.questStep(category) + 1, Quests.LADDERS.get(category).size(),
+                    quest.title(), needs, quest.visits(), quest.soldiers(),
+                    quest.soldiersInOneTrip(), account.soldierKills(), quest.money(),
+                    quest.reward(),
+                    quest.reward() != null && quest.reward().usesAmmo() ? quest.rewardAmmo() : null,
+                    ready));
         }
-        needs.sort((a, b) -> a.kind().compareTo(b.kind()));
-        return new QuestView(account.questStep() + 1, Quests.ALL.size(), quest.title(), needs,
-                quest.kills(), account.questKills(), quest.visits(), quest.money(), quest.reward(),
-                quest.reward() != null && quest.reward().usesAmmo() ? quest.rewardAmmo() : null,
-                ready);
+        return views;
     }
 
     /**
-     * Hands the errand's items over from the stash, oldest first, and completes it.
+     * Hands the delivery errand's items over from the stash, oldest first, and completes it.
      *
-     * @throws HideoutService.TradeRefusedException when there is no delivery under way or
-     *         the stash does not hold enough
+     * @throws HideoutService.TradeRefusedException when no delivery is under way or the
+     *         stash does not hold enough
      */
     static void deliver(Account account, StashItemRepository items) {
-        Quests.Quest quest = Quests.at(account.questStep());
-        if (quest == null || !quest.isDelivery()) {
+        Quests.Quest quest = Quests.at(Category.DELIVERY, account.questStep(Category.DELIVERY));
+        if (quest == null) {
             throw new HideoutService.TradeRefusedException("지금은 납품할 의뢰가 없습니다");
         }
         List<StashItem> handed = new ArrayList<>();
@@ -84,40 +95,45 @@ public final class QuestLedger {
         complete(account, quest, items);
     }
 
-    /** Kills from a trip that ended, by death or extraction, count towards a kill errand. */
-    static void addKills(Account account, int kills, StashItemRepository items) {
-        Quests.Quest quest = Quests.at(account.questStep());
-        if (quest == null || quest.kills() == 0 || kills <= 0) {
+    /** Soldiers a trip brought down, counted when it ended by death or extraction. */
+    static void addSoldiers(Account account, int soldiers, StashItemRepository items) {
+        Quests.Quest quest = Quests.at(Category.SOLDIER, account.questStep(Category.SOLDIER));
+        if (quest == null || soldiers <= 0) {
             return;
         }
-        account.addQuestKills(kills);
-        if (account.questKills() >= quest.kills()) {
+        if (quest.soldiersInOneTrip()) {
+            if (soldiers >= quest.soldiers()) {
+                complete(account, quest, items);
+            }
+            return;
+        }
+        account.addSoldierKills(soldiers);
+        if (account.soldierKills() >= quest.soldiers()) {
             complete(account, quest, items);
         }
     }
 
     /** A trip that got out having stood on this many of its marks. */
     static void reachedMarks(Account account, int marks, StashItemRepository items) {
-        Quests.Quest quest = Quests.at(account.questStep());
-        if (quest != null && quest.isVisit() && marks >= quest.visits()) {
+        Quests.Quest quest = Quests.at(Category.VISIT, account.questStep(Category.VISIT));
+        if (quest != null && marks >= quest.visits()) {
             complete(account, quest, items);
         }
     }
 
-    /** The marks a trip out should carry for the errand under way: count and doors. */
+    /** The marks a trip out should carry for the place errand under way: count and doors. */
     static int[] marksFor(Account account) {
-        Quests.Quest quest = Quests.at(account.questStep());
-        return quest != null && quest.isVisit()
-                ? new int[] {quest.visits(), quest.visitDistance()} : new int[] {0, 0};
+        Quests.Quest quest = Quests.at(Category.VISIT, account.questStep(Category.VISIT));
+        return quest != null ? new int[] {quest.visits(), quest.visitDistance()} : new int[] {0, 0};
     }
 
-    /** Pays, and moves on. A reward item lands in the stash even when it is full. */
+    /** Pays, and moves that ladder on. A reward item lands in the stash even when it is full. */
     private static void complete(Account account, Quests.Quest quest, StashItemRepository items) {
         account.earn(quest.money());
         if (quest.reward() != null) {
             items.save(new StashItem(account.id(), quest.reward(), quest.rewardAmmo()));
         }
-        account.nextQuest();
+        account.nextQuest(quest.category());
     }
 
     private static Map<ItemKind, Integer> held(Account account, StashItemRepository items) {

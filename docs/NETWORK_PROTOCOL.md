@@ -32,10 +32,12 @@ GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ]
           "capacity": 10, "upgrade": { "capacity": 20, "price": 500 },
           "out": false, "money": 135, "haul": 165,
           "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ],
-          "quest": { "step": 1, "total": 10, "title": "첫 납품",
-                     "deliver": [ { "kind": "SPOON", "count": 1, "have": 0 } ],
-                     "kills": 0, "killsDone": 0, "money": 30, "reward": null,
-                     "rewardAmmo": null, "ready": false } }
+          "quests": [ { "category": "DELIVERY", "difficulty": "EASY", "step": 1, "total": 6,
+                        "title": "첫 납품",
+                        "deliver": [ { "kind": "SPOON", "count": 1, "have": 0 } ],
+                        "visits": 0, "soldiers": 0, "soldiersInOneTrip": false,
+                        "soldiersDone": 0, "money": 30, "reward": null,
+                        "rewardAmmo": null, "ready": false }, … ] }
 POST  { "loadout": [ 11, null, 12 ], "bag": 13 }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
@@ -70,10 +72,10 @@ buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 (본문 없음)  → 위의 GET과 같은 거점 화면
 ```
 
-지금 의뢰가 납품이면 창고에서 필요한 것을(오래된 것부터) 상인에게 넘기고 보상을 받는다. GET의
-`quest`가 지금 의뢰(모두 끝났으면 `null`)이고, `ready`가 지금 넘길 수 있는지다. 처치 의뢰는
-판이 끝날 때(사망·탈출) 서버가 센다 — 따로 부를 것이 없다. 거부는 409: 납품할 의뢰가 없음,
-창고에 모자람.
+진행 중인 납품 의뢰를 위해 창고에서 필요한 것을(오래된 것부터) 상인에게 넘기고 보상을 받는다.
+GET의 `quests`는 종류(`DELIVERY` 납품, `VISIT` 장소, `SOLDIER` 군인 처치)마다 진행 중인 의뢰 하나씩,
+사다리를 다 오른 종류는 빠진다. `ready`는 납품을 지금 넘길 수 있는지다. 장소·군인 의뢰는 판이
+끝날 때(사망·탈출) 서버가 센다 — 따로 부를 것이 없다. 거부는 409: 납품할 의뢰가 없음, 창고에 모자람.
 
 ### `POST /api/hideout/stash-upgrade` (V2.1, 로그인 필요)
 
@@ -239,8 +241,8 @@ bare-hand kill.
 **V2: 인벤토리 3칸.** `self.inventory`는 칸 순서대로 `{kind, ammo}` 또는 빈 칸 `null`,
 `self.equipped`는 A가 쓰는 칸, `self.item`/`self.ammo`는 장착 칸의 것이다.
 **V2.2:** `self.marks`는 들고 나간 장소 의뢰의 표식들로 `exits`와 같은 모양(`{dx, dy, x, y}`,
-그 방에 있을 때만 `x`/`y`)이다. 밟은 표식은 빠진다. 장소 의뢰가 아니면 빈 배열. 거점의 `quest`에는
-`visits`(밟을 표식 수, 장소 의뢰가 아니면 0)가 있다.
+그 방에 있을 때만 `x`/`y`)이다. 밟은 표식은 빠진다. 장소 의뢰가 아니면 빈 배열. 거점 `quests`의 `VISIT`
+항목에 `visits`(밟을 표식 수)가 있다.
 **V2.1:** `self.bag`은 가방 칸에 멘 가방(`{kind}`, `SMALL_BAG` | `BIG_BAG`) 또는 `null`이고,
 `self.inventory`의 길이는 3 + 가방이 더하는 칸(작은 2, 큰 4)이다. 가방은 다른 사람에게
 보내지 않는다.

@@ -92,8 +92,7 @@ const ui = {
   money: el('money'), haul: el('haul'), traderList: el('trader-list'), sellList: el('sell-list'),
   deal: el('deal'), dealName: el('deal-name'), dealButton: el('deal-button'),
   grow: el('grow'), growName: el('grow-name'), growButton: el('grow-button'),
-  questStep: el('quest-step'), questTitle: el('quest-title'), questGoal: el('quest-goal'),
-  questReward: el('quest-reward'), questDeliver: el('quest-deliver'),
+  questList: el('quest-list'),
   hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
   carryCount: el('carry-count'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
@@ -1288,41 +1287,83 @@ function paintTrader() {
     return li;
   }));
   paintDeal();
-  paintQuest();
+  paintQuests();
 }
 
-/*
- * The trader's errand (V2.2). A delivery is handed over with 납품 once the stash holds
- * everything; a kill errand completes by itself when a trip ends with enough kills.
- */
-function paintQuest() {
-  const quest = hideoutView.quest;
-  if (!quest) {
-    ui.questStep.textContent = '';
-    ui.questTitle.textContent = '모든 의뢰 완료';
-    ui.questGoal.textContent = '이번 시즌에 상인이 맡길 일은 더 없다.';
-    ui.questReward.textContent = '';
-    ui.questDeliver.hidden = true;
-    return;
-  }
-  ui.questStep.textContent = `${quest.step}/${quest.total}`;
-  ui.questTitle.textContent = quest.title;
-  const goal = quest.deliver.length > 0
-    ? quest.deliver.map((need) => {
+const QUEST_KIND = { DELIVERY: '납품', VISIT: '장소', SOLDIER: '군인 처치' };
+const QUEST_LEVEL = { EASY: '쉬움', NORMAL: '보통', HARD: '어려움' };
+
+/** What one errand asks, as text and, for a delivery, a part per thing to hand over. */
+function questGoal(quest) {
+  if (quest.category === 'DELIVERY') {
+    return quest.deliver.map((need) => {
       const span = document.createElement('span');
       span.textContent = `${ITEM_LABEL[need.kind]} ${Math.min(need.have, need.count)}/${need.count}`;
       if (need.have >= need.count) span.className = 'done';
       return span;
-    })
-    : quest.visits > 0
-      ? [`표시된 곳 ${quest.visits}곳을 한 판에 밟고 탈출 · 섬에서 나침반이 가리킨다`]
-      : [`${quest.kills}명 처치 (${quest.killsDone}/${quest.kills}) · 판이 끝나면 센다`];
-  ui.questGoal.replaceChildren(...goal.flatMap((part, i) => (i === 0 ? [part] : [' · ', part])));
-  const item = quest.reward
-    ? ` + ${slotText({ kind: quest.reward, ammo: quest.rewardAmmo })}` : '';
-  ui.questReward.textContent = `보상 ${quest.money}원${item}`;
-  ui.questDeliver.hidden = quest.deliver.length === 0;
-  ui.questDeliver.disabled = !quest.ready;
+    });
+  }
+  if (quest.category === 'VISIT') {
+    return [`표식 ${quest.visits}곳을 한 판에 밟고 탈출 · 섬에서 나침반이 가리킨다`];
+  }
+  return [quest.soldiersInOneTrip
+    ? `한 판에 군인 ${quest.soldiers}명 · 판이 끝나면 센다`
+    : `군인 ${quest.soldiers}명 (${quest.soldiersDone}/${quest.soldiers}) · 판이 끝나면 센다`];
+}
+
+/*
+ * The trader's errands (V2.2): one row a kind, the errand under way on its ladder. A
+ * delivery is handed over with 납품 once the stash holds everything; place and soldier
+ * errands complete by themselves when a trip ends.
+ */
+function paintQuests() {
+  const quests = hideoutView.quests || [];
+  if (quests.length === 0) {
+    const done = document.createElement('p');
+    done.className = 'quest-goal';
+    done.textContent = '모든 의뢰 완료. 이번 시즌에 상인이 맡길 일은 더 없다.';
+    ui.questList.replaceChildren(done);
+    return;
+  }
+  ui.questList.replaceChildren(...quests.map((quest) => {
+    const row = document.createElement('div');
+    row.className = `quest ${quest.difficulty.toLowerCase()}`;
+
+    const head = document.createElement('div');
+    head.className = 'quest-head';
+    const kind = document.createElement('span');
+    kind.className = 'quest-kind';
+    kind.textContent = `${QUEST_KIND[quest.category]} ${quest.step}/${quest.total}`;
+    const title = document.createElement('span');
+    title.className = 'quest-title';
+    title.textContent = quest.title;
+    const level = document.createElement('span');
+    level.className = 'quest-level';
+    level.textContent = QUEST_LEVEL[quest.difficulty];
+    head.append(kind, title, level);
+
+    const goal = document.createElement('p');
+    goal.className = 'quest-goal';
+    goal.replaceChildren(...questGoal(quest).flatMap((part, i) => (i === 0 ? [part] : [' · ', part])));
+
+    const foot = document.createElement('div');
+    foot.className = 'quest-foot';
+    const reward = document.createElement('span');
+    reward.className = 'quest-reward';
+    const item = quest.reward ? ` + ${slotText({ kind: quest.reward, ammo: quest.rewardAmmo })}` : '';
+    reward.textContent = `보상 ${quest.money}원${item}`;
+    foot.append(reward);
+    if (quest.category === 'DELIVERY') {
+      const deliver = document.createElement('button');
+      deliver.type = 'button';
+      deliver.className = 'quest-deliver';
+      deliver.textContent = '납품';
+      deliver.disabled = !quest.ready;
+      foot.append(deliver);
+    }
+    row.append(head, goal, foot);
+    return row;
+  }));
 }
 
 function paintDeal() {
@@ -1516,7 +1557,10 @@ function wireHideout() {
   }
   ui.dealButton.addEventListener('click', closeDeal);
   ui.growButton.addEventListener('click', () => trade('/api/hideout/stash-upgrade', {}));
-  ui.questDeliver.addEventListener('click', () => trade('/api/hideout/quest/deliver', {}));
+  ui.questList.addEventListener('click', (event) => {
+    const button = event.target.closest('.quest-deliver');
+    if (button && !button.disabled) trade('/api/hideout/quest/deliver', {});
+  });
   ui.hideoutBack.addEventListener('click', () => {
     ui.hideout.hidden = true;
     ui.lobby.hidden = false;

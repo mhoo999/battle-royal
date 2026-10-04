@@ -291,7 +291,7 @@ public final class RoomSimulator {
         room.emit(new GameEvent.Hit(attacker.id()));
         if (trace.guard() != null) {
             // No score, no kill: a guard is not a player (V2.2).
-            GuardRules.wound(room, trace.guard(), blow.damage());
+            GuardRules.wound(room, attacker, trace.guard(), blow.damage());
             return;
         }
         Player victim = trace.victim();
@@ -382,7 +382,8 @@ public final class RoomSimulator {
         ItemKind weapon = killer == null || killer.heldItem() == null
                 ? null : killer.heldItem().kind();
         room.emit(new GameEvent.Died(victim.id(), victim.nickname(), victim.score(),
-                victim.kills(), nowTick - victim.joinedTick(), killerName, weapon, byGuard));
+                victim.kills(), nowTick - victim.joinedTick(), killerName, weapon, byGuard,
+                victim.soldiersDowned()));
     }
 
     /**
@@ -458,7 +459,8 @@ public final class RoomSimulator {
         List<Item> carried = player.dropAll();
         player.markExtracted();
         room.emit(new GameEvent.Extracted(player.id(), player.nickname(), player.score(),
-                player.kills(), nowTick - player.joinedTick(), carried, player.marksReached()));
+                player.kills(), nowTick - player.joinedTick(), carried, player.marksReached(),
+                player.soldiersDowned()));
         room.markDirty();
         return true;
     }

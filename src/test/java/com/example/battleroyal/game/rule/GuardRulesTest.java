@@ -123,6 +123,7 @@ class GuardRulesTest {
         Guard guard = room.guards().getFirst();
         assertFalse(guard.alive());
         assertEquals(0, shooter.kills(), "a guard is not a player");
+        assertEquals(1, shooter.soldiersDowned(), "but it counts for a soldier errand");
         assertEquals(ItemKind.ROUNDS, room.crateAt(new Pos(3, 2)).get(0).kind());
         assertTrue(room.drainEvents().stream().anyMatch(e -> e instanceof GameEvent.Fell));
         assertNull(room.livingGuardAt(new Pos(3, 2)));
