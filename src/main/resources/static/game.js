@@ -78,6 +78,7 @@ const ui = {
   stashCount: el('stash-count'), loadoutList: el('loadout-list'), hideoutHint: el('hideout-hint'),
   hideoutError: el('hideout-error'), setOut: el('set-out'), hideoutBack: el('hideout-back'),
   money: el('money'), haul: el('haul'), traderList: el('trader-list'), sellList: el('sell-list'),
+  deal: el('deal'), dealName: el('deal-name'), dealButton: el('deal-button'),
   hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
   carryCount: el('carry-count'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
@@ -883,6 +884,9 @@ function wireInput() {
 let bagOpen = false;
 let selection = null;      // { from: 'crate' | 'inv', index }
 let crateWasOpen = false;
+let crateOpenedAt = null;  // 'x,y' the crate was opened from
+// Cells in a crate: GameConstants.CRATE_CAPACITY. Empty ones are drawn so the grid holds still.
+const CRATE_SLOTS = 6;
 
 function slotText(slot) {
   if (!slot) return '비어 있음';
@@ -890,6 +894,7 @@ function slotText(slot) {
   return slot.ammo === null || slot.ammo === undefined ? name : `${name} ${slot.ammo}`;
 }
 
+/** One cell of an inventory grid: the item's name, and its rounds under it. */
 function slotButton(slot, from, index, equipped) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -897,7 +902,17 @@ function slotButton(slot, from, index, equipped) {
     + (selection && selection.from === from && selection.index === index ? ' selected' : '');
   button.dataset.from = from;
   button.dataset.index = String(index);
-  button.textContent = slotText(slot);
+  if (slot) {
+    const name = document.createElement('span');
+    name.textContent = ITEM_LABEL[slot.kind] || slot.kind;
+    button.appendChild(name);
+    if (slot.ammo !== null && slot.ammo !== undefined) {
+      const count = document.createElement('small');
+      count.className = 'count';
+      count.textContent = slot.ammo;
+      button.appendChild(count);
+    }
+  }
   if (equipped) {
     const badge = document.createElement('span');
     badge.className = 'equip';
@@ -910,11 +925,33 @@ function slotButton(slot, from, index, equipped) {
   return li;
 }
 
+/** A cell with nothing to do in it: a free stash slot, or one not unlocked yet. */
+function blankCell(locked) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'slot ' + (locked ? 'locked' : 'empty');
+  button.dataset.from = 'none';
+  if (locked) {
+    button.textContent = '…';
+    button.setAttribute('aria-label', '잠김');
+  }
+  const li = document.createElement('li');
+  li.appendChild(button);
+  return li;
+}
+
 function paintBag(self) {
   const crate = Array.isArray(self.crate) ? self.crate : null;
-  // Opening a crate pops the bag open; a crate shutting (moving away) drops a pick from it.
+  const here = `${self.x},${self.y}`;
+  // Opening a crate pops the bag open. Stepping away shuts the crate on the server, and
+  // the window with it; a crate emptied by the last TAKE shuts too, but the bag stays.
   if (crate && !crateWasOpen) {
     bagOpen = true;
+    selection = null;
+    crateOpenedAt = here;
+  }
+  if (!crate && crateWasOpen && here !== crateOpenedAt) {
+    bagOpen = false;
     selection = null;
   }
   if (!crate && selection && selection.from === 'crate') selection = null;
@@ -926,7 +963,8 @@ function paintBag(self) {
   if (!bagOpen) return;
 
   ui.invCrate.hidden = !crate;
-  ui.crateList.replaceChildren(...(crate || []).map((slot, i) => slotButton(slot, 'crate', i, false)));
+  ui.crateList.replaceChildren(...Array.from({ length: Math.max(CRATE_SLOTS, crate ? crate.length : 0) },
+    (_, i) => slotButton(crate && crate[i] ? crate[i] : null, 'crate', i, false)));
   ui.invList.replaceChildren(...self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
 
   if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
@@ -948,12 +986,13 @@ function setBag(open) {
 }
 
 function pickInBag(from, index) {
-  const crateOpen = lastSnapshot && Array.isArray(lastSnapshot.self.crate);
+  const crate = lastSnapshot && Array.isArray(lastSnapshot.self.crate) ? lastSnapshot.self.crate : null;
+  const crateOpen = !!crate;
   if (from === 'crate') {
     if (selection && selection.from === 'inv') {
       send({ type: 'PUT', slot: selection.index });
       selection = null;
-    } else {
+    } else if (crate && index < crate.length) {
       selection = { from: 'crate', index };
     }
   } else if (selection && selection.from === 'crate') {
@@ -999,11 +1038,15 @@ let stash = [];             // [{ id, kind, ammo, price }]
 let hideoutView = null;     // the last /api/hideout answer
 let loadout = [null, null, null];   // stash item ids
 let stashPick = null;       // a stash item id
+let dealPick = null;        // on the 상점 page: { kind } from the stock, or { id } from the stash
+// The stash grid shows the next size up locked (일반 상자 10 -> 큰 상자 20, V2_PLAN D10).
+const STASH_GRID = 20;
 
 async function openHideout() {
   ui.hideoutError.textContent = '';
   ui.hideoutName.textContent = me.nickname ?? '';
   stashPick = null;
+  dealPick = null;
   loadout = [null, null, null];
   showHideoutPage('home');
   try {
@@ -1027,6 +1070,7 @@ function applyHideout(view) {
   ui.money.textContent = view.money;
   ui.haul.textContent = view.haul;
   if (stashPick !== null && !stashEntry(stashPick)) stashPick = null;
+  if (dealPick && dealPick.id !== undefined && !stashEntry(dealPick.id)) dealPick = null;
   // Whatever was sold no longer goes out.
   loadout = loadout.map((id) => (id !== null && stashEntry(id) ? id : null));
   paintHideout();
@@ -1039,56 +1083,75 @@ function showHideoutPage(page) {
   ui.hideoutStash.hidden = page !== 'stash';
   ui.hideoutShop.hidden = page !== 'shop';
   ui.hideoutError.textContent = '';
+  dealPick = null;
+  if (hideoutView) paintTrader();
+}
+
+/**
+ * The stash as a grid: its items, then free cells up to the capacity, then the next size
+ * up locked. A stash let run over its capacity (extraction always fits) grows the grid.
+ */
+function stashCells(cols, cell) {
+  const shown = Math.max(STASH_GRID, Math.ceil(stash.length / cols) * cols);
+  return Array.from({ length: shown }, (_, i) =>
+    i < stash.length ? cell(stash[i]) : blankCell(i >= hideoutView.capacity));
 }
 
 /*
- * The trader's stock. A line is greyed when it cannot be bought now; the server is the
- * one that says no, this only saves a pointless tap.
+ * 상점: the trader's stock on the left, the stash on the right. Pick a cell on either
+ * side and the bar below offers to buy or sell it. The button is greyed when a buy cannot
+ * go through now; the server is the one that says no, this only saves a pointless tap.
  */
 function paintTrader() {
-  const full = stash.length >= hideoutView.capacity;
   ui.traderList.replaceChildren(...hideoutView.trader.map((offer) => {
-    const li = document.createElement('li');
-    const name = document.createElement('span');
     // Guns are sold empty, so only a bundle's count is worth showing.
-    name.textContent = slotText({ kind: offer.kind, ammo: offer.ammo > 0 ? offer.ammo : null });
-    const price = document.createElement('span');
-    price.className = 'price';
-    price.textContent = `${offer.price}원`;
-    const buy = document.createElement('button');
-    buy.type = 'button';
-    buy.dataset.kind = offer.kind;
-    buy.textContent = '사기';
-    buy.disabled = full || hideoutView.money < offer.price;
-    li.append(name, price, buy);
+    const li = slotButton({ kind: offer.kind, ammo: offer.ammo > 0 ? offer.ammo : null }, 'offer', 0, false);
+    const button = li.firstChild;
+    button.dataset.kind = offer.kind;
+    button.classList.toggle('selected', !!dealPick && dealPick.kind === offer.kind);
     return li;
   }));
-  paintSellList();
+  ui.sellList.replaceChildren(...stashCells(4, (entry) => {
+    const li = slotButton(entry, 'sell', entry.id, false);
+    li.firstChild.classList.toggle('selected', !!dealPick && dealPick.id === entry.id);
+    return li;
+  }));
+  paintDeal();
 }
 
-/** The stash as the trader sees it: what each thing fetches. */
-function paintSellList() {
-  if (stash.length === 0) {
-    const li = document.createElement('li');
-    li.className = 'inv-hint';
-    li.textContent = '팔 것이 없다';
-    ui.sellList.replaceChildren(li);
-    return;
+function paintDeal() {
+  const offer = dealPick && dealPick.kind !== undefined
+    ? hideoutView.trader.find((o) => o.kind === dealPick.kind) : null;
+  const entry = dealPick && dealPick.id !== undefined ? stashEntry(dealPick.id) : null;
+  ui.deal.hidden = !offer && !entry;
+  if (offer) {
+    ui.dealName.textContent = slotText({ kind: offer.kind, ammo: offer.ammo > 0 ? offer.ammo : null });
+    ui.dealButton.textContent = `구매 (${offer.price}원)`;
+    ui.dealButton.disabled = stash.length >= hideoutView.capacity || hideoutView.money < offer.price;
+  } else if (entry) {
+    ui.dealName.textContent = slotText(entry);
+    ui.dealButton.textContent = `판매 (${entry.price}원)`;
+    ui.dealButton.disabled = false;
   }
-  ui.sellList.replaceChildren(...stash.map((entry) => {
-    const li = document.createElement('li');
-    const name = document.createElement('span');
-    name.textContent = slotText(entry);
-    const price = document.createElement('span');
-    price.className = 'price';
-    price.textContent = `${entry.price}원`;
-    const sell = document.createElement('button');
-    sell.type = 'button';
-    sell.dataset.sell = entry.id;
-    sell.textContent = '팔기';
-    li.append(name, price, sell);
-    return li;
-  }));
+}
+
+function pickInShop(button) {
+  if (button.dataset.from === 'offer') {
+    const kind = button.dataset.kind;
+    dealPick = dealPick && dealPick.kind === kind ? null : { kind };
+  } else {
+    const id = Number(button.dataset.index);
+    dealPick = dealPick && dealPick.id === id ? null : { id };
+  }
+  paintTrader();
+}
+
+async function closeDeal() {
+  if (!dealPick) return;
+  const pick = dealPick;
+  dealPick = null;
+  if (pick.kind !== undefined) await trade('/api/hideout/buy', { kind: pick.kind });
+  else await trade('/api/hideout/sell', { itemId: pick.id });
 }
 
 async function trade(path, body) {
@@ -1115,19 +1178,13 @@ function stashEntry(id) {
 
 function paintHideout() {
   const carried = new Set(loadout.filter((id) => id !== null));
-  ui.stashList.replaceChildren(...stash.map((entry) => {
+  ui.stashList.replaceChildren(...stashCells(5, (entry) => {
     const li = slotButton(entry, 'stash', entry.id, false);
     const button = li.firstChild;
     button.classList.toggle('selected', stashPick === entry.id);
     button.disabled = carried.has(entry.id);
     return li;
   }));
-  if (stash.length === 0) {
-    const li = document.createElement('li');
-    li.className = 'inv-hint';
-    li.textContent = '비어 있다';
-    ui.stashList.replaceChildren(li);
-  }
   ui.loadoutList.replaceChildren(...loadout.map((id, i) =>
     slotButton(id === null ? null : stashEntry(id), 'loadout', i, i === 0)));
   const carrying = loadout.filter((id) => id !== null).length;
@@ -1180,7 +1237,9 @@ function wireHideout() {
   ui.hideout.addEventListener('click', (event) => {
     const button = event.target.closest('.slot');
     if (!button || button.disabled) return;
-    pickInHideout(button.dataset.from, Number(button.dataset.index));
+    const from = button.dataset.from;
+    if (from === 'offer' || from === 'sell') pickInShop(button);
+    else if (from === 'stash' || from === 'loadout') pickInHideout(from, Number(button.dataset.index));
   });
   ui.setOut.addEventListener('click', setOut);
   el('go-stash').addEventListener('click', () => showHideoutPage('stash'));
@@ -1188,14 +1247,7 @@ function wireHideout() {
   for (const button of ui.hideout.querySelectorAll('.to-home')) {
     button.addEventListener('click', () => showHideoutPage('home'));
   }
-  ui.traderList.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-kind]');
-    if (button && !button.disabled) trade('/api/hideout/buy', { kind: button.dataset.kind });
-  });
-  ui.sellList.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-sell]');
-    if (button) trade('/api/hideout/sell', { itemId: Number(button.dataset.sell) });
-  });
+  ui.dealButton.addEventListener('click', closeDeal);
   ui.hideoutBack.addEventListener('click', () => {
     ui.hideout.hidden = true;
     ui.lobby.hidden = false;

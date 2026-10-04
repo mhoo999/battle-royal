@@ -11,9 +11,9 @@ to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Ste
 done: crates, three-slot inventory, bag window, stash in the DB, sorties, two private
 exits and a compass, extraction, trader, money, ranking by haul; empty guns stay and
 reload from ammo bundles bought apart. The hideout (2026-10-04) opens like the title
-screen: block-letter HIDEOUT, a red 隠れ家 rule, big 창고 / 상점 / 섬으로 buttons, and an
-ASCII picture along the foot (a ruin in the woods cut out of a big moon), drawn by
-`tools/hideout-art.py`; 창고 and 상점 are pages of their own. MySQL 8.4 rehearsal
+screen: a short ASCII banner on top (rows 9-33 of `tools/hideout-art.py`, a ruin in the
+woods cut out of a big moon), block-letter HIDEOUT, a red 隠れ家 rule, one column of
+equal buttons; 창고 and 상점 are pages of their own. Every inventory is a grid. MySQL 8.4 rehearsal
 passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
 
 ## Completed
@@ -103,6 +103,13 @@ passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] Grid inventories (2026-10-04, user): bag, crate (6 cells), stash (5x4: 10 usable, the
+      next 10 locked as dashed `…`), loadout and the trader are square-cell grids. 상점 is
+      the stock left, the stash right; picking a cell shows 구매 (가격) / 판매 (가격) in a
+      bar below. Hideout picture moved from a backdrop to a short banner above the title;
+      menu buttons one width, counts pinned right. Fix: stepping off an open crate now
+      closes the bag window too (the server already shut the crate; the client kept the
+      window). Emptying a crate in place keeps the bag open.
 - [x] Production Google secrets (2026-10-04, user): GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in
       `/etc/battle-royal/env` on EC2, service not restarted (V1 ignores them; the v2.0
       deploy picks them up). Redirect URIs for apex, www and localhost checked registered

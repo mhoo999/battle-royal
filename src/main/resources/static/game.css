@@ -461,29 +461,56 @@ header.hud-bar {
 .inv-col[hidden] { display: none; }
 .crate-col { cursor: pointer; }
 .inv-title { margin: 0; font-size: 0.7rem; letter-spacing: 0.2em; color: var(--dim); }
-.slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+/*
+ * Every inventory is a grid of square cells, like a bag in any other game: the bag, the
+ * crate, the stash, what to carry out, the trader's stock. --cols is set per grid.
+ */
+.slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 0.3rem;
+}
 .slot {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 2.6rem;
-  padding: 0.5rem 0.6rem;
+  aspect-ratio: 1;
+  padding: 0.15rem;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 2px;
   color: var(--item);
-  font-size: 0.85rem;
-  text-align: left;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  text-align: center;
+  word-break: keep-all;
+  overflow: hidden;
   cursor: pointer;
 }
+.slot .count { color: var(--ink); font-size: 0.9em; opacity: 0.8; }
 .slot.empty { color: var(--dim); }
+/* A cell not yours yet: the stash's next size up, shown so the grid reads as a bag. */
+.slot.locked {
+  border-color: #33393b;
+  border-style: dashed;
+  background: transparent;
+  color: #4f5a5d;
+  cursor: default;
+}
 .slot.selected { border-color: var(--self); background: rgba(127, 212, 193, 0.1); }
 /* Already packed to carry out: still shown, greyed, so the stash keeps its order. */
 .slot:disabled { opacity: 0.35; cursor: default; }
 /* The equipped slot: what A uses. */
 .slot .equip {
   position: absolute;
-  top: 0.15rem;
-  right: 0.3rem;
+  top: 0.1rem;
+  right: 0.25rem;
   color: var(--self);
   font-size: 0.7rem;
   font-weight: bold;
@@ -503,34 +530,31 @@ header.hud-bar {
 
 /* The hideout: the stash on the left, what to carry out on the right. */
 .hideout { gap: 0.75rem; }
-.hideout > :not(.scene) { position: relative; z-index: 1; }
 
 /*
- * The hideout's picture, across the foot of the screen behind everything: a big moon
- * rising behind the island's woods, the ruin someone hides in and the pines black
- * against it (tools/hideout-art.py). ASCII art in the title's one mint, the moon's face
- * with the title's red offset. 64 x 36 cells, as wide as the screen allows.
- * Decoration only, so it takes no clicks.
+ * The hideout's picture, a short banner above the title: a big moon rising behind the
+ * island's woods, the ruin someone hides in and the pines black against it
+ * (tools/hideout-art.py). The full picture is 64 x 36 cells; the banner shows rows 9-33,
+ * the moon, the ruin and the ground, and fades out at the bottom. Decoration only.
  */
 .scene {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: center;
+  /* One em is one row: the pre has line-height 1 and inherits this size. */
+  font-size: min(2.4vw, 8px);
+  height: 25em;
+  overflow: hidden;
   pointer-events: none;
   user-select: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  mask-image: linear-gradient(to bottom, #000 80%, transparent);
 }
 .hideout-art {
-  margin: 0;
+  margin: -8em 0 0;
   /*
    * Named outright: on a Korean page the generic monospace falls back to a Korean font
    * that draws a backslash as a won sign and block characters at double width.
    */
   font-family: Consolas, "Courier New", monospace;
-  /* 64 columns of a 0.55em-wide font fill the width; 36 rows stay under half the height. */
-  font-size: min(2.8vw, 15px, calc(48vh / 36));
+  font-size: inherit;
   line-height: 1;
   text-align: left;
   color: var(--self);
@@ -545,50 +569,46 @@ header.hud-bar {
   text-shadow: 0.15em 0.15em 0 rgba(224, 108, 117, 0.45), 0 0 0.6em rgba(127, 212, 193, 0.35);
 }
 .hideout-head { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-.hideout-head > * { text-shadow: 0 0 0.4em var(--bg), 0 0 0.8em var(--bg); }
 .hideout-head .logo-rule { margin: 0; }
 .hideout-who { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .hideout-who span { color: var(--self); }
-.hideout-body { display: flex; gap: 0.75rem; width: min(100%, 24rem); }
-.slots.stash { max-height: 50vh; overflow-y: auto; }
+.hideout-body { display: flex; gap: 0.75rem; width: min(100%, 24rem); text-align: left; }
+.hideout-body.stacked { flex-direction: column; }
+.hideout-body.stacked #loadout-list { width: 60%; }
 
 /* Money, and the haul the ranking counts. */
 .purse { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .purse b { font-weight: normal; color: var(--item); font-variant-numeric: tabular-nums; }
 
-/* The trader: what is for sale, and what each stash item fetches. */
-.trader-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--line);
-  font-size: 0.8rem;
-}
-.trader-list li {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+/* The trader: pick a cell on either side, then buy or sell it from the bar below. */
+.deal {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.25rem 0.25rem;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-}
-.trader-list .price { color: var(--item); font-variant-numeric: tabular-nums; }
-.trader-list button {
-  padding: 0.2rem 0.6rem;
-  background: transparent;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 2px;
-  color: var(--ink);
+  font-size: 0.85rem;
+}
+.deal[hidden] { display: none; }
+#deal-name { color: var(--item); }
+#deal-button {
+  padding: 0.5rem 0.9rem;
+  background: transparent;
+  border: 1px solid var(--self);
+  border-radius: 2px;
+  color: var(--self);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.trader-list button:disabled { opacity: 0.35; cursor: default; }
+#deal-button:disabled { opacity: 0.35; cursor: default; }
 /*
- * The hideout's front, laid out like the title screen: the block-letter heading and its
- * red rule, then big buttons in the middle, the picture below and behind them.
- * Solid, so they stand in front of it.
+ * The hideout's front, laid out like the title screen: the picture, the block-letter
+ * heading and its red rule, then one column of buttons of one width.
  */
-.hideout[data-page="home"] { justify-content: flex-start; padding-top: max(1.5rem, 7vh); gap: 1.25rem; }
+.hideout[data-page="home"] { gap: 1rem; }
 .hideout-menu {
   display: flex;
   flex-direction: column;
@@ -598,6 +618,7 @@ header.hud-bar {
 }
 .hideout-menu[hidden], .hideout-page[hidden] { display: none; }
 .menu-button {
+  position: relative;
   width: 100%;
   padding: 1rem;
   background: var(--bg);
@@ -609,7 +630,18 @@ header.hud-bar {
   text-indent: 0.35em;
   cursor: pointer;
 }
-.menu-button small { margin-left: 0.4em; font-size: 0.75em; letter-spacing: 0.05em; color: var(--dim); }
+/* The count sits at the right edge, so every label stays dead centre. */
+.menu-button small {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75em;
+  letter-spacing: 0.05em;
+  text-indent: 0;
+  color: var(--dim);
+}
+.menu-button.minor { padding: 0.6rem; font-size: 0.85rem; color: var(--dim); }
 .menu-button:active { background: rgba(127, 212, 193, 0.12); }
 #set-out {
   border-color: var(--self);
@@ -617,7 +649,7 @@ header.hud-bar {
   box-shadow: 0.2rem 0.2rem 0 rgba(224, 108, 117, 0.35), 0 0 1rem rgba(127, 212, 193, 0.15);
 }
 #set-out:disabled { opacity: 0.4; cursor: default; }
-#hideout-back, .to-home { background: var(--bg); padding: 0.25rem 0.75rem; }
+.to-home { padding: 0.25rem 0.75rem; }
 
 /* 창고 and 상점: a page over the picture, which dims behind it. */
 .hideout-page {
@@ -628,11 +660,10 @@ header.hud-bar {
   width: min(100%, 24rem);
 }
 .hideout-page .hideout-body { width: 100%; }
-.hideout-page .trader-list { width: 100%; }
 /* A page needs the room; the heading stays on the front. */
 .hideout:not([data-page="home"]) .hideout-head .logo,
 .hideout:not([data-page="home"]) .hideout-head .logo-rule { display: none; }
-.hideout:not([data-page="home"]) .scene { opacity: 0.3; }
+.hideout:not([data-page="home"]) .scene { display: none; }
 
 #loot {
   height: 4px;
