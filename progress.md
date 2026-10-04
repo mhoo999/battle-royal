@@ -113,6 +113,10 @@ passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
       Then (user): the looting window (crate | bag) and 상점 (stock | stash) show 4x4 pages
       on both sides with a ‹ n/m › pager, so the two grids are one size; cells past what a
       grid holds are drawn disabled (dashed `…`), never left out. The 창고 page keeps 5x4.
+      Bag window (user): any step closes it, crate or not; it is as tall as its grids and
+      each side is half its width, so the bag alone is the same size centred. A crate
+      emptied by the last TAKE still vanishes on the server, but its six cells stay drawn
+      empty (inert) until you move or close; you cannot PUT back into it.
 - [x] Production Google secrets (2026-10-04, user): GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in
       `/etc/battle-royal/env` on EC2, service not restarted (V1 ignores them; the v2.0
       deploy picks them up). Redirect URIs for apex, www and localhost checked registered

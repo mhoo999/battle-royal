@@ -884,7 +884,9 @@ function wireInput() {
 let bagOpen = false;
 let selection = null;      // { from: 'crate' | 'inv', index }
 let crateWasOpen = false;
-let crateOpenedAt = null;  // 'x,y' the crate was opened from
+let bagOpenedAt = null;    // 'x,y' the window was opened at; a step away closes it
+let crateLastLength = 0;   // items in the crate as last seen
+let crateEmptied = false;  // the last TAKE emptied it: its cells stay, empty, until you move
 // Cells in a crate: GameConstants.CRATE_CAPACITY. Empty ones are drawn so the grid holds still.
 const CRATE_SLOTS = 6;
 
@@ -972,32 +974,38 @@ function turnPage(target) {
 function paintBag(self) {
   const crate = Array.isArray(self.crate) ? self.crate : null;
   const here = `${self.x},${self.y}`;
-  // Opening a crate pops the bag open. Stepping away shuts the crate on the server, and
-  // the window with it; a crate emptied by the last TAKE shuts too, but the bag stays.
+  // Opening a crate pops the bag open. Any step closes the window, crate or not (the
+  // server shuts the crate on the same step). A crate emptied by the last TAKE vanishes
+  // on the server, but its cells stay drawn, empty, while you stand there.
   if (crate && !crateWasOpen) {
     bagOpen = true;
     selection = null;
-    crateOpenedAt = here;
+    bagOpenedAt = here;
     pages.crate = 0;
+    crateEmptied = false;
   }
-  if (!crate && crateWasOpen && here !== crateOpenedAt) {
+  if (!crate && crateWasOpen && here === bagOpenedAt && crateLastLength <= 1) crateEmptied = true;
+  if (bagOpen && here !== bagOpenedAt) {
     bagOpen = false;
     selection = null;
   }
+  if (crate || !bagOpen) crateEmptied = false;
   if (!crate && selection && selection.from === 'crate') selection = null;
   crateWasOpen = !!crate;
+  if (crate) crateLastLength = crate.length;
   if (selection && selection.from === 'crate' && crate && selection.index >= crate.length) selection = null;
 
   ui.bag.classList.toggle('open', bagOpen);
   ui.inv.hidden = !bagOpen;
   if (!bagOpen) return;
 
-  ui.invCrate.hidden = !crate;
+  ui.invCrate.hidden = !crate && !crateEmptied;
   paintPage(ui.crateList, 'crate', Array.from({ length: Math.max(CRATE_SLOTS, crate ? crate.length : 0) },
     (_, i) => slotButton(crate && crate[i] ? crate[i] : null, 'crate', i, false)));
   paintPage(ui.invList, 'inv', self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
 
-  if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
+  if (crateEmptied) ui.invHint.textContent = '상자를 다 비웠다 · 누르면 장착';
+  else if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
   else if (!selection) ui.invHint.textContent = '옮길 아이템을 고르세요';
   else if (selection.from === 'crate') ui.invHint.textContent = '넣을 칸을 고르세요';
   else ui.invHint.textContent = '상자를 누르면 넣기 · 한 번 더 누르면 장착';
@@ -1010,6 +1018,8 @@ function repaintBag() {
 function setBag(open) {
   bagOpen = open;
   selection = null;
+  crateEmptied = false;
+  if (open && lastSnapshot) bagOpenedAt = `${lastSnapshot.self.x},${lastSnapshot.self.y}`;
   // Closing the window over an open crate closes the crate too.
   if (!open && lastSnapshot && Array.isArray(lastSnapshot.self.crate)) send({ type: 'CLOSE' });
   repaintBag();
