@@ -34,10 +34,24 @@ public final class Room {
     private boolean lootRollPending;
     private int lootRegrowTicks;
     private boolean dirty = true;
+    private final List<Guard> guards = new ArrayList<>();
+    private int guardRespawnTicks;
 
     public Room(String id, GridMap map) {
+        this(id, map, 0);
+    }
+
+    /**
+     * @param guardHp an outpost's guards' health; its posts get a guard each, first
+     *                facing down into the room
+     */
+    public Room(String id, GridMap map, int guardHp) {
         this.id = id;
         this.map = map;
+        for (int i = 0; i < map.guardPosts().size(); i++) {
+            guards.add(new Guard(id + "-g" + (i + 1), map.guardPosts().get(i), Direction.DOWN,
+                    guardHp));
+        }
     }
 
     public String id() {
@@ -104,14 +118,37 @@ public final class Room {
         return removed;
     }
 
-    /** Whether a living player stands here. Cabinet occupants hold their own tile. */
+    /** Whether a living player or guard stands here. Cabinet occupants hold their own tile. */
     public boolean occupied(Pos pos) {
         for (Player p : players.values()) {
             if (p.alive() && p.pos().equals(pos)) {
                 return true;
             }
         }
-        return false;
+        return livingGuardAt(pos) != null;
+    }
+
+    /** An outpost's guards, standing or down; empty everywhere else. */
+    public List<Guard> guards() {
+        return guards;
+    }
+
+    public Guard livingGuardAt(Pos pos) {
+        for (Guard guard : guards) {
+            if (guard.alive() && guard.pos().equals(pos)) {
+                return guard;
+            }
+        }
+        return null;
+    }
+
+    /** One more tick with a guard down and nobody here; returns the total. */
+    public int advanceGuardRespawn() {
+        return ++guardRespawnTicks;
+    }
+
+    public void resetGuardRespawn() {
+        guardRespawnTicks = 0;
     }
 
     public Player livingPlayerAt(Pos pos) {

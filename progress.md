@@ -118,6 +118,14 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       창고 page (user): laid out like 상점, 가져갈 것 4x4 on the left, the stash 4x4 on the
       right, both paged. The loadout's cell count follows the carry slots, so bags bought
       later only need more slots. Stash grids now show its capacity, no locked next tier.
+- [x] **V2.2 PvE outposts (2026-10-04, user's choices, draft numbers approved):** about one
+      new room in nine is `MapTemplates.OUTPOST` (never side by side, never a start) with
+      two `Guard`s — a separate entity, not a `Player`, so population, empty rooms, results
+      and kills ignore them. `GuardRules`: turn clockwise every 3s, fire down the line after
+      0.5s of sight (range 6, 20 damage, 1.5s), players' visibility rules; down for 60 health
+      (3 pistol shots), drop 6 rounds, stand again after 2 min empty. Military loot table.
+      Snapshot `guards`, `YOU_DIED.byGuard`. Seeded test worlds have no outposts
+      (`withOutposts(Random)` turns them on). Not deployed yet.
 - [x] **V2.2 quests (2026-10-04, user's choices, draft list approved as is):** the trader's
       ten errands in order (`Quests.ALL`), deliveries from the stash (`POST
       /api/hideout/quest/deliver`) and kills counted when a trip ends, death included;
@@ -351,8 +359,8 @@ Nothing.
    from the next season; season 1's deadline is stored in `season.ends_at`.
 3. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
    (the last two drop everyone).
-4. V2.2 so far: new rooms and quests (both live). Left: special maps and PvE, a player
-   market — planning first.
+4. **Deploy outposts — ask first.** No schema change. V2.2 left after that: a player
+   market (planning first; needs players to matter).
 5. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
    this more pressing: a restart costs players their gear.
 

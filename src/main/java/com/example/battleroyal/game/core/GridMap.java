@@ -27,6 +27,7 @@ public final class GridMap {
     private final int bushRegionCount;
     private final List<Pos> cabinets;
     private final List<Pos> itemSpawns;
+    private final List<Pos> guardPosts;
     private final Map<Direction, Pos> doors;
 
     /**
@@ -36,6 +37,13 @@ public final class GridMap {
      */
     public GridMap(TileType[][] tiles, int[][] bushRegion, int bushRegionCount,
                    List<Pos> cabinets, List<Pos> itemSpawns, Map<Direction, Pos> doors) {
+        this(tiles, bushRegion, bushRegionCount, cabinets, itemSpawns, doors, List.of());
+    }
+
+    public GridMap(TileType[][] tiles, int[][] bushRegion, int bushRegionCount,
+                   List<Pos> cabinets, List<Pos> itemSpawns, Map<Direction, Pos> doors,
+                   List<Pos> guardPosts) {
+        this.guardPosts = List.copyOf(guardPosts);
         this.tiles = tiles;
         this.bushRegion = bushRegion;
         this.bushRegionCount = bushRegionCount;
@@ -93,6 +101,15 @@ public final class GridMap {
 
     public List<Pos> itemSpawns() {
         return itemSpawns;
+    }
+
+    /** Where an outpost's guards stand; empty for every other room. */
+    public List<Pos> guardPosts() {
+        return guardPosts;
+    }
+
+    public boolean isOutpost() {
+        return !guardPosts.isEmpty();
     }
 
     public Map<Direction, Pos> doors() {

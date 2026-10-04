@@ -58,7 +58,7 @@ class OutboundTest {
 
         assertEquals(
                 "{\"type\":\"YOU_DIED\",\"score\":420,\"kills\":2,\"survivedSeconds\":95,"
-                        + "\"killer\":\"kang\",\"weapon\":\"PISTOL\"}",
+                        + "\"killer\":\"kang\",\"weapon\":\"PISTOL\",\"byGuard\":false}",
                 mapper.writeValueAsString(Outbound.youDied(died)));
     }
 

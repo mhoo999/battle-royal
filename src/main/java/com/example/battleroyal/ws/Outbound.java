@@ -38,8 +38,9 @@ public final class Outbound {
      * {@code {"type":"YOU_DIED","score":..,"kills":..,"survivedSeconds":..,
      * "killer":"kang","weapon":"PISTOL"}}. Only ever sent to the player who died.
      */
+    /** @param byGuard shot by an outpost guard (V2.2): no killer, no weapon */
     public record YouDied(String type, int score, int kills, long survivedSeconds,
-                          String killer, ItemKind weapon) {
+                          String killer, ItemKind weapon, boolean byGuard) {
     }
 
     /**
@@ -89,7 +90,7 @@ public final class Outbound {
     public static YouDied youDied(GameEvent.Died died) {
         return new YouDied("YOU_DIED", died.score(), died.kills(),
                 died.survivedTicks() / GameConstants.TICKS_PER_SECOND,
-                died.killerNickname(), died.weapon());
+                died.killerNickname(), died.weapon(), died.byGuard());
     }
 
     private static int[] coords(Pos pos) {

@@ -26,6 +26,16 @@ public enum Direction {
         return dy;
     }
 
+    /** A quarter turn clockwise, as an outpost guard turns. */
+    public Direction clockwise() {
+        return switch (this) {
+            case UP -> RIGHT;
+            case RIGHT -> DOWN;
+            case DOWN -> LEFT;
+            case LEFT -> UP;
+        };
+    }
+
     public Direction opposite() {
         return switch (this) {
             case UP -> DOWN;

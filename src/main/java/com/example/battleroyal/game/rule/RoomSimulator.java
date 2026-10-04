@@ -95,6 +95,7 @@ public final class RoomSimulator {
                 step(room, player, pending, nowTick);
             }
         }
+        GuardRules.tick(room, nowTick);
     }
 
     private static void move(Room room, Player player, Direction dir, long nowTick) {
@@ -270,8 +271,13 @@ public final class RoomSimulator {
         if (!trace.hit()) {
             return;
         }
-        Player victim = trace.victim();
         room.emit(new GameEvent.Hit(attacker.id()));
+        if (trace.guard() != null) {
+            // No score, no kill: a guard is not a player (V2.2).
+            GuardRules.wound(room, trace.guard(), blow.damage());
+            return;
+        }
+        Player victim = trace.victim();
         // A hit knocks you off the way out, whatever it does to your health.
         if (victim.extracting()) {
             victim.cancelExtract();
@@ -285,10 +291,6 @@ public final class RoomSimulator {
         }
     }
 
-    /**
-     * A disconnected player whose grace period has run out. Dies like anyone else, item
-     * dropped and result recorded, but with nobody to credit.
-     */
     /**
      * The season ended (D12): the player leaves the island at once, and what they carry
      * goes with the wipe rather than into a crate. Reaped after this tick's broadcast,
@@ -307,6 +309,10 @@ public final class RoomSimulator {
         room.markDirty();
     }
 
+    /**
+     * A disconnected player whose grace period has run out. Dies like anyone else, item
+     * dropped and result recorded, but with nobody to credit.
+     */
     public static void abandon(Room room, Player player, long nowTick) {
         if (!player.active()) {
             return;
@@ -323,6 +329,16 @@ public final class RoomSimulator {
      * @param killer null when nobody killed them
      */
     private static void die(Room room, Player victim, Player killer, long nowTick) {
+        die(room, victim, killer, false, nowTick);
+    }
+
+    /** Shot dead by an outpost guard: no killer to credit, and the news says so. */
+    static void dieToGuard(Room room, Player victim, long nowTick) {
+        die(room, victim, null, true, nowTick);
+    }
+
+    private static void die(Room room, Player victim, Player killer, boolean byGuard,
+                            long nowTick) {
         // Before the cabinet flag is cleared: a body pulled out of hiding was not seen.
         List<String> witnesses = room.players().stream()
                 .filter(other -> other != victim && other.alive())
@@ -349,7 +365,7 @@ public final class RoomSimulator {
         ItemKind weapon = killer == null || killer.heldItem() == null
                 ? null : killer.heldItem().kind();
         room.emit(new GameEvent.Died(victim.id(), victim.nickname(), victim.score(),
-                victim.kills(), nowTick - victim.joinedTick(), killerName, weapon));
+                victim.kills(), nowTick - victim.joinedTick(), killerName, weapon, byGuard));
     }
 
     /**
@@ -358,7 +374,7 @@ public final class RoomSimulator {
      * door before a crate, so a crate beside a door could never be opened.
      * A cabinet occupant's crate lands on the floor next to it.
      */
-    private static Pos dropSpot(Room room, Pos at) {
+    static Pos dropSpot(Room room, Pos at) {
         Set<Pos> seen = new HashSet<>();
         Deque<Pos> frontier = new ArrayDeque<>();
         seen.add(at);

@@ -286,6 +286,28 @@ public final class MapTemplates {
             "#######+#######");
 
     /**
+     * A military outpost (V2.2): a sandbagged compound with a way in on every side and
+     * two guards inside on opposite corners, each covering one of the two lines a looter
+     * must cross. Not in {@link #ALL}: the registry places it on its own roll.
+     */
+    public static final MapTemplate OUTPOST = MapTemplate.parse("OUTPOST",
+            "#######+#######",
+            "#.............#",
+            "#.bb...*...bb.#",
+            "#.bb.......bb.#",
+            "#....##.##....#",
+            "#...#G....#...#",
+            "#...#.....#.C.#",
+            "+.....*.*.....+",
+            "#...#.....#...#",
+            "#.C.#....G#...#",
+            "#....##.##....#",
+            "#.............#",
+            "#......*......#",
+            "#.............#",
+            "#######+#######");
+
+    /**
      * Even the smallest world has nine rooms. Three layouts read as one repeating pair;
      * with eight, and no room sharing a layout with its neighbours, a repeat feels like
      * coincidence. The six after QUARRY (V2.2) are places on the film's island.

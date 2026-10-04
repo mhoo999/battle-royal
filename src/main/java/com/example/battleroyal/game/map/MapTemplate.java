@@ -52,6 +52,7 @@ public final class MapTemplate {
         TileType[][] tiles = new TileType[GridMap.SIZE][GridMap.SIZE];
         List<Pos> cabinets = new ArrayList<>();
         List<Pos> itemSpawns = new ArrayList<>();
+        List<Pos> guardPosts = new ArrayList<>();
         Map<Direction, Pos> doors = new EnumMap<>(Direction.class);
 
         for (int y = 0; y < GridMap.SIZE; y++) {
@@ -64,7 +65,9 @@ public final class MapTemplate {
                 TileType tile = TileType.fromSymbol(c);
                 tiles[y][x] = tile;
                 Pos pos = new Pos(x, y);
-                if (c == TileType.ITEM_SPAWN_SYMBOL) {
+                if (c == TileType.GUARD_POST_SYMBOL) {
+                    guardPosts.add(pos);
+                } else if (c == TileType.ITEM_SPAWN_SYMBOL) {
                     itemSpawns.add(pos);
                 } else if (tile == TileType.CABINET) {
                     cabinets.add(pos);
@@ -76,7 +79,7 @@ public final class MapTemplate {
 
         int[][] bushRegion = labelBushRegions(tiles);
         GridMap map = new GridMap(tiles, bushRegion, countRegions(bushRegion),
-                cabinets, itemSpawns, doors);
+                cabinets, itemSpawns, doors, guardPosts);
 
         validateCounts(name, map);
         validateCabinets(name, map);

@@ -23,7 +23,8 @@ com.example.battleroyal
 │   Command, Concealment, ActionA, ActionB, GameEvent
 ├── game/rule/     상수와 판정 — 전부 tick 단위. core만 의존한다
 │   GameConstants, MovementRules, VisibilityRules, ActionResolver,
-│   RoomSimulator, CombatRules(raycast 포함), ScoreRules
+│   RoomSimulator, CombatRules(raycast 포함), ScoreRules, GuardRules (V2.2 초소 보초),
+│   Bags, Quests, ItemValues
 ├── game/map/      MapTemplate + 템플릿 문자열 상수
 ├── game/loop/     GameLoopService, RoomRegistry (토러스 월드), RoomBroadcaster, DeathListener
 ├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)

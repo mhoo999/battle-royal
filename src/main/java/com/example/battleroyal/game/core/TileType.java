@@ -15,6 +15,9 @@ public enum TileType {
     /** Template character marking a floor tile that also spawns items. */
     public static final char ITEM_SPAWN_SYMBOL = '*';
 
+    /** An outpost guard's post (V2.2): floor, with a guard standing on it. */
+    public static final char GUARD_POST_SYMBOL = 'G';
+
     private final char symbol;
     private final boolean walkable;
     private final boolean blocksRaycast;
@@ -39,7 +42,7 @@ public enum TileType {
     }
 
     public static TileType fromSymbol(char c) {
-        if (c == ITEM_SPAWN_SYMBOL) {
+        if (c == ITEM_SPAWN_SYMBOL || c == GUARD_POST_SYMBOL) {
             return FLOOR;
         }
         for (TileType t : values()) {

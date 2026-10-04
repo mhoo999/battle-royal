@@ -214,6 +214,7 @@ GET /ws/game?token=<uuid>
     { "id": "p2", "x": 15, "y": 5, "direction": "LEFT", "alive": true }
   ],
   "items":   [ { "id": "i-31", "x": 4, "y": 9 } ],
+  "guards":  [ { "x": 5, "y": 5, "direction": "DOWN" } ],
   "score": 420
 }
 ```
@@ -306,8 +307,13 @@ actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 
 ```json
 { "type": "YOU_DIED", "score": 1270, "kills": 3, "survivedSeconds": 412,
-  "killer": "kang", "weapon": "PISTOL" }
+  "killer": "kang", "weapon": "PISTOL", "byGuard": false }
 ```
+
+`byGuard`(V2.2)는 군 초소 보초에게 맞아 죽었을 때 `true`이고, 그때 `killer`/`weapon`은 `null`이다.
+
+`guards`(스냅샷, V2.2)는 그 방에 서 있는 군 초소 보초의 위치와 방향이다. 초소가 아니면 빈 배열,
+쓰러진 보초는 빠진다. 보초의 체력은 보내지 않는다(플레이어처럼).
 
 `killer`/`weapon`은 **사망자에게만** 간다. 살아 있는 동안 숨겨지는 정보(상대 무기)지만
 이 시점에 받는 사람은 이미 탈락했다. 처치자가 없는 사망(향후 끊김 타임아웃)이면 둘 다

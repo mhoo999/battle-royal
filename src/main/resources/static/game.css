@@ -17,6 +17,7 @@
   --bush:      #3f6b46;
   --self:      #7fd4c1;
   --enemy:     #e06c75;
+  --guard:     #f0883e;   /* outpost guards (V2.2): not a player, so not the enemy red */
   --item:      #e5c07b;
   --hp:        #7fd4c1;
   --hp-low:    #e06c75;
@@ -406,6 +407,7 @@ header.hud-bar {
 .cell.has-item.has-self::before,
 .cell.has-item.has-enemy::before { opacity: 0.3; }
 .cell.has-enemy { color: var(--enemy); }
+.cell.has-guard { color: var(--guard); font-weight: bold; }
 .cell.has-self  { color: var(--self); }
 /* Your own cabinet, on your screen only; others see a cabinet like any other. */
 .cell.self-cabinet { color: var(--self); outline: 1px solid var(--self); outline-offset: -2px; }

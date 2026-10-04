@@ -25,14 +25,23 @@ public record Snapshot(
         List<String> terrain,
         Self self,
         List<Other> players,
-        List<FloorItem> items
+        List<FloorItem> items,
+        List<GuardView> guards
 ) {
 
     public static final String TYPE = "SNAPSHOT";
 
     public static Snapshot of(long tick, String roomId, List<String> terrain,
-                             Self self, List<Other> players, List<FloorItem> items) {
-        return new Snapshot(TYPE, tick, roomId, terrain, self, players, items);
+                             Self self, List<Other> players, List<FloorItem> items,
+                             List<GuardView> guards) {
+        return new Snapshot(TYPE, tick, roomId, terrain, self, players, items, guards);
+    }
+
+    /**
+     * An outpost guard standing (V2.2): where and which way it faces, so you can time a
+     * dash past its line. Its health is never sent. A guard who is down is left out.
+     */
+    public record GuardView(int x, int y, Direction direction) {
     }
 
     /** Everything the owning player is allowed to know about themselves. */

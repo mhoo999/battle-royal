@@ -587,6 +587,31 @@ class RoomRegistryTest {
     }
 
     @Test
+    void outpostsAreRareNeverSideBySideAndNobodyStartsInOne() {
+        boolean sawOutpost = false;
+        for (int seed = 0; seed < 20; seed++) {
+            RoomRegistry registry = registry(seed).withOutposts(new Random(seed));
+            for (int i = 0; i < 12; i++) {
+                registry.requestJoin("p" + i, "p" + i);
+            }
+            registry.processPending(0);
+            for (com.example.battleroyal.game.core.Room room : registry.rooms()) {
+                if (!room.map().isOutpost()) {
+                    continue;
+                }
+                sawOutpost = true;
+                assertEquals(2, room.guards().size());
+                assertTrue(room.isEmpty(), "nobody starts in front of the guns");
+                assertTrue(room.neighbours().stream().noneMatch(n -> n.map().isOutpost()),
+                        "never two outposts side by side");
+            }
+        }
+        assertTrue(sawOutpost, "some world among twenty has one");
+        assertTrue(registry(1).rooms().stream().noneMatch(r -> r.map().isOutpost()),
+                "none in the seeded worlds the other tests measure");
+    }
+
+    @Test
     void aJoinCarriesItsLoadoutIntoTheInventory() {
         RoomRegistry registry = registry(1);
         com.example.battleroyal.game.core.Item pistol =

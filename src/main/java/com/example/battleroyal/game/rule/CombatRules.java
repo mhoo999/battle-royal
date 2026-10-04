@@ -2,6 +2,7 @@ package com.example.battleroyal.game.rule;
 
 import com.example.battleroyal.game.core.Direction;
 import com.example.battleroyal.game.core.GridMap;
+import com.example.battleroyal.game.core.Guard;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.core.Pos;
 import com.example.battleroyal.game.core.Room;
@@ -37,15 +38,20 @@ public final class CombatRules {
      *               with the victim's when somebody in the open or in a bush was hit.
      *               Blocking terrain is not part of the path.
      * @param victim who was hit, or null for a miss
+     * @param guard  the outpost guard hit instead (V2.2), or null
      */
-    public record Trace(List<Pos> path, Player victim) {
+    public record Trace(List<Pos> path, Player victim, Guard guard) {
 
         public Trace {
             path = List.copyOf(path);
         }
 
+        public Trace(List<Pos> path, Player victim) {
+            this(path, victim, null);
+        }
+
         public boolean hit() {
-            return victim != null;
+            return victim != null || guard != null;
         }
     }
 
@@ -66,6 +72,10 @@ public final class CombatRules {
             Player standing = room.livingPlayerAt(cursor);
             if (standing != null) {
                 return new Trace(path, standing);
+            }
+            Guard guard = room.livingGuardAt(cursor);
+            if (guard != null) {
+                return new Trace(path, null, guard);
             }
         }
         return new Trace(path, null);

@@ -159,6 +159,13 @@ function paint(snapshot) {
     cell.textContent = '◎';
   }
 
+  // Outpost guards (V2.2): the enemy's triangle, in their own colour, facing their line.
+  for (const guard of snapshot.guards || []) {
+    const cell = cells[guard.y * GRID + guard.x];
+    cell.classList.add('has-guard');
+    cell.textContent = ENEMY_GLYPH[guard.direction] || '▼';
+  }
+
   for (const other of snapshot.players) {
     if (!other.alive) continue;
     const cell = cells[other.y * GRID + other.x];
@@ -701,7 +708,9 @@ function showDeath(message) {
   stopClock();
   forgetSession();
   ui.deadTitle.textContent = 'GAME OVER';
-  ui.deadCause.textContent = deathCause(message.killer, message.weapon);
+  ui.deadCause.textContent = message.byGuard
+    ? '군 초소 보초의 총에 맞고 당신은 사망했다.'
+    : deathCause(message.killer, message.weapon);
   showRecord(message);
 }
 

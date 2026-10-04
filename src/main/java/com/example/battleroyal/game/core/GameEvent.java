@@ -56,8 +56,14 @@ public sealed interface GameEvent {
      * @param killerNickname null when nobody killed them (the disconnect grace ran out)
      * @param weapon         null likewise
      */
+    /** @param byGuard shot by an outpost guard (V2.2); then there is no killer or weapon */
     record Died(String playerId, String nickname, int score, int kills, long survivedTicks,
-                String killerNickname, ItemKind weapon) implements GameEvent {
+                String killerNickname, ItemKind weapon, boolean byGuard) implements GameEvent {
+
+        public Died(String playerId, String nickname, int score, int kills, long survivedTicks,
+                    String killerNickname, ItemKind weapon) {
+            this(playerId, nickname, score, kills, survivedTicks, killerNickname, weapon, false);
+        }
     }
 
     /**

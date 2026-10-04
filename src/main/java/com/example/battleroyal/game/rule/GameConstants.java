@@ -82,6 +82,31 @@ public final class GameConstants {
     /** What each next stash size costs: index 0 buys the big box, 1 the fine box. */
     public static final List<Integer> STASH_UPGRADE_PRICES = List.of(500, 2_000);
 
+    // --- Outposts and their guards (V2.2 PvE) -------------------------------
+
+    /** About one new room in this many is a military outpost; never two side by side. */
+    public static final int OUTPOST_ONE_IN = 9;
+    public static final int GUARD_HP = 60;
+    public static final int GUARD_RANGE = 6;
+    public static final int GUARD_DAMAGE = 20;
+    /** One shot every 1.5s. */
+    public static final int GUARD_COOLDOWN_TICKS = 30;
+    /** A quarter turn clockwise every 3s. */
+    public static final int GUARD_TURN_TICKS = 60;
+    /** Someone has to stay in a guard's line for 0.5s before it fires: room to dash past. */
+    public static final int GUARD_REACTION_TICKS = 10;
+    /** Guards stand again after 2 minutes in all with nobody in the outpost. */
+    public static final int GUARD_RESPAWN_TICKS = 2_400;
+
+    /** What an outpost's crate rolls, out of 100: always something, mostly a gun. */
+    public static final int MILITARY_WEIGHT_PISTOL = 30;
+    public static final int MILITARY_WEIGHT_CROSSBOW = 20;
+    public static final int MILITARY_WEIGHT_ROUNDS = 15;
+    public static final int MILITARY_WEIGHT_BOLTS = 10;
+    public static final int MILITARY_WEIGHT_MEDKIT = 10;
+    public static final int MILITARY_WEIGHT_SMALL_BAG = 10;
+    public static final int MILITARY_WEIGHT_BIG_BAG = 5;
+
     /** How long a season runs (D12, Q13): four weeks, ending at midnight in Seoul. */
     public static final int SEASON_DAYS = 28;
 

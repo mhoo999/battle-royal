@@ -83,9 +83,22 @@ public class RoomRegistry {
     private final Random random;
     private final Random itemRandom;
     private final Random exitRandom;
+    /** Null in the seeded test constructors: no outposts unless a test asks for them. */
+    private Random outpostRandom;
 
     public RoomRegistry() {
         this(new Random(), new Random(), new Random());
+        this.outpostRandom = new Random();
+    }
+
+    /**
+     * Turns outposts on, rolled from their own source so layouts and spawns stay where
+     * the seeded tests expect them. Off by default in the seeded constructors, whose
+     * players would otherwise walk into guards a measurement never planned for.
+     */
+    public RoomRegistry withOutposts(Random random) {
+        this.outpostRandom = random;
+        return this;
     }
 
     /**
@@ -417,7 +430,11 @@ public class RoomRegistry {
      * the game is a gamble rather than a guaranteed fight.
      */
     private Room startingRoom() {
-        List<Room> empty = rooms.values().stream().filter(Room::isEmpty).toList();
+        // Nobody starts in an outpost, in front of its guns.
+        List<Room> empty = rooms.values().stream()
+                .filter(Room::isEmpty)
+                .filter(room -> !room.map().isOutpost())
+                .toList();
         if (empty.isEmpty()) {
             return null;
         }
@@ -473,13 +490,19 @@ public class RoomRegistry {
                 nextDoor.add(neighbour.map());
             }
         }
-        List<MapTemplate> unlike = MapTemplates.ALL.stream()
-                .filter(template -> !nextDoor.contains(template.map()))
-                .toList();
-        MapTemplate template = pick(unlike.isEmpty() ? MapTemplates.ALL : unlike);
+        MapTemplate template;
+        if (outpostRandom != null && nextDoor.stream().noneMatch(GridMap::isOutpost)
+                && outpostRandom.nextInt(GameConstants.OUTPOST_ONE_IN) == 0) {
+            template = MapTemplates.OUTPOST;
+        } else {
+            List<MapTemplate> unlike = MapTemplates.ALL.stream()
+                    .filter(candidate -> !nextDoor.contains(candidate.map()))
+                    .toList();
+            template = pick(unlike.isEmpty() ? MapTemplates.ALL : unlike);
+        }
 
         String id = "room-" + roomSequence.incrementAndGet();
-        Room room = new Room(id, template.map());
+        Room room = new Room(id, template.map(), GameConstants.GUARD_HP);
         ItemSpawns.prime(room);
         rooms.put(id, room);
         return room;

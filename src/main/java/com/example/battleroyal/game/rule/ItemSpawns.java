@@ -57,7 +57,7 @@ public final class ItemSpawns {
      * so the same layout does not always hide its loot in the same place.
      */
     private static void roll(Room room, Random random, Supplier<String> ids) {
-        ItemKind kind = pick(random);
+        ItemKind kind = room.map().isOutpost() ? pickMilitary(random) : pick(random);
         if (kind == null) {
             return;
         }
@@ -91,6 +91,29 @@ public final class ItemSpawns {
     static final int TOTAL_WEIGHT = TABLE.stream().mapToInt(Weight::weight).sum();
 
     /** @return the rolled kind, or null when the roll came up empty */
+    private static final List<Weight> MILITARY = List.of(
+            new Weight(ItemKind.PISTOL, GameConstants.MILITARY_WEIGHT_PISTOL),
+            new Weight(ItemKind.CROSSBOW, GameConstants.MILITARY_WEIGHT_CROSSBOW),
+            new Weight(ItemKind.ROUNDS, GameConstants.MILITARY_WEIGHT_ROUNDS),
+            new Weight(ItemKind.BOLTS, GameConstants.MILITARY_WEIGHT_BOLTS),
+            new Weight(ItemKind.MEDKIT, GameConstants.MILITARY_WEIGHT_MEDKIT),
+            new Weight(ItemKind.SMALL_BAG, GameConstants.MILITARY_WEIGHT_SMALL_BAG),
+            new Weight(ItemKind.BIG_BAG, GameConstants.MILITARY_WEIGHT_BIG_BAG));
+
+    static final int MILITARY_TOTAL = MILITARY.stream().mapToInt(Weight::weight).sum();
+
+    /** An outpost's crate (V2.2): never empty, mostly a gun. */
+    static ItemKind pickMilitary(Random random) {
+        int roll = random.nextInt(MILITARY_TOTAL);
+        for (Weight entry : MILITARY) {
+            roll -= entry.weight();
+            if (roll < 0) {
+                return entry.kind();
+            }
+        }
+        throw new IllegalStateException("unreachable: roll below total weight");
+    }
+
     static ItemKind pick(Random random) {
         int roll = random.nextInt(TOTAL_WEIGHT);
         for (Weight entry : TABLE) {

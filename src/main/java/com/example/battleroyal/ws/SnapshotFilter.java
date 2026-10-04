@@ -1,5 +1,6 @@
 package com.example.battleroyal.ws;
 
+import com.example.battleroyal.game.core.Guard;
 import com.example.battleroyal.game.core.Crate;
 import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.Item;
@@ -52,8 +53,14 @@ public class SnapshotFilter {
             items.add(new Snapshot.FloorItem(entry.getValue().id(), pos.x(), pos.y()));
         }
 
+        List<Snapshot.GuardView> guards = room.guards().stream()
+                .filter(Guard::alive)
+                .map(guard -> new Snapshot.GuardView(guard.pos().x(), guard.pos().y(),
+                        guard.facing()))
+                .toList();
+
         return Snapshot.of(tick, room.id(), room.map().terrainRows(),
-                self(room, viewer, tick), others, items);
+                self(room, viewer, tick), others, items, guards);
     }
 
     private Snapshot.Self self(Room room, Player viewer, long tick) {
