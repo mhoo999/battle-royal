@@ -515,6 +515,26 @@ header.hud-bar {
   cursor: pointer;
 }
 .pager button:disabled { color: var(--line); cursor: default; }
+/*
+ * Every grid's title sits in a row of one height, so the grids beside each other line
+ * up; the inventory's row also holds the bag slot, a wide cell rather than a square.
+ */
+.inv-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-height: 1.9rem;
+}
+.slot.bag-slot {
+  flex-direction: row;
+  gap: 0.3rem;
+  width: auto;
+  aspect-ratio: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+}
+.slot.bag-slot.empty { border-style: dashed; }
 .slot .count { color: var(--ink); font-size: 0.9em; opacity: 0.8; }
 .slot.empty { color: var(--dim); }
 /* A cell not yours yet: the stash's next size up, shown so the grid reads as a bag. */

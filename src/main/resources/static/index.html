@@ -66,12 +66,15 @@
       </header>
       <div class="inv-body">
         <div id="inv-crate" class="inv-col crate-col" hidden>
-          <p class="inv-title">상자</p>
+          <div class="inv-title-row"><p class="inv-title">상자</p></div>
           <ol id="crate-list" class="slots grid" style="--cols: 4"></ol>
           <div class="pager" data-for="crate"><button type="button" data-pager="crate" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="crate" data-step="1" aria-label="다음">›</button></div>
         </div>
         <div class="inv-col">
-          <p class="inv-title">인벤토리</p>
+          <div class="inv-title-row">
+            <p class="inv-title">인벤토리</p>
+            <button id="bag-slot" class="slot bag-slot" type="button" data-from="bag" data-index="-1"></button>
+          </div>
           <ol id="inv-list" class="slots grid" style="--cols: 4"></ol>
           <div class="pager" data-for="inv"><button type="button" data-pager="inv" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="inv" data-step="1" aria-label="다음">›</button></div>
         </div>
@@ -165,12 +168,15 @@
   <section id="hideout-stash" class="hideout-page" hidden>
     <div class="hideout-body">
       <div class="inv-col">
-        <p class="inv-title">가져갈 것</p>
+        <div class="inv-title-row">
+          <p class="inv-title">가져갈 것</p>
+          <button id="loadout-bag" class="slot bag-slot" type="button" data-from="loadbag" data-index="-1"></button>
+        </div>
         <ol id="loadout-list" class="slots grid" style="--cols: 4"></ol>
         <div class="pager" data-for="load"><button type="button" data-pager="load" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="load" data-step="1" aria-label="다음">›</button></div>
       </div>
       <div class="inv-col">
-        <p class="inv-title">창고</p>
+        <div class="inv-title-row"><p class="inv-title">창고</p></div>
         <ol id="stash-list" class="slots grid" style="--cols: 4"></ol>
         <div class="pager" data-for="stash"><button type="button" data-pager="stash" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="stash" data-step="1" aria-label="다음">›</button></div>
       </div>
@@ -185,12 +191,12 @@
   <section id="hideout-shop" class="hideout-page trader" hidden>
     <div class="hideout-body">
       <div class="inv-col">
-        <p class="inv-title">상점</p>
+        <div class="inv-title-row"><p class="inv-title">상점</p></div>
         <ol id="trader-list" class="slots grid" style="--cols: 4"></ol>
         <div class="pager" data-for="offer"><button type="button" data-pager="offer" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="offer" data-step="1" aria-label="다음">›</button></div>
       </div>
       <div class="inv-col">
-        <p class="inv-title">창고</p>
+        <div class="inv-title-row"><p class="inv-title">창고</p></div>
         <ol id="sell-list" class="slots grid" style="--cols: 4"></ol>
         <div class="pager" data-for="sell"><button type="button" data-pager="sell" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="sell" data-step="1" aria-label="다음">›</button></div>
       </div>

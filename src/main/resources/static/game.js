@@ -24,7 +24,19 @@ const ITEM_LABEL = {
   KNIFE: '칼', BAT: '야구배트', PISTOL: '권총', CROSSBOW: '석궁', MEDKIT: '메디킷',
   PAN: '프라이팬', SPOON: '숟가락', CUP: '컵', DOLL: '솜 빠진 인형', RECORDER: '리코더',
   REGISTER: '출석부', ROUNDS: '권총탄', BOLTS: '화살',
+  SMALL_BAG: '작은 가방', BIG_BAG: '큰 가방',
 };
+/** Slots a worn bag adds (GameConstants.SMALL_BAG_SLOTS, BIG_BAG_SLOTS). */
+const BAG_SLOTS = { SMALL_BAG: 2, BIG_BAG: 4 };
+const BASE_SLOTS = 3;
+const BAG_SLOT = -1;
+
+/** The bag slot's face: what is worn and what it adds, or that nothing is. */
+function paintBagSlot(button, bag, selected) {
+  button.classList.toggle('empty', !bag);
+  button.classList.toggle('selected', selected);
+  button.textContent = bag ? `${ITEM_LABEL[bag.kind]} +${BAG_SLOTS[bag.kind]}` : '가방 없음';
+}
 /*
  * How a weapon killed you, glued after its name. Optional per weapon: anything not
  * listed falls back to DEATH_VERB_DEFAULT, so a new weapon needs only an ITEM_LABEL.
@@ -72,7 +84,7 @@ const ui = {
   game: el('game'), hudName: el('hud-name'), clock: el('clock'), score: el('score'),
   board: el('board'),
   hpFill: el('hp-fill'), hpText: el('hp-text'), item: el('item'), state: el('state'),
-  bag: el('bag'), inv: el('inv'), invClose: el('inv-close'), invCrate: el('inv-crate'),
+  bag: el('bag'), bagSlot: el('bag-slot'), loadoutBag: el('loadout-bag'), inv: el('inv'), invClose: el('inv-close'), invCrate: el('inv-crate'),
   crateList: el('crate-list'), invList: el('inv-list'), invHint: el('inv-hint'),
   hideout: el('hideout'), hideoutName: el('hideout-name'), stashList: el('stash-list'),
   stashCount: el('stash-count'), loadoutList: el('loadout-list'), hideoutHint: el('hideout-hint'),
@@ -845,7 +857,7 @@ function wireInput() {
     }
     if (!playing()) return;
     if (event.key === 'i' || event.key === 'I') setBag(!bagOpen);
-    if (event.key === '1' || event.key === '2' || event.key === '3') {
+    if (/^[1-7]$/.test(event.key)) {
       send({ type: 'EQUIP', slot: Number(event.key) - 1 });
     }
     if (event.key === 'j' || event.key === 'J') actionA();
@@ -1004,11 +1016,13 @@ function paintBag(self) {
   paintPage(ui.crateList, 'crate', Array.from({ length: Math.max(CRATE_SLOTS, crate ? crate.length : 0) },
     (_, i) => slotButton(crate && crate[i] ? crate[i] : null, 'crate', i, false)));
   paintPage(ui.invList, 'inv', self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
+  paintBagSlot(ui.bagSlot, self.bag, !!selection && selection.from === 'bag');
 
   if (crateEmptied) ui.invHint.textContent = '상자를 다 비웠다 · 누르면 장착';
   else if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
   else if (!selection) ui.invHint.textContent = '옮길 아이템을 고르세요';
-  else if (selection.from === 'crate') ui.invHint.textContent = '넣을 칸을 고르세요';
+  else if (selection.from === 'crate') ui.invHint.textContent = '넣을 칸을 고르세요 · 가방은 가방 칸에';
+  else if (selection.from === 'bag') ui.invHint.textContent = '상자를 누르면 가방 벗기 · 늘어난 칸을 비워야 한다';
   else ui.invHint.textContent = '상자를 누르면 넣기 · 한 번 더 누르면 장착';
 }
 
@@ -1029,8 +1043,21 @@ function setBag(open) {
 function pickInBag(from, index) {
   const crate = lastSnapshot && Array.isArray(lastSnapshot.self.crate) ? lastSnapshot.self.crate : null;
   const crateOpen = !!crate;
+  if (from === 'bag') {
+    // The bag slot: a bag from the crate goes on (TAKE slot -1); picked with a crate
+    // open, the worn bag can be put into it. The server refuses a change that would
+    // lose a slot in use.
+    if (selection && selection.from === 'crate') {
+      send({ type: 'TAKE', index: selection.index, slot: BAG_SLOT });
+      selection = null;
+    } else if (crateOpen && lastSnapshot.self.bag) {
+      selection = selection && selection.from === 'bag' ? null : { from: 'bag', index: BAG_SLOT };
+    }
+    repaintBag();
+    return;
+  }
   if (from === 'crate') {
-    if (selection && selection.from === 'inv') {
+    if (selection && (selection.from === 'inv' || selection.from === 'bag')) {
       send({ type: 'PUT', slot: selection.index });
       selection = null;
     } else if (crate && index < crate.length) {
@@ -1062,7 +1089,8 @@ function wireBag() {
       return;
     }
     // Anywhere in the crate column takes a picked inventory item, not only its rows.
-    if (event.target.closest('.crate-col') && selection && selection.from === 'inv') {
+    if (event.target.closest('.crate-col') && selection
+        && (selection.from === 'inv' || selection.from === 'bag')) {
       send({ type: 'PUT', slot: selection.index });
       selection = null;
       repaintBag();
@@ -1081,7 +1109,8 @@ function wireBag() {
  */
 let stash = [];             // [{ id, kind, ammo, price }]
 let hideoutView = null;     // the last /api/hideout answer
-let loadout = [null, null, null];   // stash item ids
+let loadout = [null, null, null];   // stash item ids, one per slot the bag allows
+let loadoutBag = null;              // the stash id of the bag to wear, or null
 let stashPick = null;       // a stash item id
 let dealPick = null;        // on the 상점 page: { kind } from the stock, or { id } from the stash
 
@@ -1091,6 +1120,7 @@ async function openHideout() {
   stashPick = null;
   dealPick = null;
   loadout = [null, null, null];
+  loadoutBag = null;
   showHideoutPage('home');
   try {
     const response = await fetch('/api/hideout');
@@ -1114,8 +1144,11 @@ function applyHideout(view) {
   ui.haul.textContent = view.haul;
   if (stashPick !== null && !stashEntry(stashPick)) stashPick = null;
   if (dealPick && dealPick.id !== undefined && !stashEntry(dealPick.id)) dealPick = null;
-  // Whatever was sold no longer goes out.
-  loadout = loadout.map((id) => (id !== null && stashEntry(id) ? id : null));
+  // Whatever was sold no longer goes out; a sold bag takes its slots with it.
+  if (loadoutBag !== null && !stashEntry(loadoutBag)) loadoutBag = null;
+  loadout = loadout.map((id) => (id !== null && stashEntry(id) ? id : null))
+    .slice(0, slotsFor(loadoutBag));
+  while (loadout.length < slotsFor(loadoutBag)) loadout.push(null);
   paintHideout();
 }
 
@@ -1237,8 +1270,16 @@ function paintGrow() {
   ui.growButton.disabled = hideoutView.money < next.price;
 }
 
+/** Slots to carry with this stash bag worn, or none. */
+function slotsFor(bagId) {
+  const bag = bagId === null ? null : stashEntry(bagId);
+  return BASE_SLOTS + (bag ? BAG_SLOTS[bag.kind] || 0 : 0);
+}
+
 function paintHideout() {
   const carried = new Set(loadout.filter((id) => id !== null));
+  if (loadoutBag !== null) carried.add(loadoutBag);
+  paintBagSlot(ui.loadoutBag, loadoutBag === null ? null : stashEntry(loadoutBag), false);
   // 창고 is laid out like 상점: what goes out on the left (as many cells as the slots
   // you can carry, more once bags can be bought), the stash on the right.
   paintPage(ui.loadoutList, 'load', loadout.map((id, i) =>
@@ -1251,12 +1292,39 @@ function paintHideout() {
     return li;
   }));
   paintGrow();
-  const carrying = loadout.filter((id) => id !== null).length;
+  const carrying = loadout.filter((id) => id !== null).length + (loadoutBag !== null ? 1 : 0);
   ui.carryCount.textContent = carrying > 0 ? `${carrying}개` : '빈손';
   paintTrader();
   ui.hideoutHint.textContent = stash.length === 0
     ? '첫 출발은 빈손이다. 탈출하면 가져온 것이 여기 쌓인다.'
     : stashPick !== null ? '넣을 칸을 고르세요' : '창고에서 고른 뒤 칸을 고르세요 · 채운 칸을 누르면 빼기';
+}
+
+/**
+ * The bag slot of what goes out: a picked stash bag goes on, giving its slots; tapped
+ * with nothing picked, the bag comes off. Either way only if the slots it would take
+ * away are empty, so nothing picked is silently dropped.
+ */
+function pickLoadoutBag() {
+  ui.hideoutError.textContent = '';
+  const picked = stashPick === null ? null : stashEntry(stashPick);
+  if (picked && !BAG_SLOTS[picked.kind]) {
+    ui.hideoutError.textContent = '가방 칸에는 가방만 넣을 수 있다';
+    return;
+  }
+  const next = picked ? stashPick : null;
+  if (!picked && loadoutBag === null) return;
+  const count = slotsFor(next);
+  const kept = loadout.map((id) => (id === next ? null : id));
+  if (kept.slice(count).some((id) => id !== null)) {
+    ui.hideoutError.textContent = '늘어난 칸을 먼저 비우세요';
+    return;
+  }
+  loadoutBag = next;
+  loadout = kept.slice(0, count);
+  while (loadout.length < count) loadout.push(null);
+  stashPick = null;
+  paintHideout();
 }
 
 function pickInHideout(from, index) {
@@ -1279,7 +1347,7 @@ async function setOut() {
     const response = await fetch('/api/hideout/sortie', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loadout }),
+      body: JSON.stringify({ loadout, bag: loadoutBag }),
     });
     if (!response.ok) {
       ui.hideoutError.textContent = (await response.text()) || '출발할 수 없습니다';
@@ -1308,6 +1376,7 @@ function wireHideout() {
     const from = button.dataset.from;
     if (from === 'offer' || from === 'sell') pickInShop(button);
     else if (from === 'stash' || from === 'loadout') pickInHideout(from, Number(button.dataset.index));
+    else if (from === 'loadbag') pickLoadoutBag();
   });
   ui.setOut.addEventListener('click', setOut);
   el('go-stash').addEventListener('click', () => showHideoutPage('stash'));

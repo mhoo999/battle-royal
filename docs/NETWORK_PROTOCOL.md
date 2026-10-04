@@ -32,10 +32,11 @@ GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ]
           "capacity": 10, "upgrade": { "capacity": 20, "price": 500 },
           "out": false, "money": 135, "haul": 165,
           "trader": [ { "kind": "KNIFE", "ammo": 0, "price": 120 }, … ] }
-POST  { "loadout": [ 11, null, 12 ] }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
+POST  { "loadout": [ 11, null, 12 ], "bag": 13 }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
-`loadout`은 칸 순서대로 창고 아이템 ID(빈 칸은 `null`), 최대 3칸. 응답 토큰으로 WebSocket에
+`loadout`은 칸 순서대로 창고 아이템 ID(빈 칸은 `null`), 최대 3칸 — `bag`(V2.1, 창고의 가방 ID
+또는 생략)을 메면 3 + 가방 칸까지. 가방이 아닌 것을 `bag`으로 고르면 400. 응답 토큰으로 WebSocket에
 붙으면 그 아이템을 들고 섬에 들어가고, 첫 칸이 장착된다. 거부: 닉네임이 없으면 409, 이미
 섬에 나가 있으면 409 "이미 섬에 나가 있습니다", 남의 아이템·이미 나간 아이템·같은 아이템
 두 번·4칸 이상이면 400. 한국어 사유를 본문에 담는다.
@@ -137,6 +138,7 @@ GET /ws/game?token=<uuid>
 { "type": "EQUIP", "slot": 1 }         // A가 쓸 칸 (V2)
 { "type": "TAKE", "index": 0, "slot": 2 } // 열린 상자의 index번째를 slot으로; 차 있으면 맞바꿈 (V2)
 { "type": "PUT", "slot": 2 }           // slot의 아이템을 열린 상자로 (V2)
+                                        // slot -1은 가방 칸 (V2.1): TAKE는 가방만, 늘어난 칸이 비어야
 { "type": "CLOSE" }                    // 열린 상자 닫기 (V2)
 ```
 
@@ -172,6 +174,7 @@ GET /ws/game?token=<uuid>
     "id": "p1", "x": 10, "y": 7, "direction": "UP",
     "hp": 80, "item": "MEDKIT", "ammo": null,
     "inventory": [ { "kind": "MEDKIT", "ammo": null }, null, { "kind": "PISTOL", "ammo": 4 } ],
+    "bag": null,
     "equipped": 0,
     "crate": null,
     "concealment": "CABINET", "lootMsLeft": null, "invulnerable": false,
@@ -207,6 +210,9 @@ bare-hand kill.
 
 **V2: 인벤토리 3칸.** `self.inventory`는 칸 순서대로 `{kind, ammo}` 또는 빈 칸 `null`,
 `self.equipped`는 A가 쓰는 칸, `self.item`/`self.ammo`는 장착 칸의 것이다.
+**V2.1:** `self.bag`은 가방 칸에 멘 가방(`{kind}`, `SMALL_BAG` | `BIG_BAG`) 또는 `null`이고,
+`self.inventory`의 길이는 3 + 가방이 더하는 칸(작은 2, 큰 4)이다. 가방은 다른 사람에게
+보내지 않는다.
 `self.crate`는 **내가 열어 둔 상자의 내용**(순서대로)이고, 열린 상자가 없으면 `null`이다.
 
 **바닥에는 상자(`items[]`)만 보낸다. 내용은 연 사람에게만, 그것도 `self.crate`로만
