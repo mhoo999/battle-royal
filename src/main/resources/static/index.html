@@ -67,11 +67,13 @@
       <div class="inv-body">
         <div id="inv-crate" class="inv-col crate-col" hidden>
           <p class="inv-title">상자</p>
-          <ol id="crate-list" class="slots grid" style="--cols: 3"></ol>
+          <ol id="crate-list" class="slots grid" style="--cols: 4"></ol>
+          <div class="pager" data-for="crate"><button type="button" data-pager="crate" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="crate" data-step="1" aria-label="다음">›</button></div>
         </div>
         <div class="inv-col">
           <p class="inv-title">인벤토리</p>
-          <ol id="inv-list" class="slots grid" style="--cols: 3"></ol>
+          <ol id="inv-list" class="slots grid" style="--cols: 4"></ol>
+          <div class="pager" data-for="inv"><button type="button" data-pager="inv" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="inv" data-step="1" aria-label="다음">›</button></div>
         </div>
       </div>
       <p id="inv-hint" class="inv-hint"></p>
@@ -178,11 +180,13 @@
     <div class="hideout-body">
       <div class="inv-col">
         <p class="inv-title">상점</p>
-        <ol id="trader-list" class="slots grid" style="--cols: 3"></ol>
+        <ol id="trader-list" class="slots grid" style="--cols: 4"></ol>
+        <div class="pager" data-for="offer"><button type="button" data-pager="offer" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="offer" data-step="1" aria-label="다음">›</button></div>
       </div>
       <div class="inv-col">
         <p class="inv-title">창고</p>
         <ol id="sell-list" class="slots grid" style="--cols: 4"></ol>
+        <div class="pager" data-for="sell"><button type="button" data-pager="sell" data-step="-1" aria-label="이전">‹</button><span></span><button type="button" data-pager="sell" data-step="1" aria-label="다음">›</button></div>
       </div>
     </div>
     <div id="deal" class="deal" hidden>

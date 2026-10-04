@@ -940,6 +940,35 @@ function blankCell(locked) {
   return li;
 }
 
+/*
+ * The crate, the bag and the trader's two sides show 4 x 4 pages, so the two grids of a
+ * window are always the same size. Cells past what a grid holds are drawn disabled rather
+ * than left out.
+ */
+const PAGE = 16;
+const pages = { crate: 0, inv: 0, offer: 0, sell: 0 };
+
+/** Shows one page of cells (one per absolute index) in list, and its pager. */
+function paintPage(list, key, cells) {
+  const count = Math.max(1, Math.ceil(cells.length / PAGE));
+  pages[key] = Math.min(Math.max(pages[key], 0), count - 1);
+  const shown = cells.slice(pages[key] * PAGE, (pages[key] + 1) * PAGE);
+  while (shown.length < PAGE) shown.push(blankCell(true));
+  list.replaceChildren(...shown);
+  const bar = document.querySelector(`.pager[data-for="${key}"]`);
+  bar.querySelector('span').textContent = `${pages[key] + 1}/${count}`;
+  bar.querySelector('[data-step="-1"]').disabled = pages[key] === 0;
+  bar.querySelector('[data-step="1"]').disabled = pages[key] === count - 1;
+}
+
+/** A pager arrow was pressed: true if the click was one. */
+function turnPage(target) {
+  const arrow = target.closest('[data-pager]');
+  if (!arrow) return false;
+  if (!arrow.disabled) pages[arrow.dataset.pager] += Number(arrow.dataset.step);
+  return true;
+}
+
 function paintBag(self) {
   const crate = Array.isArray(self.crate) ? self.crate : null;
   const here = `${self.x},${self.y}`;
@@ -949,6 +978,7 @@ function paintBag(self) {
     bagOpen = true;
     selection = null;
     crateOpenedAt = here;
+    pages.crate = 0;
   }
   if (!crate && crateWasOpen && here !== crateOpenedAt) {
     bagOpen = false;
@@ -963,9 +993,9 @@ function paintBag(self) {
   if (!bagOpen) return;
 
   ui.invCrate.hidden = !crate;
-  ui.crateList.replaceChildren(...Array.from({ length: Math.max(CRATE_SLOTS, crate ? crate.length : 0) },
+  paintPage(ui.crateList, 'crate', Array.from({ length: Math.max(CRATE_SLOTS, crate ? crate.length : 0) },
     (_, i) => slotButton(crate && crate[i] ? crate[i] : null, 'crate', i, false)));
-  ui.invList.replaceChildren(...self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
+  paintPage(ui.invList, 'inv', self.inventory.map((slot, i) => slotButton(slot, 'inv', i, i === self.equipped)));
 
   if (!crate) ui.invHint.textContent = '누르면 장착 · 1 2 3';
   else if (!selection) ui.invHint.textContent = '옮길 아이템을 고르세요';
@@ -1011,9 +1041,13 @@ function wireBag() {
   ui.bag.addEventListener('click', () => setBag(!bagOpen));
   ui.invClose.addEventListener('click', () => setBag(false));
   ui.inv.addEventListener('click', (event) => {
+    if (turnPage(event.target)) {
+      repaintBag();
+      return;
+    }
     const button = event.target.closest('.slot');
     if (button) {
-      pickInBag(button.dataset.from, Number(button.dataset.index));
+      if (button.dataset.from !== 'none') pickInBag(button.dataset.from, Number(button.dataset.index));
       return;
     }
     // Anywhere in the crate column takes a picked inventory item, not only its rows.
@@ -1084,6 +1118,8 @@ function showHideoutPage(page) {
   ui.hideoutShop.hidden = page !== 'shop';
   ui.hideoutError.textContent = '';
   dealPick = null;
+  pages.offer = 0;
+  pages.sell = 0;
   if (hideoutView) paintTrader();
 }
 
@@ -1091,8 +1127,8 @@ function showHideoutPage(page) {
  * The stash as a grid: its items, then free cells up to the capacity, then the next size
  * up locked. A stash let run over its capacity (extraction always fits) grows the grid.
  */
-function stashCells(cols, cell) {
-  const shown = Math.max(STASH_GRID, Math.ceil(stash.length / cols) * cols);
+function stashCells(cols, cell, minimum = STASH_GRID) {
+  const shown = Math.max(minimum, Math.ceil(stash.length / cols) * cols);
   return Array.from({ length: shown }, (_, i) =>
     i < stash.length ? cell(stash[i]) : blankCell(i >= hideoutView.capacity));
 }
@@ -1103,7 +1139,7 @@ function stashCells(cols, cell) {
  * go through now; the server is the one that says no, this only saves a pointless tap.
  */
 function paintTrader() {
-  ui.traderList.replaceChildren(...hideoutView.trader.map((offer) => {
+  paintPage(ui.traderList, 'offer', hideoutView.trader.map((offer) => {
     // Guns are sold empty, so only a bundle's count is worth showing.
     const li = slotButton({ kind: offer.kind, ammo: offer.ammo > 0 ? offer.ammo : null }, 'offer', 0, false);
     const button = li.firstChild;
@@ -1111,11 +1147,12 @@ function paintTrader() {
     button.classList.toggle('selected', !!dealPick && dealPick.kind === offer.kind);
     return li;
   }));
-  ui.sellList.replaceChildren(...stashCells(4, (entry) => {
+  // Only the stash's own cells: the page pads the rest disabled, so no page is all locks.
+  paintPage(ui.sellList, 'sell', stashCells(1, (entry) => {
     const li = slotButton(entry, 'sell', entry.id, false);
     li.firstChild.classList.toggle('selected', !!dealPick && dealPick.id === entry.id);
     return li;
-  }));
+  }, hideoutView.capacity));
   paintDeal();
 }
 
@@ -1235,6 +1272,10 @@ async function setOut() {
 
 function wireHideout() {
   ui.hideout.addEventListener('click', (event) => {
+    if (turnPage(event.target)) {
+      paintTrader();
+      return;
+    }
     const button = event.target.closest('.slot');
     if (!button || button.disabled) return;
     const from = button.dataset.from;

@@ -493,6 +493,25 @@ header.hud-bar {
   overflow: hidden;
   cursor: pointer;
 }
+/* Under a 4x4 page: ‹ 1/2 ›. Always drawn, so both sides of a window stay one height. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.pager button {
+  padding: 0 0.5rem;
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.pager button:disabled { color: var(--line); cursor: default; }
 .slot .count { color: var(--ink); font-size: 0.9em; opacity: 0.8; }
 .slot.empty { color: var(--dim); }
 /* A cell not yours yet: the stash's next size up, shown so the grid reads as a bag. */
