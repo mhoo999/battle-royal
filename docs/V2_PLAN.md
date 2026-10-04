@@ -109,8 +109,10 @@ DB에 남아 있어야 하고(출발 트랜잭션이 이미 그 기록이다), �
 - 구글 OAuth 클라이언트 등록(콘솔 작업)과 HTTPS가 필요하다. HTTPS는 이미 있다.
 - **클라이언트 ID**(비밀 아님): `360598965752-kcmvgcjciae77eoa1nacthd9ldnc9032.apps.googleusercontent.com`.
   리디렉션 URI: `https://battleroyale.site/login/oauth2/code/google`,
-  `http://localhost:8080/login/oauth2/code/google`. **시크릿은 저장소에 두지 않는다**:
-  로컬은 환경 변수 `GOOGLE_CLIENT_SECRET`, 운영은 `/etc/battle-royal/env`(합칠 때 추가).
+  `https://www.battleroyale.site/login/oauth2/code/google`(www는 apex로 넘어가지 않고
+  그대로 응답하므로 따로 등록), `http://localhost:8080/login/oauth2/code/google`.
+  **시크릿은 저장소에 두지 않는다**: 로컬은 환경 변수 `GOOGLE_CLIENT_SECRET`, 운영은
+  `/etc/battle-royal/env`(2026-10-04 추가, 서비스 재시작은 v2.0 배포 때).
 - **닉네임 필터**: 비속어, 음란어, 운영자 사칭을 막는다. 단어 목록은
   `src/main/resources/nickname-blocklist.txt`, 띄어쓰기·기호·숫자 치환·전각 문자를 걷어 내고
   비교한다(`NicknamePolicy`). 게스트와 계정 모두에 적용된다. 사용자 요청(2026-10-03).

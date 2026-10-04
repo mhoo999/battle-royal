@@ -103,6 +103,11 @@ passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
       SignInWebTest with oidcLogin). Not yet done: a real Google round trip (needs the
       client ID and secret as GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; the ID is in
       V2_PLAN §5, the secret stays with the user).
+- [x] Production Google secrets (2026-10-04, user): GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in
+      `/etc/battle-royal/env` on EC2, service not restarted (V1 ignores them; the v2.0
+      deploy picks them up). Redirect URIs for apex, www and localhost checked registered
+      against Google's auth endpoint. www is registered because it serves 200 rather than
+      redirecting to the apex.
 - [x] Ammo system (branch `v2`, 2026-10-03, user's call): an empty pistol/crossbow stays in
       hand (A does nothing); ROUNDS/BOLTS bundles take a slot, A=RELOAD fills the empty gun
       (RELOAD_TICKS 30); bundles spawn on the island; trader sells guns empty and ammo apart.
@@ -279,18 +284,15 @@ Nothing.
    GOOGLE_CLIENT_SECRET set and do one real round trip: sign in, pick a nickname, land in
    the hideout, set out, extract, see the haul in the stash. Nothing has exercised the
    real Google hop yet (tests use `oidcLogin`).
-2. **Production secrets (user).** Add GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET to
-   `/etc/battle-royal/env` on EC2, and the production redirect URI
-   (`https://<domain>/login/oauth2/code/google`) in the Google Cloud console.
-3. **Merge `v2` into `main` as v2.0 — ask first, it deploys.** Then on production:
+2. **Merge `v2` into `main` as v2.0 — ask first, it deploys.** Then on production:
    `account` / `stash_item` / `sortie` created on RDS, smoke, a browser trip, a
    screenshot. The lobby ranking starts empty (Known Issues).
-4. Hideout look, on a real phone: the art is sized from the viewport, never checked off
+3. Hideout look, on a real phone: the art is sized from the viewport, never checked off
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
-5. Left over from V1, whenever convenient: real-phone check of touch input; rollback
+4. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-6. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
-7. Later: two EC2 instances with deploys that keep players (world handoff or rooms
+5. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
+6. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.
 

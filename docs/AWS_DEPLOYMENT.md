@@ -121,6 +121,7 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 | 도메인 | battleroyale.site (가비아, 2026-10-03 구입, 1년), A `@`·`www` → 탄력적 IP |
 | 인증서 | Let's Encrypt, certbot `--nginx`, `certbot-renew.timer`. 첫 만료 2027-01-01 |
 | 접속 URL | **https://battleroyale.site/** (맨 IP는 404) |
+| Google OAuth (V2) | 2026-10-04 `/etc/battle-royal/env`에 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` 추가(재시작 안 함, v2.0 배포가 읽음). 리디렉션 URI 3개 등록 확인(apex, www, localhost). 클라이언트 ID는 `docs/V2_PLAN.md` §5 |
 | 최초 배포 일시 / 커밋 | 2026-10-03 / 게임 코드 `bdacabd` (수동) |
 | 첫 자동 배포 | 2026-10-03 / `4e331af` (토러스 월드), Actions run 37082984097 |
 
