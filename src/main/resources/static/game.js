@@ -92,7 +92,8 @@ const ui = {
   money: el('money'), haul: el('haul'), traderList: el('trader-list'), sellList: el('sell-list'),
   deal: el('deal'), dealName: el('deal-name'), dealButton: el('deal-button'),
   grow: el('grow'), growName: el('grow-name'), growButton: el('grow-button'),
-  questList: el('quest-list'),
+  questList: el('quest-list'), dailyList: el('daily-list'), dailyTimer: el('daily-timer'),
+  hideoutQuests: el('hideout-quests'), questCount: el('quest-count'),
   hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
   carryCount: el('carry-count'),
   btnA: el('btn-a'), btnB: el('btn-b'), controls: el('controls'), dpad: el('dpad'),
@@ -1252,6 +1253,7 @@ function showHideoutPage(page) {
   ui.hideoutHome.hidden = page !== 'home';
   ui.hideoutStash.hidden = page !== 'stash';
   ui.hideoutShop.hidden = page !== 'shop';
+  ui.hideoutQuests.hidden = page !== 'quests';
   ui.hideoutError.textContent = '';
   dealPick = null;
   for (const key of ['offer', 'sell', 'load', 'stash']) pages[key] = 0;
@@ -1295,14 +1297,7 @@ const QUEST_LEVEL = { EASY: '쉬움', NORMAL: '보통', HARD: '어려움' };
 
 /** What one errand asks, as text and, for a delivery, a part per thing to hand over. */
 function questGoal(quest) {
-  if (quest.category === 'DELIVERY') {
-    return quest.deliver.map((need) => {
-      const span = document.createElement('span');
-      span.textContent = `${ITEM_LABEL[need.kind]} ${Math.min(need.have, need.count)}/${need.count}`;
-      if (need.have >= need.count) span.className = 'done';
-      return span;
-    });
-  }
+  if (quest.category === 'DELIVERY') return needParts(quest.deliver);
   if (quest.category === 'VISIT') {
     return [`표식 ${quest.visits}곳을 한 판에 밟고 탈출 · 섬에서 나침반이 가리킨다`];
   }
@@ -1316,7 +1311,99 @@ function questGoal(quest) {
  * delivery is handed over with 납품 once the stash holds everything; place and soldier
  * errands complete by themselves when a trip ends.
  */
+/** One errand row: kind and title, difficulty, what it asks, reward, and 납품 if handed over. */
+function questRow({ kind, title, difficulty, goal, money, reward, deliverSlot, ready, done }) {
+  const row = document.createElement('div');
+  row.className = `quest ${difficulty.toLowerCase()}${done ? ' done' : ''}`;
+
+  const head = document.createElement('div');
+  head.className = 'quest-head';
+  const kindEl = document.createElement('span');
+  kindEl.className = 'quest-kind';
+  kindEl.textContent = kind;
+  const titleEl = document.createElement('span');
+  titleEl.className = 'quest-title';
+  titleEl.textContent = title;
+  const level = document.createElement('span');
+  level.className = 'quest-level';
+  level.textContent = done ? '완료' : QUEST_LEVEL[difficulty];
+  head.append(kindEl, titleEl, level);
+
+  const goalEl = document.createElement('p');
+  goalEl.className = 'quest-goal';
+  goalEl.replaceChildren(...goal.flatMap((part, i) => (i === 0 ? [part] : [' · ', part])));
+
+  const foot = document.createElement('div');
+  foot.className = 'quest-foot';
+  const rewardEl = document.createElement('span');
+  rewardEl.className = 'quest-reward';
+  rewardEl.textContent = `보상 ${money}원${reward ? ` + ${reward}` : ''}`;
+  foot.append(rewardEl);
+  if (deliverSlot !== undefined && !done) {
+    const deliver = document.createElement('button');
+    deliver.type = 'button';
+    deliver.className = 'quest-deliver';
+    deliver.dataset.deliver = deliverSlot;
+    deliver.textContent = '납품';
+    deliver.disabled = !ready;
+    foot.append(deliver);
+  }
+  row.append(head, goalEl, foot);
+  return row;
+}
+
+function needParts(deliver) {
+  return deliver.map((need) => {
+    const span = document.createElement('span');
+    span.textContent = `${ITEM_LABEL[need.kind]} ${Math.min(need.have, need.count)}/${need.count}`;
+    if (need.have >= need.count) span.className = 'done';
+    return span;
+  });
+}
+
+/** "새 의뢰까지 5시간 12분": how long today's dailies have left. */
+function paintDailyTimer() {
+  if (!hideoutView || !hideoutView.dailiesResetAt) return;
+  const ms = new Date(hideoutView.dailiesResetAt).getTime() - Date.now();
+  if (ms <= 0) {
+    ui.dailyTimer.textContent = '새 의뢰 도착';
+    return;
+  }
+  const hours = Math.floor(ms / 3_600_000);
+  const minutes = Math.floor((ms % 3_600_000) / 60_000);
+  ui.dailyTimer.textContent = `새 의뢰까지 ${hours > 0 ? `${hours}시간 ` : ''}${minutes}분`;
+}
+
+const DAILY_GOAL = {
+  DELIVERY: (daily) => needParts(daily.deliver),
+  EXTRACT: (daily) => [`오늘 탈출 ${daily.count}번 (${daily.progress}/${daily.count}) · 빈손도 인정`],
+  SOLDIER: (daily) => [`오늘 군인 ${daily.count}명 (${daily.progress}/${daily.count}) · 판이 끝나면 센다`],
+};
+
+/*
+ * Today's three dailies (V2.2), new at midnight in Seoul, apart from the ladders: always
+ * something doable even when every ladder sits at a hard step.
+ */
+function paintDailies() {
+  const dailies = hideoutView.dailies || [];
+  ui.dailyList.replaceChildren(...dailies.map((daily) => questRow({
+    kind: '일일',
+    title: daily.title,
+    difficulty: daily.difficulty,
+    goal: DAILY_GOAL[daily.goal](daily),
+    money: daily.money,
+    reward: null,
+    deliverSlot: daily.goal === 'DELIVERY' ? `daily-${daily.slot}` : undefined,
+    ready: daily.ready,
+    done: daily.done,
+  })));
+  paintDailyTimer();
+  const open = dailies.filter((daily) => !daily.done).length + (hideoutView.quests || []).length;
+  ui.questCount.textContent = open > 0 ? `${open}` : '';
+}
+
 function paintQuests() {
+  paintDailies();
   const quests = hideoutView.quests || [];
   if (quests.length === 0) {
     const done = document.createElement('p');
@@ -1325,45 +1412,17 @@ function paintQuests() {
     ui.questList.replaceChildren(done);
     return;
   }
-  ui.questList.replaceChildren(...quests.map((quest) => {
-    const row = document.createElement('div');
-    row.className = `quest ${quest.difficulty.toLowerCase()}`;
-
-    const head = document.createElement('div');
-    head.className = 'quest-head';
-    const kind = document.createElement('span');
-    kind.className = 'quest-kind';
-    kind.textContent = `${QUEST_KIND[quest.category]} ${quest.step}/${quest.total}`;
-    const title = document.createElement('span');
-    title.className = 'quest-title';
-    title.textContent = quest.title;
-    const level = document.createElement('span');
-    level.className = 'quest-level';
-    level.textContent = QUEST_LEVEL[quest.difficulty];
-    head.append(kind, title, level);
-
-    const goal = document.createElement('p');
-    goal.className = 'quest-goal';
-    goal.replaceChildren(...questGoal(quest).flatMap((part, i) => (i === 0 ? [part] : [' · ', part])));
-
-    const foot = document.createElement('div');
-    foot.className = 'quest-foot';
-    const reward = document.createElement('span');
-    reward.className = 'quest-reward';
-    const item = quest.reward ? ` + ${slotText({ kind: quest.reward, ammo: quest.rewardAmmo })}` : '';
-    reward.textContent = `보상 ${quest.money}원${item}`;
-    foot.append(reward);
-    if (quest.category === 'DELIVERY') {
-      const deliver = document.createElement('button');
-      deliver.type = 'button';
-      deliver.className = 'quest-deliver';
-      deliver.textContent = '납품';
-      deliver.disabled = !quest.ready;
-      foot.append(deliver);
-    }
-    row.append(head, goal, foot);
-    return row;
-  }));
+  ui.questList.replaceChildren(...quests.map((quest) => questRow({
+    kind: `${QUEST_KIND[quest.category]} ${quest.step}/${quest.total}`,
+    title: quest.title,
+    difficulty: quest.difficulty,
+    goal: questGoal(quest),
+    money: quest.money,
+    reward: quest.reward ? slotText({ kind: quest.reward, ammo: quest.rewardAmmo }) : null,
+    deliverSlot: quest.category === 'DELIVERY' ? 'ladder' : undefined,
+    ready: quest.ready,
+    done: false,
+  })));
 }
 
 function paintDeal() {
@@ -1552,15 +1611,29 @@ function wireHideout() {
   ui.setOut.addEventListener('click', setOut);
   el('go-stash').addEventListener('click', () => showHideoutPage('stash'));
   el('go-shop').addEventListener('click', () => showHideoutPage('shop'));
+  el('go-quests').addEventListener('click', () => showHideoutPage('quests'));
   for (const button of ui.hideout.querySelectorAll('.to-home')) {
     button.addEventListener('click', () => showHideoutPage('home'));
   }
   ui.dealButton.addEventListener('click', closeDeal);
   ui.growButton.addEventListener('click', () => trade('/api/hideout/stash-upgrade', {}));
-  ui.questList.addEventListener('click', (event) => {
+  ui.hideoutQuests.addEventListener('click', (event) => {
     const button = event.target.closest('.quest-deliver');
-    if (button && !button.disabled) trade('/api/hideout/quest/deliver', {});
+    if (!button || button.disabled) return;
+    const which = button.dataset.deliver;
+    if (which === 'ladder') trade('/api/hideout/quest/deliver', {});
+    else trade(`/api/hideout/daily/${which.replace('daily-', '')}/deliver`, {});
   });
+  // The dailies' clock runs while the hideout is open; past midnight, fetch the new ones.
+  setInterval(() => {
+    if (ui.hideout.hidden || !hideoutView) return;
+    paintDailyTimer();
+    if (new Date(hideoutView.dailiesResetAt).getTime() <= Date.now()) {
+      fetch('/api/hideout').then((r) => (r.ok ? r.json() : null)).then((view) => {
+        if (view) applyHideout(view);
+      }).catch(() => {});
+    }
+  }, 30_000);
   ui.hideoutBack.addEventListener('click', () => {
     ui.hideout.hidden = true;
     ui.lobby.hidden = false;

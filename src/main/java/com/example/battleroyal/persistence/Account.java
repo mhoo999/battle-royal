@@ -78,6 +78,27 @@ public class Account {
     @Column(name = "quest_kills", nullable = false)
     private int soldierKills;
 
+    /*
+     * The daily errands (V2.2): which day the counts below belong to (epoch day in
+     * Seoul), which of the day's three are done (a bit each), and what today's trips
+     * have added up. A new day starts them all over.
+     */
+    @ColumnDefault("0")
+    @Column(name = "daily_day", nullable = false)
+    private long dailyDay;
+
+    @ColumnDefault("0")
+    @Column(name = "daily_done", nullable = false)
+    private int dailyDone;
+
+    @ColumnDefault("0")
+    @Column(name = "daily_extracts", nullable = false)
+    private int dailyExtracts;
+
+    @ColumnDefault("0")
+    @Column(name = "daily_soldiers", nullable = false)
+    private int dailySoldiers;
+
     protected Account() {
     }
 
@@ -165,6 +186,40 @@ public class Account {
                 soldierKills = 0;
             }
         }
+    }
+
+    /** Makes the daily counts today's, starting them over if they were another day's. */
+    public void dailyFor(long epochDay) {
+        if (dailyDay != epochDay) {
+            dailyDay = epochDay;
+            dailyDone = 0;
+            dailyExtracts = 0;
+            dailySoldiers = 0;
+        }
+    }
+
+    public boolean dailyDone(int slot) {
+        return (dailyDone & (1 << slot)) != 0;
+    }
+
+    public void markDailyDone(int slot) {
+        dailyDone |= 1 << slot;
+    }
+
+    public int dailyExtracts() {
+        return dailyExtracts;
+    }
+
+    public int dailySoldiers() {
+        return dailySoldiers;
+    }
+
+    /** A trip ended today: whether it got out, and how many soldiers it brought down. */
+    public void addDailyTrip(boolean extracted, int soldiers) {
+        if (extracted) {
+            dailyExtracts++;
+        }
+        dailySoldiers += soldiers;
     }
 
     /** A new season (D12): everyone back to the same starting line, errands included. */

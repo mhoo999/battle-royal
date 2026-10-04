@@ -658,7 +658,11 @@ header.hud-bar {
 
 /* The trader's errands: one row a kind, what it asks, how far along, what it pays. */
 .quests { display: flex; flex-direction: column; gap: 0.35rem; width: 100%; text-align: left; }
-#quest-list { display: flex; flex-direction: column; gap: 0.35rem; }
+.quest-list { display: flex; flex-direction: column; gap: 0.35rem; }
+.quests-head { display: flex; justify-content: space-between; align-items: baseline; }
+.daily-timer { color: var(--dim); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.quest.done { opacity: 0.45; }
+.quest.done .quest-level { color: var(--self); }
 .quest {
   display: flex;
   flex-direction: column;

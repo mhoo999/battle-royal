@@ -37,7 +37,12 @@ GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ]
                         "deliver": [ { "kind": "SPOON", "count": 1, "have": 0 } ],
                         "visits": 0, "soldiers": 0, "soldiersInOneTrip": false,
                         "soldiersDone": 0, "money": 30, "reward": null,
-                        "rewardAmmo": null, "ready": false }, … ] }
+                        "rewardAmmo": null, "ready": false }, … ],
+          "dailies": [ { "slot": 0, "title": "잡동사니", "difficulty": "EASY",
+                         "goal": "DELIVERY", "deliver": [ { "kind": "CUP", "count": 1, "have": 0 } ],
+                         "count": 0, "progress": 0, "money": 40, "done": false,
+                         "ready": false }, … ],
+          "dailiesResetAt": "2026-10-05T15:00:00Z" }
 POST  { "loadout": [ 11, null, 12 ], "bag": 13 }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
@@ -76,6 +81,16 @@ buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 GET의 `quests`는 종류(`DELIVERY` 납품, `VISIT` 장소, `SOLDIER` 군인 처치)마다 진행 중인 의뢰 하나씩,
 사다리를 다 오른 종류는 빠진다. `ready`는 납품을 지금 넘길 수 있는지다. 장소·군인 의뢰는 판이
 끝날 때(사망·탈출) 서버가 센다 — 따로 부를 것이 없다. 거부는 409: 납품할 의뢰가 없음, 창고에 모자람.
+
+### `POST /api/hideout/daily/{slot}/deliver` (V2.2, 로그인 필요)
+
+```json
+(본문 없음)  → 위의 GET과 같은 거점 화면
+```
+
+오늘의 일일 의뢰 중 납품(`goal: DELIVERY`)인 `slot`을 창고에서 넘기고 보상을 받는다. `dailies`는
+오늘의 세 개(`goal`: `DELIVERY`, `EXTRACT` 탈출, `SOLDIER` 군인), `dailiesResetAt`은 서울 자정.
+탈출·군인은 판이 끝날 때 서버가 센다. 거부는 409: 납품이 아닌 칸, 이미 끝남, 창고에 모자람.
 
 ### `POST /api/hideout/stash-upgrade` (V2.1, 로그인 필요)
 

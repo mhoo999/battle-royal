@@ -26,6 +26,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,10 +78,13 @@ public class HideoutService implements DepartureListener {
     /**
      * @param upgrade null once the biggest stash is bought
      * @param quests  the trader's errands under way, one per kind still to climb
+     * @param dailies today's three daily errands
+     * @param dailiesResetAt when today's dailies give way to tomorrow's: midnight in Seoul
      */
     public record StashView(List<StashEntry> stash, int capacity, StashUpgrade upgrade,
                             boolean out, long money, long haul, List<ItemValues.Offer> trader,
-                            List<QuestLedger.QuestView> quests) {
+                            List<QuestLedger.QuestView> quests,
+                            List<QuestLedger.DailyView> dailies, Instant dailiesResetAt) {
     }
 
     /** Thrown for a sale or purchase the rules do not allow; the message says why. */
@@ -159,7 +164,9 @@ public class HideoutService implements DepartureListener {
         return new StashView(stash, capacity(account), upgrade,
                 sorties.existsByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT),
                 account.money(), account.haul(), ItemValues.STOCK,
-                QuestLedger.view(account, items));
+                QuestLedger.view(account, items),
+                QuestLedger.dailies(account, items, today()),
+                today().plusDays(1).atStartOfDay(SeasonService.SEOUL).toInstant());
     }
 
     private static int capacity(Account account) {
@@ -178,6 +185,20 @@ public class HideoutService implements DepartureListener {
                 throw new TradeRefusedException("돈이 모자랍니다");
             }
             account.growStash();
+            return viewInside(accountId);
+        });
+    }
+
+    /** The day the dailies belong to: the date in Seoul, where seasons end too. */
+    private LocalDate today() {
+        return clock.instant().atZone(SeasonService.SEOUL).toLocalDate();
+    }
+
+    /** Hands one of today's daily deliveries to the trader from the stash. */
+    public StashView deliverDaily(long accountId, int slot) {
+        return tx.execute(status -> {
+            QuestLedger.deliverDaily(accounts.lockById(accountId).orElseThrow(), slot, items,
+                    today());
             return viewInside(accountId);
         });
     }
@@ -351,8 +372,9 @@ public class HideoutService implements DepartureListener {
                     sortie.end(Sortie.Outcome.DIED, clock.instant());
                     items.deleteAll(items.findBySortieId(sortieId));
                     // Kills count for an errand even on a trip that ended badly.
-                    QuestLedger.addSoldiers(accounts.lockById(sortie.accountId()).orElseThrow(),
-                            died.soldiersDowned(), items);
+                    Account account = accounts.lockById(sortie.accountId()).orElseThrow();
+                    QuestLedger.addSoldiers(account, died.soldiersDowned(), items);
+                    QuestLedger.dailyTrip(account, false, died.soldiersDowned(), items, today());
                 });
             } catch (RuntimeException e) {
                 // Left out: the next start-up hands the gear back rather than losing it.
@@ -404,6 +426,7 @@ public class HideoutService implements DepartureListener {
         Account account = accounts.lockById(sortie.accountId()).orElseThrow();
         account.addHaul(found);
         QuestLedger.addSoldiers(account, soldiers, items);
+        QuestLedger.dailyTrip(account, true, soldiers, items, today());
         QuestLedger.reachedMarks(account, marksReached, items);
         // Taken out and not brought back: left in a crate somewhere, so lost.
         items.deleteAll(wentOut.values());

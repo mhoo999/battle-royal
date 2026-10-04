@@ -1,12 +1,14 @@
 package com.example.battleroyal.web;
 
 import com.example.battleroyal.game.core.ItemKind;
+import com.example.battleroyal.game.rule.DailyQuests;
 import com.example.battleroyal.game.rule.Quests;
 import com.example.battleroyal.game.rule.Quests.Category;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.StashItem;
 import com.example.battleroyal.persistence.StashItemRepository;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -36,7 +38,104 @@ public final class QuestLedger {
                             ItemKind reward, Integer rewardAmmo, boolean ready) {
     }
 
+    /**
+     * One of today's daily errands.
+     *
+     * @param count    extractions or soldiers asked for (0 for a delivery)
+     * @param progress how many of those today's trips have made
+     * @param ready    true when a delivery can be handed over now
+     */
+    public record DailyView(int slot, String title, Quests.Difficulty difficulty,
+                            DailyQuests.Goal goal, List<Need> deliver, int count, int progress,
+                            int money, boolean done, boolean ready) {
+    }
+
     private QuestLedger() {
+    }
+
+    /** Today's three, done or not. */
+    static List<DailyView> dailies(Account account, StashItemRepository items, LocalDate today) {
+        account.dailyFor(today.toEpochDay());
+        Map<ItemKind, Integer> held = held(account, items);
+        List<DailyView> views = new ArrayList<>();
+        for (DailyQuests.Daily daily : DailyQuests.of(account.id(), today)) {
+            List<Need> needs = needs(daily.deliver(), held);
+            boolean done = account.dailyDone(daily.slot());
+            int progress = switch (daily.goal()) {
+                case EXTRACT -> account.dailyExtracts();
+                case SOLDIER -> account.dailySoldiers();
+                case DELIVERY -> 0;
+            };
+            boolean ready = !done && daily.goal() == DailyQuests.Goal.DELIVERY
+                    && needs.stream().allMatch(need -> need.have() >= need.count());
+            views.add(new DailyView(daily.slot(), daily.title(), daily.difficulty(), daily.goal(),
+                    needs, daily.count(), Math.min(progress, daily.count()), daily.money(), done,
+                    ready));
+        }
+        return views;
+    }
+
+    /** Hands a daily delivery over from the stash and pays it. */
+    static void deliverDaily(Account account, int slot, StashItemRepository items,
+                             LocalDate today) {
+        account.dailyFor(today.toEpochDay());
+        DailyQuests.Daily daily = DailyQuests.of(account.id(), today).stream()
+                .filter(candidate -> candidate.slot() == slot)
+                .findFirst().orElse(null);
+        if (daily == null || daily.goal() != DailyQuests.Goal.DELIVERY
+                || account.dailyDone(slot)) {
+            throw new HideoutService.TradeRefusedException("지금은 납품할 의뢰가 없습니다");
+        }
+        items.deleteAll(takeFromStash(account, daily.deliver(), items));
+        account.earn(daily.money());
+        account.markDailyDone(slot);
+    }
+
+    /** A trip ended today: an escape and soldiers count towards today's dailies. */
+    static void dailyTrip(Account account, boolean extracted, int soldiers,
+                          StashItemRepository items, LocalDate today) {
+        account.dailyFor(today.toEpochDay());
+        account.addDailyTrip(extracted, soldiers);
+        for (DailyQuests.Daily daily : DailyQuests.of(account.id(), today)) {
+            int progress = switch (daily.goal()) {
+                case EXTRACT -> account.dailyExtracts();
+                case SOLDIER -> account.dailySoldiers();
+                case DELIVERY -> -1;
+            };
+            if (progress >= daily.count() && progress >= 0 && !account.dailyDone(daily.slot())) {
+                account.earn(daily.money());
+                account.markDailyDone(daily.slot());
+            }
+        }
+    }
+
+    private static List<Need> needs(Map<ItemKind, Integer> what, Map<ItemKind, Integer> held) {
+        List<Need> needs = new ArrayList<>();
+        for (Map.Entry<ItemKind, Integer> entry : what.entrySet()) {
+            needs.add(new Need(entry.getKey(), entry.getValue(),
+                    held.getOrDefault(entry.getKey(), 0)));
+        }
+        needs.sort((a, b) -> a.kind().compareTo(b.kind()));
+        return needs;
+    }
+
+    /** The stash items a delivery takes, oldest first; refused if any are missing. */
+    private static List<StashItem> takeFromStash(Account account, Map<ItemKind, Integer> what,
+                                                 StashItemRepository items) {
+        List<StashItem> handed = new ArrayList<>();
+        List<StashItem> stash = items.findByAccountIdAndLocationOrderById(
+                account.id(), StashItem.Location.STASH);
+        for (Map.Entry<ItemKind, Integer> entry : what.entrySet()) {
+            List<StashItem> ofKind = stash.stream()
+                    .filter(item -> item.kind() == entry.getKey())
+                    .limit(entry.getValue())
+                    .toList();
+            if (ofKind.size() < entry.getValue()) {
+                throw new HideoutService.TradeRefusedException("창고에 납품할 물건이 모자랍니다");
+            }
+            handed.addAll(ofKind);
+        }
+        return handed;
     }
 
     /** The errand under way of each kind, in ladder order; a climbed ladder is left out. */
@@ -78,20 +177,7 @@ public final class QuestLedger {
         if (quest == null) {
             throw new HideoutService.TradeRefusedException("지금은 납품할 의뢰가 없습니다");
         }
-        List<StashItem> handed = new ArrayList<>();
-        List<StashItem> stash = items.findByAccountIdAndLocationOrderById(
-                account.id(), StashItem.Location.STASH);
-        for (Map.Entry<ItemKind, Integer> entry : quest.deliver().entrySet()) {
-            List<StashItem> ofKind = stash.stream()
-                    .filter(item -> item.kind() == entry.getKey())
-                    .limit(entry.getValue())
-                    .toList();
-            if (ofKind.size() < entry.getValue()) {
-                throw new HideoutService.TradeRefusedException("창고에 납품할 물건이 모자랍니다");
-            }
-            handed.addAll(ofKind);
-        }
-        items.deleteAll(handed);
+        items.deleteAll(takeFromStash(account, quest.deliver(), items));
         complete(account, quest, items);
     }
 

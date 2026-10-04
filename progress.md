@@ -57,6 +57,14 @@ are gone. Account columns `quest_step` (delivery, reused), `quest_visit_step`,
 `quest_soldier_step`, `quest_kills` (now soldiers); a live account mid-way keeps its old
 `quest_step` as a delivery step, and season 1's wipe resets it all anyway.
 
+**Daily errands (2026-10-05, built, not deployed).** Three a day per account (two easy,
+one normal), new at midnight Seoul, apart from the ladders so a player stuck at hard
+steps always has something (user). Junk delivery 40원, an escape 50원, then a medkit or
+ammo bundle delivery or one soldier 120원 (`DailyQuests`, worked out from account and
+date). Account columns `daily_day`, `daily_done`, `daily_extracts`, `daily_soldiers`.
+Errands moved from 상점 to their own 의뢰 page (hideout menu), dailies on top with a
+countdown.
+
 **Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
 crate closes the bag window. `stash_item.kind` is a VARCHAR, not an ENUM.

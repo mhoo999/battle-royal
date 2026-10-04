@@ -3,6 +3,7 @@ package com.example.battleroyal.web;
 import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
+import com.example.battleroyal.game.rule.DailyQuests;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemValues;
 import com.example.battleroyal.game.rule.Quests;
@@ -353,6 +354,12 @@ class HideoutServiceTest {
         accounts.save(account);
     }
 
+    /** What today's finished dailies paid, so a test can look at a ladder's reward alone. */
+    private static long dailiesPaid(HideoutService.StashView view) {
+        return view.dailies().stream().filter(QuestLedger.DailyView::done)
+                .mapToLong(QuestLedger.DailyView::money).sum();
+    }
+
     private QuestLedger.QuestView errand(Quests.Category category) {
         return hideout.view(me).quests().stream()
                 .filter(view -> view.category() == category)
@@ -407,7 +414,7 @@ class HideoutServiceTest {
         HideoutService.StashView after = hideout.view(me);
         assertEquals("초소 함락", errand(Quests.Category.SOLDIER).title());
         assertEquals(0, errand(Quests.Category.SOLDIER).soldiersDone(), "starts over for the next");
-        assertEquals(450, after.money());
+        assertEquals(450, after.money() - dailiesPaid(after), "the ladder's reward");
         assertEquals(List.of(ItemKind.PISTOL), after.stash().stream()
                 .map(HideoutService.StashEntry::kind).toList(), "the pistol came with it");
     }
@@ -467,7 +474,8 @@ class HideoutServiceTest {
                 List.of(), 1));
 
         assertEquals("수색", errand(Quests.Category.VISIT).title());
-        assertEquals(80, hideout.view(me).money());
+        HideoutService.StashView after = hideout.view(me);
+        assertEquals(80, after.money() - dailiesPaid(after), "the ladder's reward");
     }
 
     @Test
@@ -494,6 +502,72 @@ class HideoutServiceTest {
         assertNull(errand(Quests.Category.DELIVERY));
         assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me));
         assertEquals(0, hideout.setOut(me, "shuya", List.of()).marks());
+    }
+
+    // --- Daily errands --------------------------------------------------------
+
+    @Test
+    void threeDailiesTwoEasyOneNormalUntilMidnightInSeoul() {
+        HideoutService.StashView view = hideout.view(me);
+
+        assertEquals(List.of(0, 1, 2), view.dailies().stream().map(QuestLedger.DailyView::slot).toList());
+        assertEquals(List.of(Quests.Difficulty.EASY, Quests.Difficulty.EASY, Quests.Difficulty.NORMAL),
+                view.dailies().stream().map(QuestLedger.DailyView::difficulty).toList());
+        assertEquals(DailyQuests.Goal.EXTRACT, view.dailies().get(1).goal());
+        // The clock reads 2026-10-03 09:00 in Seoul.
+        assertEquals(Instant.parse("2026-10-04T00:00:00+09:00"), view.dailiesResetAt());
+        assertEquals(view.dailies(), hideout.view(me).dailies(), "the same all day");
+    }
+
+    @Test
+    void gettingOutCompletesTheEscapeDailyOnceADay() {
+        GameSession first = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(first.playerId(), "shuya", 0, 0, 0, List.of()));
+        HideoutService.StashView after = hideout.view(me);
+        assertTrue(after.dailies().get(1).done());
+        long paid = after.money();
+
+        GameSession second = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(second.playerId(), "shuya", 0, 0, 0, List.of()));
+
+        assertEquals(paid, hideout.view(me).money(), "paid once a day");
+        assertTrue(paid >= 50);
+    }
+
+    @Test
+    void aDailyDeliveryIsHandedOverOnce() {
+        QuestLedger.DailyView junk = hideout.view(me).dailies().getFirst();
+        assertEquals(DailyQuests.Goal.DELIVERY, junk.goal());
+        assertFalse(junk.ready());
+        QuestLedger.Need need = junk.deliver().getFirst();
+        for (int i = 0; i < need.count(); i++) {
+            stash(me, need.kind(), 0);
+        }
+        assertTrue(hideout.view(me).dailies().getFirst().ready());
+
+        HideoutService.StashView after = hideout.deliverDaily(me, 0);
+
+        assertEquals(40, after.money());
+        assertTrue(after.dailies().getFirst().done());
+        assertTrue(after.stash().isEmpty(), "handed over");
+        assertThrows(TradeRefusedException.class, () -> hideout.deliverDaily(me, 0), "done for today");
+        assertThrows(TradeRefusedException.class, () -> hideout.deliverDaily(me, 1),
+                "the escape daily is not handed over");
+    }
+
+    @Test
+    void aNewDayBringsNewDailiesAndStartsThemOver() {
+        GameSession out = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(out.playerId(), "shuya", 0, 0, 0, List.of()));
+        assertTrue(hideout.view(me).dailies().get(1).done());
+
+        HideoutService tomorrow = new HideoutService(accounts, items, sorties, sessions, transactions,
+                Clock.fixed(Instant.parse("2026-10-04T00:00:01+09:00"), ZoneOffset.UTC),
+                new DirectExecutor());
+
+        QuestLedger.DailyView escape = tomorrow.view(me).dailies().get(1);
+        assertFalse(escape.done());
+        assertEquals(0, escape.progress());
     }
 
     @Test
