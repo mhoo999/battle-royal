@@ -31,6 +31,8 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-04-v2-stash-upgrade.png` | 2026-10-04 | The 창고 page's upgrade bar (boxed): 일반 상자 → 큰 상자 20칸, 확장 (500원). Staged: hideout data stubbed, no sign-in | V2.1 stash upgrades |
 | `2026-10-04-v2-loadout-bag.png` | 2026-10-04 | 가져갈 것 with a big bag in its bag slot (boxed): seven live cells, the bag and packed items greyed in the stash. Staged: hideout data stubbed, no sign-in | V2.1 bags |
 | `2026-10-04-v2-bag-slot-looting.png` | 2026-10-04 | The looting window: the worn bag's slot beside 인벤토리 (작은 가방 +2, five cells) and a big bag in the crate (both boxed). Staged: snapshot stubbed | V2.1 bags |
+| `2026-10-04-v2-season-trophy-line.png` | 2026-10-04 | The hideout front with the season line (boxed): 시즌 2 · 12일 남음 · 트로피 S1 1위. Staged: hideout and season stubbed | V2.1 seasons |
+| `2026-10-04-v2-season-over.png` | 2026-10-04 | The screen a player on the island gets at a season's deadline (boxed): 시즌 종료, gear and stash wiped, trophies stay. Staged: shown without a deadline | V2.1 seasons |
 | `2026-10-03-v2-exit-compass.png` | 2026-10-03 | V2 compass above the board (`탈출구 ◎ 이 방 · ↓ 1`) and my own exit `◎` on the floor beside me | V2 step 3, exits and compass |
 | `2026-10-03-v2-extracting.png` | 2026-10-03 | Standing on the exit holding B: [B 탈출], "탈출 중 — B를 떼거나 움직이거나 맞으면 취소", the gauge starting | V2 step 3, extraction |
 | `2026-10-03-v2-extracted.png` | 2026-10-03 | The 탈출 성공 screen with the haul line and the record | V2 step 3, extraction |

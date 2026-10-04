@@ -69,6 +69,17 @@ buy   { "kind": "KNIFE" }  → 위의 GET과 같은 거점 화면
 계정에 영구히 남는다. GET의 `upgrade`가 다음 크기와 값이고, 가장 큰 창고면 `null`. 거부는
 409와 한국어 사유: 돈 부족, 더 큰 창고 없음.
 
+### `GET /api/season` (V2.1, 누구나)
+
+```json
+→ { "number": 1, "endsAt": "2026-10-31T15:00:00Z",
+    "trophies": [ { "season": 1, "tier": "CHAMPION", "placing": 1 } ] }
+```
+
+지금 시즌과 마감 시각(서울 자정). `trophies`는 로그인한 사람 자신의 것, 오래된 시즌부터
+(`CHAMPION` 1위 · `TOP10` 2~10위 · `PARTICIPANT` 그 밖에 탈출 1번 이상, 참가는 `placing`이
+순위이거나 `null`). 게스트는 빈 배열.
+
 ### `GET /api/me`, `POST /api/me/nickname` (V2 브랜치)
 
 ```json
@@ -266,6 +277,7 @@ actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 | `HIT` | 공격자만 |
 | `YOU_DIED` | 사망자만 |
 | `EXTRACTED` | 탈출한 사람만 (V2) |
+| `SEASON_OVER` | 시즌 마감에 섬에서 내보내진 사람만 (V2.1) |
 | `FELL` | 사망 순간 사망자를 볼 수 있었던 같은 방 사람 (사망자 제외) |
 
 이벤트는 같은 tick의 `SNAPSHOT` **뒤에** 보낸다. `PICKUP`·`ROOM_CHANGE` 이벤트는
@@ -296,6 +308,15 @@ actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
 `YOU_DIED`처럼 그 목숨의 끝이다: 토큰은 폐기되고(다시 붙으면 거부), 결과가 저장되며
 (`~` 이름 제외), 계정이면 가져온 것이 창고에 들어간다. 다른 사람은 다음 스냅샷에서
 그 사람이 사라지는 것으로만 안다.
+
+### `SEASON_OVER` (V2.1)
+
+```json
+{ "type": "SEASON_OVER" }
+```
+
+시즌 마감 시각에 계정으로 섬에 나가 있던 사람에게만. 그 사람은 섬에서 사라지고(들고 있던 것은
+상자로 떨어지지 않고 와이프로 사라짐), 토큰은 폐기된다. 게스트는 영향받지 않는다.
 
 ---
 

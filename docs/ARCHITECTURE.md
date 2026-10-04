@@ -28,9 +28,10 @@ com.example.battleroyal
 ├── game/loop/     GameLoopService, RoomRegistry (토러스 월드), RoomBroadcaster, DeathListener
 ├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)
 ├── web/           SessionController, MeController, RankingController, GameSessionService,
-│                  AccountService (V2: Google sign-in)
+│                  AccountService (V2: Google sign-in), HideoutService/Controller (V2),
+│                  SeasonService/Controller (V2.1: 마감·트로피·와이프, 1분마다 @Scheduled)
 ├── config/        WebSocketConfig, SecurityConfig (V2)
-├── persistence/   GameResult 엔티티 + repository, ResultRecorder
+├── persistence/   GameResult, Account, StashItem, Sortie, Season, Trophy 엔티티 + repository
 └── config/        WebSocketConfig, JacksonConfig
 ```
 

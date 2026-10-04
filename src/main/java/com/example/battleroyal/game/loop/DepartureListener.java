@@ -17,4 +17,8 @@ public interface DepartureListener {
 
     default void onExtracted(GameEvent.Extracted extracted) {
     }
+
+    /** Taken off the island by the end of a season. */
+    default void onEjected(GameEvent.Ejected ejected) {
+    }
 }

@@ -118,6 +118,14 @@ the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash
       창고 page (user): laid out like 상점, 가져갈 것 4x4 on the left, the stash 4x4 on the
       right, both paged. The loadout's cell count follows the carry slots, so bags bought
       later only need more slots. Stash grids now show its capacity, no locked next tier.
+- [x] **V2.1 seasons (2026-10-04, user's decisions):** 4 weeks ending at midnight Seoul
+      (`SEASON_DAYS`), checked each minute by `SeasonService` (`@EnableScheduling`). At the
+      deadline account players on the island get `SEASON_OVER` and leave (gear gone), open
+      sorties close as REFUNDED (no new Outcome value: ENUM column), trophies by final rank
+      (CHAMPION / TOP10 / PARTICIPANT incl. anyone who extracted), then stash items, money,
+      haul and stash size are wiped. New tables `season`, `trophy` (tier as VARCHAR).
+      `GET /api/season`; lobby ranking shows 시즌 N · n일 남음, the hideout the season and
+      trophies. A late death/extraction after the wipe changes nothing. Not deployed yet.
 - [x] **V2.1 bags (2026-10-04, user's decisions):** SMALL_BAG +2 / BIG_BAG +4 slots, worn in
       a separate bag slot (TAKE/PUT slot -1, `Bags`), refused while the slots it would
       take away hold anything; dropped with everything on death, carried home on
@@ -323,7 +331,8 @@ Nothing.
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
 3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-4. V2.1 part 2: seasons — length, wipe, trophies (`docs/V2_PLAN.md` D12, D13, Q11, Q13).
+4. **Deploy V2.1 seasons — ask first.** Season 1 opens on the first start after the deploy
+   and ends 28 days later at midnight Seoul. New tables `season`, `trophy` via ddl-auto.
 5. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.

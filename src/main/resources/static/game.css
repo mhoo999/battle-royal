@@ -619,6 +619,9 @@ header.hud-bar {
 /* Money, and the haul the ranking counts. */
 .purse { margin: 0; font-size: 0.8rem; color: var(--dim); }
 .purse b { font-weight: normal; color: var(--item); font-variant-numeric: tabular-nums; }
+/* The season and the trophies a wipe leaves (D13). */
+.purse .trophy { color: var(--item); }
+#ranking-season:not(:empty)::after { content: ' · '; }
 
 /* The trader: pick a cell on either side, then buy or sell it from the bar below. */
 .deal {

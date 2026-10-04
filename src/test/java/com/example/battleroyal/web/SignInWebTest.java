@@ -112,6 +112,18 @@ class SignInWebTest {
     }
 
     @Test
+    void theSeasonIsOpenToEveryoneAndTrophiesAreYourOwn() throws Exception {
+        mvc.perform(get("/api/season"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.number").isNumber())
+                .andExpect(jsonPath("$.endsAt").exists())
+                .andExpect(jsonPath("$.trophies").isEmpty());
+        mvc.perform(get("/api/season").with(google("g-web-season")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trophies").isArray());
+    }
+
+    @Test
     void aTakenNicknameIsRefused() throws Exception {
         mvc.perform(post("/api/me/nickname").with(google("g-web-2"))
                         .contentType(MediaType.APPLICATION_JSON).content(nickname("noriko")))

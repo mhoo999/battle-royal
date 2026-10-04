@@ -90,6 +90,12 @@ public class GameSessionService implements DepartureListener {
         retire(extracted.playerId());
     }
 
+    /** Sent home by the season's end: the token cannot bring them back either. */
+    @Override
+    public void onEjected(GameEvent.Ejected ejected) {
+        retire(ejected.playerId());
+    }
+
     private void retire(String playerId) {
         byToken.values().removeIf(session -> session.playerId().equals(playerId));
     }

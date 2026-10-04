@@ -64,6 +64,7 @@ public class WebSocketSnapshotBroadcaster implements RoomBroadcaster {
                 case GameEvent.Hit hit -> send(hit.attackerId(), Outbound.hit());
                 case GameEvent.Died died -> send(died.playerId(), Outbound.youDied(died));
                 case GameEvent.Extracted out -> send(out.playerId(), Outbound.extracted(out));
+                case GameEvent.Ejected out -> send(out.playerId(), Outbound.seasonOver());
                 case GameEvent.Fell fell -> {
                     Object message = Outbound.fell(fell);
                     for (String witnessId : fell.witnessIds()) {

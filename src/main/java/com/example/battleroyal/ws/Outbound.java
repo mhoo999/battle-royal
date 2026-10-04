@@ -50,6 +50,14 @@ public final class Outbound {
                             List<Snapshot.Slot> carried) {
     }
 
+    /** {@code {"type":"SEASON_OVER"}}: the season ended and took the player off the island. */
+    public record SeasonOver(String type) {
+    }
+
+    public static SeasonOver seasonOver() {
+        return new SeasonOver("SEASON_OVER");
+    }
+
     public static Extracted extracted(GameEvent.Extracted out) {
         return new Extracted("EXTRACTED", out.score(), out.kills(),
                 out.survivedTicks() / GameConstants.TICKS_PER_SECOND,

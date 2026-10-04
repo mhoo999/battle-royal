@@ -114,6 +114,8 @@ public class GameLoopService {
                     tell(died.playerId(), listener -> listener.onDeath(died));
                 } else if (event instanceof GameEvent.Extracted extracted) {
                     tell(extracted.playerId(), listener -> listener.onExtracted(extracted));
+                } else if (event instanceof GameEvent.Ejected ejected) {
+                    tell(ejected.playerId(), listener -> listener.onEjected(ejected));
                 }
             }
         }

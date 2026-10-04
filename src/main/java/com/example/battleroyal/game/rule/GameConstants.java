@@ -82,6 +82,12 @@ public final class GameConstants {
     /** What each next stash size costs: index 0 buys the big box, 1 the fine box. */
     public static final List<Integer> STASH_UPGRADE_PRICES = List.of(500, 2_000);
 
+    /** How long a season runs (D12, Q13): four weeks, ending at midnight in Seoul. */
+    public static final int SEASON_DAYS = 28;
+
+    /** How far down the final ranking a season's TOP10 trophy reaches (Q11). */
+    public static final int SEASON_TOP = 10;
+
     /** Inventory slots a worn bag adds (V2.1): the small one and the big one. */
     public static final int SMALL_BAG_SLOTS = 2;
     public static final int BIG_BAG_SLOTS = 4;

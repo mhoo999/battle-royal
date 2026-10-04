@@ -53,6 +53,7 @@ public final class Player {
     private Pos extractPos;
     private long extractDoneTick;
     private boolean extracted;
+    private boolean ejected;
 
     private String lootItemId;
     private Pos lootPos;
@@ -400,9 +401,15 @@ public final class Player {
         this.extractPos = null;
     }
 
-    /** Still in play: alive and not yet gone through an exit. */
+    /** Taken off the island because the season ended (D12); gone like an extraction. */
+    public void markEjected() {
+        this.ejected = true;
+        this.extractPos = null;
+    }
+
+    /** Still in play: alive, not gone through an exit, not sent home by a season's end. */
     public boolean active() {
-        return alive && !extracted;
+        return alive && !extracted && !ejected;
     }
 
     /**

@@ -289,6 +289,24 @@ public final class RoomSimulator {
      * A disconnected player whose grace period has run out. Dies like anyone else, item
      * dropped and result recorded, but with nobody to credit.
      */
+    /**
+     * The season ended (D12): the player leaves the island at once, and what they carry
+     * goes with the wipe rather than into a crate. Reaped after this tick's broadcast,
+     * like an extraction.
+     */
+    public static void eject(Room room, Player player) {
+        if (!player.active()) {
+            return;
+        }
+        player.cancelLoot();
+        player.cancelExtract();
+        player.closeCrate();
+        player.dropAll();
+        player.markEjected();
+        room.emit(new GameEvent.Ejected(player.id()));
+        room.markDirty();
+    }
+
     public static void abandon(Room room, Player player, long nowTick) {
         if (!player.active()) {
             return;

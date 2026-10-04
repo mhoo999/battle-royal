@@ -76,6 +76,7 @@ public class RoomRegistry {
     private final Queue<JoinRequest> joins = new ConcurrentLinkedQueue<>();
     private final Queue<String> leaves = new ConcurrentLinkedQueue<>();
     private final Queue<String> disconnects = new ConcurrentLinkedQueue<>();
+    private final Queue<String> ejects = new ConcurrentLinkedQueue<>();
 
     private final AtomicLong roomSequence = new AtomicLong();
     private final AtomicLong itemSequence = new AtomicLong();
@@ -137,6 +138,11 @@ public class RoomRegistry {
         leaves.add(playerId);
     }
 
+    /** Takes a player off the island because the season ended (D12). */
+    public void requestEject(String playerId) {
+        ejects.add(playerId);
+    }
+
     /**
      * The player's socket dropped. They stay in the world for
      * {@link GameConstants#DISCONNECT_GRACE_TICKS} so that closing the app is not an
@@ -167,6 +173,14 @@ public class RoomRegistry {
         JoinRequest joining;
         while ((joining = joins.poll()) != null) {
             addPlayer(joining, nowTick);
+        }
+        String ejected;
+        while ((ejected = ejects.poll()) != null) {
+            Room room = roomOf(ejected);
+            Player player = player(ejected);
+            if (room != null && player != null) {
+                RoomSimulator.eject(room, player);
+            }
         }
     }
 

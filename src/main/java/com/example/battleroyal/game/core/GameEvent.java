@@ -35,6 +35,13 @@ public sealed interface GameEvent {
      * To the attacker alone, and only the fact of it. Deliberately carries nothing
      * about the target: not who, not how badly, not whether they died.
      */
+    /**
+     * To a player taken off the island because the season ended. What they carried is
+     * gone with the wipe; nobody else is told, they simply leave the room.
+     */
+    record Ejected(String playerId) implements GameEvent {
+    }
+
     record Hit(String attackerId) implements GameEvent {
     }
 

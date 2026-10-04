@@ -115,4 +115,11 @@ public class Account {
     public void growStash() {
         this.stashSize++;
     }
+
+    /** A new season (D12): everyone back to the same starting line. */
+    public void resetForSeason() {
+        this.money = 0;
+        this.haul = 0;
+        this.stashSize = 0;
+    }
 }

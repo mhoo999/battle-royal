@@ -100,7 +100,8 @@ const ui = {
   deadRecord: el('dead-record'),
   restart: el('restart'), deadTitle: el('dead-title'), compass: el('compass'),
   loot: el('loot'), lootFill: el('loot-fill'),
-  ranking: el('ranking'), rankingList: el('ranking-list'),
+  ranking: el('ranking'), rankingList: el('ranking-list'), rankingSeason: el('ranking-season'),
+  seasonLine: el('season-line'),
 };
 
 const cells = [];
@@ -382,6 +383,8 @@ function connect(token) {
       showDeath(message);
     } else if (message.type === 'EXTRACTED') {
       showExtracted(message);
+    } else if (message.type === 'SEASON_OVER') {
+      showSeasonOver();
     }
   });
 
@@ -471,7 +474,51 @@ function rankingRow(rank, name, score, mine) {
  * and its own row. The server works out that row from the session. A failed fetch
  * leaves the ranking hidden; the lobby works without it.
  */
+// --- Seasons ------------------------------------------------------------------
+
+/** "12일 남음", or hours on the last day. */
+function timeLeft(endsAt) {
+  const ms = new Date(endsAt).getTime() - Date.now();
+  if (ms <= 0) return '곧 끝남';
+  const days = Math.floor(ms / 86_400_000);
+  return days > 0 ? `${days}일 남음` : `${Math.ceil(ms / 3_600_000)}시간 남음`;
+}
+
+const TROPHY_TEXT = {
+  CHAMPION: (t) => `S${t.season} 1위`,
+  TOP10: (t) => `S${t.season} ${t.placing}위`,
+  PARTICIPANT: (t) => `S${t.season} 참가`,
+};
+
+/** The season under way, and the viewer's trophies; null when it cannot be read. */
+async function loadSeason() {
+  try {
+    const response = await fetch('/api/season');
+    return response.ok ? await response.json() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function paintSeasonLine(season) {
+  if (!season || !season.endsAt) {
+    ui.seasonLine.textContent = '';
+    return;
+  }
+  ui.seasonLine.replaceChildren(`시즌 ${season.number} · ${timeLeft(season.endsAt)}`);
+  if (season.trophies.length > 0) {
+    const trophies = document.createElement('span');
+    trophies.className = 'trophy';
+    trophies.textContent = '트로피 ' + season.trophies.map((t) => TROPHY_TEXT[t.tier](t)).join(' · ');
+    ui.seasonLine.append(' · ', trophies);
+  }
+}
+
 async function loadRanking() {
+  loadSeason().then((season) => {
+    ui.rankingSeason.textContent = season && season.endsAt
+      ? `시즌 ${season.number} · ${timeLeft(season.endsAt)}` : '';
+  });
   try {
     const response = await fetch(`/api/ranking?limit=${RANKING_SIZE}`);
     if (!response.ok) throw new Error(String(response.status));
@@ -678,6 +725,21 @@ function showExtracted(message) {
     ? `섬을 빠져나왔다. 가져온 것: ${haul}.${kept}`
     : '섬을 빠져나왔다. 빈손이다.';
   showRecord(message);
+}
+
+/*
+ * The season ended with the player on the island (D12): they are sent home, and what
+ * they carried went with the wipe along with the stash. Trophies stay.
+ */
+function showSeasonOver() {
+  stopClock();
+  forgetSession();
+  sessionToken = null;
+  ui.deadTitle.textContent = '시즌 종료';
+  ui.deadCause.textContent = '시즌이 끝나 섬에서 나왔다. 들고 있던 것과 창고는 새 시즌을 위해 비워졌다. 트로피는 남는다.';
+  ui.deadRecord.hidden = true;
+  ui.restart.textContent = me.signedIn ? '거점으로' : '처음으로';
+  ui.dead.hidden = false;
 }
 
 /*
@@ -1131,6 +1193,7 @@ async function openHideout() {
     applyHideout(await response.json());
     ui.lobby.hidden = true;
     ui.hideout.hidden = false;
+    loadSeason().then(paintSeasonLine);
   } catch (e) {
     ui.lobbyError.textContent = '서버에 연결할 수 없습니다';
   }

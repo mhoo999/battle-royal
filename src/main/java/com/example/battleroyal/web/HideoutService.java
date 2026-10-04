@@ -282,6 +282,17 @@ public class HideoutService implements DepartureListener {
                 .orElseThrow(() -> new InvalidLoadoutException("창고에 없는 아이템입니다"));
     }
 
+    /**
+     * Every player now on the island with a sortie, forgotten at once: the season is
+     * ending and its wipe closes their sorties. A death or extraction that still comes
+     * through finds its sortie already closed and changes nothing.
+     */
+    public List<String> takeAllOut() {
+        List<String> out = new ArrayList<>(sortieOfPlayer.keySet());
+        out.forEach(sortieOfPlayer::remove);
+        return out;
+    }
+
     /** Called on the game loop thread, so the write goes to a thread of its own. */
     @Override
     public void onDeath(GameEvent.Died died) {
@@ -292,8 +303,11 @@ public class HideoutService implements DepartureListener {
         writer.execute(() -> {
             try {
                 tx.executeWithoutResult(status -> {
-                    sorties.findById(sortieId).ifPresent(sortie ->
-                            sortie.end(Sortie.Outcome.DIED, clock.instant()));
+                    Sortie sortie = sorties.findById(sortieId).orElse(null);
+                    if (sortie == null || sortie.outcome() != Sortie.Outcome.OUT) {
+                        return;     // closed by a season's end in the meantime
+                    }
+                    sortie.end(Sortie.Outcome.DIED, clock.instant());
                     items.deleteAll(items.findBySortieId(sortieId));
                 });
             } catch (RuntimeException e) {
@@ -323,6 +337,9 @@ public class HideoutService implements DepartureListener {
 
     private void settle(long sortieId, List<Item> carried) {
         Sortie sortie = sorties.findById(sortieId).orElseThrow();
+        if (sortie.outcome() != Sortie.Outcome.OUT) {
+            return;     // closed by a season's end: what came out went with the wipe
+        }
         sortie.end(Sortie.Outcome.EXTRACTED, clock.instant());
         Map<String, StashItem> wentOut = new HashMap<>();
         for (StashItem item : items.findBySortieId(sortieId)) {
