@@ -117,6 +117,9 @@ passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
       each side is half its width, so the bag alone is the same size centred. A crate
       emptied by the last TAKE still vanishes on the server, but its six cells stay drawn
       empty (inert) until you move or close; you cannot PUT back into it.
+- [x] Real Google sign-in round trip, local (2026-10-04, user): signed in through Google,
+      nickname, hideout, sortie, extraction, haul in the stash. The secret had been
+      pasted into a chat once; rotating it (local and `/etc/battle-royal/env`) was advised.
 - [x] Production Google secrets (2026-10-04, user): GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in
       `/etc/battle-royal/env` on EC2, service not restarted (V1 ignores them; the v2.0
       deploy picks them up). Redirect URIs for apex, www and localhost checked registered
@@ -294,19 +297,15 @@ Nothing.
 
 ## Next
 
-1. **Google sign-in, for real (user, local).** Run locally with GOOGLE_CLIENT_ID /
-   GOOGLE_CLIENT_SECRET set and do one real round trip: sign in, pick a nickname, land in
-   the hideout, set out, extract, see the haul in the stash. Nothing has exercised the
-   real Google hop yet (tests use `oidcLogin`).
-2. **Merge `v2` into `main` as v2.0 — ask first, it deploys.** Then on production:
+1. **Merge `v2` into `main` as v2.0 — ask first, it deploys.** Then on production:
    `account` / `stash_item` / `sortie` created on RDS, smoke, a browser trip, a
    screenshot. The lobby ranking starts empty (Known Issues).
-3. Hideout look, on a real phone: the art is sized from the viewport, never checked off
+2. Hideout look, on a real phone: the art is sized from the viewport, never checked off
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
-4. Left over from V1, whenever convenient: real-phone check of touch input; rollback
+3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-5. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
-6. Later: two EC2 instances with deploys that keep players (world handoff or rooms
+4. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
+5. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.
 
