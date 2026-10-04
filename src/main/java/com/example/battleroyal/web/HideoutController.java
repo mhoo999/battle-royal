@@ -30,8 +30,11 @@ import java.util.List;
 @RequestMapping("/api/hideout")
 public class HideoutController {
 
-    /** @param loadout stash item ids slot by slot, null for an empty slot */
-    public record SetOutRequest(List<Long> loadout) {
+    /**
+     * @param loadout stash item ids slot by slot, null for an empty slot
+     * @param bag     the stash id of a bag to wear, or null
+     */
+    public record SetOutRequest(List<Long> loadout, Long bag) {
     }
 
     public record SellRequest(long itemId) {
@@ -59,7 +62,8 @@ public class HideoutController {
         Account account = named(user);
         List<Long> loadout = request == null || request.loadout() == null
                 ? List.of() : request.loadout();
-        GameSession session = hideout.setOut(account.id(), account.nickname(), loadout);
+        Long bag = request == null ? null : request.bag();
+        GameSession session = hideout.setOut(account.id(), account.nickname(), loadout, bag);
         return new CreateResponse(session.token(), session.playerId(), session.nickname());
     }
 

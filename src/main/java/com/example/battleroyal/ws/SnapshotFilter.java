@@ -68,6 +68,7 @@ public class SnapshotFilter {
                 held == null ? null : held.kind(),
                 held != null && held.kind().usesAmmo() ? held.ammo() : null,
                 viewer.inventory().stream().map(SnapshotFilter::slot).toList(),
+                viewer.bag() == null ? null : slot(viewer.bag()),
                 viewer.equipped(),
                 crate(room, viewer),
                 viewer.concealment(room.map()),

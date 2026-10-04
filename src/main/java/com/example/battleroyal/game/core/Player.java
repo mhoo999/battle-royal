@@ -13,7 +13,9 @@ import java.util.Set;
  * ammo are private state; see docs/NETWORK_PROTOCOL.md for what leaves the server.
  *
  * <p>The inventory is {@link #INVENTORY_SLOTS} slots, one of them equipped: A uses
- * whatever is in the equipped slot, and an empty equipped slot is bare hands.
+ * whatever is in the equipped slot, and an empty equipped slot is bare hands. A bag worn
+ * in the separate bag slot adds slots; how many is the caller's to say, like magazine
+ * size on {@link Item}.
  *
  * <p>Bush concealment is derived from position rather than stored, so it cannot drift
  * out of sync with where the player actually is. Only the cabinet is a stored flag,
@@ -21,7 +23,11 @@ import java.util.Set;
  */
 public final class Player {
 
+    /** Slots without a bag. */
     public static final int INVENTORY_SLOTS = 3;
+
+    /** The bag slot's index in TAKE and PUT. Not an inventory slot: A never uses it. */
+    public static final int BAG_SLOT = -1;
 
     private final String id;
     private final String nickname;
@@ -30,7 +36,8 @@ public final class Player {
     private Direction facing = Direction.UP;
     private int hp;
     private boolean alive = true;
-    private final Item[] slots = new Item[INVENTORY_SLOTS];
+    private Item[] slots = new Item[INVENTORY_SLOTS];
+    private Item bag;
     private int equipped;
     private Pos openCrateAt;
     private boolean inCabinet;
@@ -160,6 +167,44 @@ public final class Player {
         return Arrays.asList(slots.clone());
     }
 
+    /** How many inventory slots there are now: the base, plus what the bag adds. */
+    public int slotCount() {
+        return slots.length;
+    }
+
+    /** The bag worn, or null. */
+    public Item bag() {
+        return bag;
+    }
+
+    /** True when every slot from {@code index} on is empty: what a smaller bag would lose. */
+    public boolean emptyFrom(int index) {
+        for (int i = index; i < slots.length; i++) {
+            if (slots[i] != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Puts on a bag, or takes it off with null, leaving {@code slotCount} slots in all,
+     * and hands back the bag that was worn. Slots past the new count must already be
+     * empty: nothing is ever destroyed by changing bags.
+     */
+    public Item wearBag(Item bag, int slotCount) {
+        if (!emptyFrom(slotCount)) {
+            throw new IllegalStateException("Slots past " + slotCount + " still hold items");
+        }
+        slots = Arrays.copyOf(slots, slotCount);
+        if (equipped >= slotCount) {
+            equipped = 0;
+        }
+        Item worn = this.bag;
+        this.bag = bag;
+        return worn;
+    }
+
     public int equipped() {
         return equipped;
     }
@@ -168,15 +213,23 @@ public final class Player {
         this.equipped = index;
     }
 
-    /** Empties every slot and hands back what was in them, for a death. */
+    /**
+     * Empties every slot and the bag slot and hands back what was in them, slot order
+     * then the bag, for a death or an extraction.
+     */
     public List<Item> dropAll() {
         List<Item> carried = new ArrayList<>();
-        for (int i = 0; i < slots.length; i++) {
-            if (slots[i] != null) {
-                carried.add(slots[i]);
-                slots[i] = null;
+        for (Item item : slots) {
+            if (item != null) {
+                carried.add(item);
             }
         }
+        if (bag != null) {
+            carried.add(bag);
+        }
+        slots = new Item[INVENTORY_SLOTS];
+        bag = null;
+        equipped = 0;
         return carried;
     }
 

@@ -82,6 +82,10 @@ public final class GameConstants {
     /** What each next stash size costs: index 0 buys the big box, 1 the fine box. */
     public static final List<Integer> STASH_UPGRADE_PRICES = List.of(500, 2_000);
 
+    /** Inventory slots a worn bag adds (V2.1): the small one and the big one. */
+    public static final int SMALL_BAG_SLOTS = 2;
+    public static final int BIG_BAG_SLOTS = 4;
+
     /** Slots in a stash nobody has upgraded yet. */
     public static final int STASH_CAPACITY = STASH_SIZES.getFirst();
 
@@ -152,26 +156,29 @@ public final class GameConstants {
     // --- Loot ---------------------------------------------------------------
 
     /**
-     * What a new room rolls, out of 100: one item or nothing. Six rooms in ten hold
-     * something, mostly junk; a real weapon (knife, bat, crossbow, pistol)
-     * turns up about one room in eight, a pistol one in a hundred. Starting values,
-     * not playtested.
+     * What a new room rolls, out of 200 (halves of a percent, for the big bag): one item
+     * or nothing. Six rooms in ten hold something, mostly junk; a real weapon (knife,
+     * bat, crossbow, pistol) turns up about one room in eight, a pistol one in a hundred,
+     * a bag one in forty. Starting values, not playtested.
      */
-    public static final int LOOT_WEIGHT_NOTHING = 39;
-    public static final int LOOT_WEIGHT_SPOON = 6;
-    public static final int LOOT_WEIGHT_DOLL = 6;
-    public static final int LOOT_WEIGHT_CUP = 6;
-    public static final int LOOT_WEIGHT_RECORDER = 6;
-    public static final int LOOT_WEIGHT_REGISTER = 6;
-    public static final int LOOT_WEIGHT_PAN = 5;
-    public static final int LOOT_WEIGHT_MEDKIT = 8;
-    public static final int LOOT_WEIGHT_KNIFE = 5;
-    public static final int LOOT_WEIGHT_BAT = 4;
-    public static final int LOOT_WEIGHT_CROSSBOW = 2;
-    public static final int LOOT_WEIGHT_PISTOL = 1;
+    public static final int LOOT_WEIGHT_NOTHING = 73;
+    public static final int LOOT_WEIGHT_SPOON = 12;
+    public static final int LOOT_WEIGHT_DOLL = 12;
+    public static final int LOOT_WEIGHT_CUP = 12;
+    public static final int LOOT_WEIGHT_RECORDER = 12;
+    public static final int LOOT_WEIGHT_REGISTER = 12;
+    public static final int LOOT_WEIGHT_PAN = 10;
+    public static final int LOOT_WEIGHT_MEDKIT = 16;
+    public static final int LOOT_WEIGHT_KNIFE = 10;
+    public static final int LOOT_WEIGHT_BAT = 8;
+    public static final int LOOT_WEIGHT_CROSSBOW = 4;
+    public static final int LOOT_WEIGHT_PISTOL = 2;
     /** Ammunition, a full magazine's worth, for a gun someone already has. */
-    public static final int LOOT_WEIGHT_ROUNDS = 3;
-    public static final int LOOT_WEIGHT_BOLTS = 3;
+    public static final int LOOT_WEIGHT_ROUNDS = 6;
+    public static final int LOOT_WEIGHT_BOLTS = 6;
+    /** Bags (V2.1): the small one 2%, the big one 0.5%, taken from the empty rolls. */
+    public static final int LOOT_WEIGHT_SMALL_BAG = 4;
+    public static final int LOOT_WEIGHT_BIG_BAG = 1;
 
     /**
      * A room rolls again after 30s in all with nobody in it and nothing on its floor.

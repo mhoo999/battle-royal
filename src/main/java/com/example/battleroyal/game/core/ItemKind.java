@@ -28,7 +28,10 @@ public enum ItemKind {
     /** Pistol rounds, a bundle; its ammo is how many are in it. Loaded into a pistol by A. */
     ROUNDS(true),
     /** Crossbow bolts, likewise. */
-    BOLTS(true);
+    BOLTS(true),
+    /** Worn in the bag slot, it adds inventory slots (V2.1). Anywhere else it is loot. */
+    SMALL_BAG(false),
+    BIG_BAG(false);
 
     private final boolean usesAmmo;
 

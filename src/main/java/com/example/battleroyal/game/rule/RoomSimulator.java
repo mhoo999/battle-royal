@@ -454,13 +454,13 @@ public final class RoomSimulator {
         return room.crateAt(at);
     }
 
-    private static boolean validSlot(int slot) {
-        return slot >= 0 && slot < Player.INVENTORY_SLOTS;
+    private static boolean validSlot(Player player, int slot) {
+        return slot >= 0 && slot < player.slotCount();
     }
 
     /** Which slot A uses. Instant: the one A cooldown is what keeps swapping honest. */
     private static void equip(Room room, Player player, int slot) {
-        if (!validSlot(slot) || player.equipped() == slot) {
+        if (!validSlot(player, slot) || player.equipped() == slot) {
             return;
         }
         player.equip(slot);
@@ -469,15 +469,21 @@ public final class RoomSimulator {
 
     /**
      * From the open crate into a slot. An occupied slot trades places with the crate's
-     * item, so nothing is ever destroyed. An emptied crate leaves the floor.
+     * item, so nothing is ever destroyed. An emptied crate leaves the floor. Into the
+     * bag slot only a bag goes, and only when the slots it would take away are empty.
      */
     private static void take(Room room, Player player, int crateIndex, int slot) {
         Crate crate = openCrate(room, player);
-        if (crate == null || !validSlot(slot) || crateIndex < 0 || crateIndex >= crate.size()) {
+        boolean bagSlot = slot == Player.BAG_SLOT;
+        if (crate == null || (!bagSlot && !validSlot(player, slot))
+                || crateIndex < 0 || crateIndex >= crate.size()) {
             return;
         }
         Item taken = crate.get(crateIndex);
-        Item outgoing = player.setSlot(slot, taken);
+        if (bagSlot && !Bags.canWear(player, taken)) {
+            return;
+        }
+        Item outgoing = bagSlot ? Bags.wear(player, taken) : player.setSlot(slot, taken);
         if (outgoing != null) {
             crate.replace(crateIndex, outgoing);
         } else {
@@ -493,14 +499,26 @@ public final class RoomSimulator {
         room.markDirty();
     }
 
-    /** From a slot into the open crate, while it has room. */
+    /**
+     * From a slot into the open crate, while it has room. The bag comes off only when
+     * the slots it adds are empty.
+     */
     private static void put(Room room, Player player, int slot) {
         Crate crate = openCrate(room, player);
-        if (crate == null || !validSlot(slot) || player.slot(slot) == null
-                || crate.size() >= GameConstants.CRATE_CAPACITY) {
+        if (crate == null || crate.size() >= GameConstants.CRATE_CAPACITY) {
             return;
         }
-        crate.add(player.setSlot(slot, null));
+        if (slot == Player.BAG_SLOT) {
+            if (player.bag() == null || !Bags.canWear(player, null)) {
+                return;
+            }
+            crate.add(Bags.wear(player, null));
+        } else {
+            if (!validSlot(player, slot) || player.slot(slot) == null) {
+                return;
+            }
+            crate.add(player.setSlot(slot, null));
+        }
         room.markDirty();
     }
 }

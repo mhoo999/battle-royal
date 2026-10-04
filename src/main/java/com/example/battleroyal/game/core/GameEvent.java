@@ -58,7 +58,8 @@ public sealed interface GameEvent {
      * a life and is its record; unlike a death nobody else is told, and the player
      * simply leaves the room.
      *
-     * @param carried what was in the inventory, in slot order, empty slots left out
+     * @param carried what was in the inventory, in slot order, empty slots left out,
+     *                then the bag if one was worn
      */
     record Extracted(String playerId, String nickname, int score, int kills,
                      long survivedTicks, List<Item> carried) implements GameEvent {

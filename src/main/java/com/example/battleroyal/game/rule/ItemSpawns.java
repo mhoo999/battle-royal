@@ -84,6 +84,8 @@ public final class ItemSpawns {
             new Weight(ItemKind.CROSSBOW, GameConstants.LOOT_WEIGHT_CROSSBOW),
             new Weight(ItemKind.ROUNDS, GameConstants.LOOT_WEIGHT_ROUNDS),
             new Weight(ItemKind.BOLTS, GameConstants.LOOT_WEIGHT_BOLTS),
+            new Weight(ItemKind.SMALL_BAG, GameConstants.LOOT_WEIGHT_SMALL_BAG),
+            new Weight(ItemKind.BIG_BAG, GameConstants.LOOT_WEIGHT_BIG_BAG),
             new Weight(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL));
 
     static final int TOTAL_WEIGHT = TABLE.stream().mapToInt(Weight::weight).sum();

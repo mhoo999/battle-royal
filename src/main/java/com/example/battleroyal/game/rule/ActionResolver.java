@@ -57,7 +57,7 @@ public final class ActionResolver {
     /** The first slot holding what loads the gun in hand, or -1. */
     public static int ammunitionSlot(Player player) {
         ItemKind wanted = Weapons.ammunitionFor(player.heldItem().kind());
-        for (int slot = 0; slot < Player.INVENTORY_SLOTS; slot++) {
+        for (int slot = 0; slot < player.slotCount(); slot++) {
             Item item = player.slot(slot);
             if (item != null && item.kind() == wanted && item.hasAmmo()) {
                 return slot;

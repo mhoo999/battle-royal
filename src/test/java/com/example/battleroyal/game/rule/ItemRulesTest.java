@@ -537,15 +537,17 @@ class ItemRulesTest {
                 Map.entry(ItemKind.CROSSBOW, GameConstants.LOOT_WEIGHT_CROSSBOW),
                 Map.entry(ItemKind.PISTOL, GameConstants.LOOT_WEIGHT_PISTOL),
                 Map.entry(ItemKind.ROUNDS, GameConstants.LOOT_WEIGHT_ROUNDS),
-                Map.entry(ItemKind.BOLTS, GameConstants.LOOT_WEIGHT_BOLTS)));
+                Map.entry(ItemKind.BOLTS, GameConstants.LOOT_WEIGHT_BOLTS),
+                Map.entry(ItemKind.SMALL_BAG, GameConstants.LOOT_WEIGHT_SMALL_BAG),
+                Map.entry(ItemKind.BIG_BAG, GameConstants.LOOT_WEIGHT_BIG_BAG)));
         assertEquals(ItemKind.values().length, expected.size(), "every item can be found");
-        assertEquals(GameConstants.LOOT_WEIGHT_NOTHING, percent(nothing, rolls), 1.0);
+        assertEquals(GameConstants.LOOT_WEIGHT_NOTHING / 2.0, percent(nothing, rolls), 1.0);
         for (Map.Entry<ItemKind, Integer> entry : expected.entrySet()) {
             assertNotNull(counts.get(entry.getKey()), entry.getKey() + " never rolled");
-            assertEquals(entry.getValue(), percent(counts.get(entry.getKey()), rolls), 1.0,
+            assertEquals(entry.getValue() / 2.0, percent(counts.get(entry.getKey()), rolls), 0.5,
                     entry.getKey().toString());
         }
-        assertEquals(100, ItemSpawns.TOTAL_WEIGHT, "weights are percentages");
+        assertEquals(200, ItemSpawns.TOTAL_WEIGHT, "weights are halves of a percent");
     }
 
     private static double percent(int count, int total) {

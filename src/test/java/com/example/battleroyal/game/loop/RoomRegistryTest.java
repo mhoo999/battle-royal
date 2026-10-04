@@ -601,6 +601,25 @@ class RoomRegistryTest {
     }
 
     @Test
+    void aJoinWearsItsBagAndFillsTheSlotsItAdds() {
+        RoomRegistry registry = registry(1);
+        com.example.battleroyal.game.core.Item bag =
+                new com.example.battleroyal.game.core.Item("s-2",
+                        com.example.battleroyal.game.core.ItemKind.BIG_BAG, 0);
+        com.example.battleroyal.game.core.Item knife =
+                new com.example.battleroyal.game.core.Item("s-3",
+                        com.example.battleroyal.game.core.ItemKind.KNIFE, 0);
+        registry.requestJoin("a", "a",
+                java.util.Arrays.asList(null, null, null, null, null, null, knife), bag);
+
+        registry.processPending(0);
+
+        assertSame(bag, registry.player("a").bag());
+        assertEquals(7, registry.player("a").slotCount());
+        assertSame(knife, registry.player("a").slot(6));
+    }
+
+    @Test
     void aReconnectKeepsWhatThePlayerHoldsNow() {
         RoomRegistry registry = withPlayers("a");
         registry.requestDisconnect("a");

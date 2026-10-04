@@ -46,6 +46,7 @@ public record Snapshot(
             ItemKind item,
             Integer ammo,
             List<Slot> inventory,
+            Slot bag,
             int equipped,
             List<Slot> crate,
             Concealment concealment,

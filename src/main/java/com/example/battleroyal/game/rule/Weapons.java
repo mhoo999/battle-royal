@@ -49,6 +49,8 @@ public final class Weapons {
             case REGISTER -> junk(GameConstants.REGISTER_DAMAGE);
             // A bundle of ammunition swung is a fist with something in it.
             case ROUNDS, BOLTS -> junk(GameConstants.FIST_DAMAGE);
+            // A bag carried as loot rather than worn: swung, it is a fist.
+            case SMALL_BAG, BIG_BAG -> junk(GameConstants.FIST_DAMAGE);
             case MEDKIT -> null;
         };
     }

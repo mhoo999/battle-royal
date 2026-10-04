@@ -39,6 +39,8 @@ public final class ItemValues {
             case PAN -> 15;
             case DOLL, RECORDER, REGISTER -> 10;
             case SPOON, CUP -> 5;
+            case SMALL_BAG -> 50;
+            case BIG_BAG -> 150;
         };
     }
 
@@ -46,11 +48,13 @@ public final class ItemValues {
     public static final List<Offer> STOCK = List.of(
             offer(ItemKind.BOLTS, GameConstants.CROSSBOW_BOLTS),
             offer(ItemKind.KNIFE, 0),
+            offer(ItemKind.SMALL_BAG, 0),
             offer(ItemKind.BAT, 0),
             offer(ItemKind.MEDKIT, 0),
             offer(ItemKind.ROUNDS, GameConstants.PISTOL_MAGAZINE),
             offer(ItemKind.CROSSBOW, 0),
-            offer(ItemKind.PISTOL, 0));
+            offer(ItemKind.PISTOL, 0),
+            offer(ItemKind.BIG_BAG, 0));
 
     private static Offer offer(ItemKind kind, int ammo) {
         return new Offer(kind, ammo, MARKUP * sellPrice(kind, ammo));

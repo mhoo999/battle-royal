@@ -12,6 +12,7 @@ import com.example.battleroyal.game.core.TileType;
 import com.example.battleroyal.game.map.MapTemplate;
 import com.example.battleroyal.game.map.MapTemplates;
 import com.example.battleroyal.game.rule.ActionResolver;
+import com.example.battleroyal.game.rule.Bags;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemSpawns;
 import com.example.battleroyal.game.rule.RoomSimulator;
@@ -57,8 +58,11 @@ public class RoomRegistry {
     private static final Logger log = LoggerFactory.getLogger(RoomRegistry.class);
 
     /** A player asking to enter the world. Resolved on the next tick. */
-    /** @param loadout what the player carries in, slot by slot; nulls are empty slots */
-    public record JoinRequest(String playerId, String nickname, List<Item> loadout) {
+    /**
+     * @param loadout what the player carries in, slot by slot; nulls are empty slots
+     * @param bag     the bag worn in, or null
+     */
+    public record JoinRequest(String playerId, String nickname, List<Item> loadout, Item bag) {
     }
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
@@ -122,7 +126,11 @@ public class RoomRegistry {
      * reconnect inside the grace period keeps whatever the player holds now.
      */
     public void requestJoin(String playerId, String nickname, List<Item> loadout) {
-        joins.add(new JoinRequest(playerId, nickname, loadout));
+        requestJoin(playerId, nickname, loadout, null);
+    }
+
+    public void requestJoin(String playerId, String nickname, List<Item> loadout, Item bag) {
+        joins.add(new JoinRequest(playerId, nickname, loadout, bag));
     }
 
     public void requestLeave(String playerId) {
@@ -363,8 +371,11 @@ public class RoomRegistry {
 
         Player player = new Player(request.playerId(), request.nickname(),
                 spawn, GameConstants.MAX_HP, nowTick);
+        if (request.bag() != null && Bags.isBag(request.bag().kind())) {
+            Bags.wear(player, request.bag());
+        }
         List<Item> loadout = request.loadout();
-        for (int slot = 0; slot < Math.min(loadout.size(), Player.INVENTORY_SLOTS); slot++) {
+        for (int slot = 0; slot < Math.min(loadout.size(), player.slotCount()); slot++) {
             player.setSlot(slot, loadout.get(slot));
         }
         // Where you start is not somewhere you travelled to.

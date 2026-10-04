@@ -5,6 +5,7 @@ import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.core.Player;
 import com.example.battleroyal.game.loop.DepartureListener;
+import com.example.battleroyal.game.rule.Bags;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemValues;
 import com.example.battleroyal.persistence.Account;
@@ -212,23 +213,27 @@ public class HideoutService implements DepartureListener {
         });
     }
 
-    /**
-     * Sets out with the chosen stash items, slot by slot (null for an empty slot), and
-     * hands back the game session that carries them in.
-     */
     public GameSession setOut(long accountId, String nickname, List<Long> loadout) {
-        if (loadout.size() > Player.INVENTORY_SLOTS) {
-            throw new InvalidLoadoutException("가져갈 수 있는 것은 "
-                    + Player.INVENTORY_SLOTS + "개까지입니다");
-        }
+        return setOut(accountId, nickname, loadout, null);
+    }
+
+    /**
+     * Sets out with the chosen stash items, slot by slot (null for an empty slot), and a
+     * bag to wear (or null), and hands back the game session that carries them in. The
+     * bag decides how many slots there are.
+     */
+    public GameSession setOut(long accountId, String nickname, List<Long> loadout, Long bagId) {
         Set<Long> seen = new HashSet<>();
+        if (bagId != null) {
+            seen.add(bagId);
+        }
         for (Long id : loadout) {
             if (id != null && !seen.add(id)) {
                 throw new InvalidLoadoutException("같은 아이템을 두 번 고를 수 없습니다");
             }
         }
 
-        record Departure(long sortieId, List<Item> carried) {
+        record Departure(long sortieId, List<Item> carried, Item bag) {
         }
         Departure departure = tx.execute(status -> {
             accounts.lockById(accountId).orElseThrow();
@@ -236,27 +241,45 @@ public class HideoutService implements DepartureListener {
                 throw new AlreadyOutException();
             }
             Sortie sortie = sorties.save(new Sortie(accountId, clock.instant()));
+            Item bag = null;
+            if (bagId != null) {
+                StashItem worn = atHome(accountId, bagId);
+                if (!Bags.isBag(worn.kind())) {
+                    throw new InvalidLoadoutException("가방이 아닙니다");
+                }
+                worn.sendOut(sortie.id());
+                bag = new Item(worn.gameItemId(), worn.kind(), worn.ammo());
+            }
+            int slots = Bags.slotsWith(bag);
+            if (loadout.size() > slots) {
+                throw new InvalidLoadoutException("가져갈 수 있는 것은 " + slots + "개까지입니다");
+            }
             List<Item> carried = new ArrayList<>();
             for (Long id : loadout) {
                 if (id == null) {
                     carried.add(null);
                     continue;
                 }
-                StashItem item = items.findById(id)
-                        .filter(found -> found.accountId().equals(accountId))
-                        .filter(found -> found.location() == StashItem.Location.STASH)
-                        .orElseThrow(() -> new InvalidLoadoutException("창고에 없는 아이템입니다"));
+                StashItem item = atHome(accountId, id);
                 item.sendOut(sortie.id());
                 carried.add(new Item(item.gameItemId(), item.kind(), item.ammo()));
             }
-            return new Departure(sortie.id(), carried);
+            return new Departure(sortie.id(), carried, bag);
         });
 
-        GameSession session = sessions.issueForAccount(accountId, nickname, departure.carried());
+        GameSession session = sessions.issueForAccount(accountId, nickname, departure.carried(),
+                departure.bag());
         sortieOfPlayer.put(session.playerId(), departure.sortieId());
         log.info("Account {} set out on sortie {} as {}", accountId, departure.sortieId(),
                 session.playerId());
         return session;
+    }
+
+    private StashItem atHome(long accountId, long id) {
+        return items.findById(id)
+                .filter(found -> found.accountId().equals(accountId))
+                .filter(found -> found.location() == StashItem.Location.STASH)
+                .orElseThrow(() -> new InvalidLoadoutException("창고에 없는 아이템입니다"));
     }
 
     /** Called on the game loop thread, so the write goes to a thread of its own. */

@@ -106,6 +106,42 @@ class HideoutServiceTest {
     }
 
     @Test
+    void aBagWornOutGivesMoreSlotsAndComesHomeWithWhatItHeld() {
+        StashItem bag = stash(me, ItemKind.SMALL_BAG, 0);
+        StashItem knife = stash(me, ItemKind.KNIFE, 0);
+
+        GameSession session = hideout.setOut(me, "shuya",
+                Arrays.asList(null, null, null, null, knife.id()), bag.id());
+
+        assertEquals(bag.gameItemId(), session.bag().id());
+        assertEquals(ItemKind.KNIFE, session.loadout().get(4).kind(), "the bag's own slot");
+        assertEquals(StashItem.Location.OUT, items.findById(bag.id()).orElseThrow().location());
+
+        hideout.onExtracted(extracted(session.playerId(), session.loadout().get(4), session.bag()));
+
+        assertEquals(List.of(ItemKind.KNIFE, ItemKind.SMALL_BAG), hideout.view(me).stash().stream()
+                .map(HideoutService.StashEntry::kind).sorted().toList());
+        assertEquals(0, accounts.findById(me).orElseThrow().haul(), "own gear back is no haul");
+    }
+
+    @Test
+    void theBagDecidesHowManySlotsGoOut() {
+        StashItem bag = stash(me, ItemKind.SMALL_BAG, 0);
+        StashItem knife = stash(me, ItemKind.KNIFE, 0);
+
+        assertThrows(InvalidLoadoutException.class, () -> hideout.setOut(me, "shuya",
+                Arrays.asList(null, null, null, knife.id())), "slot 4 needs a bag");
+        assertThrows(InvalidLoadoutException.class, () -> hideout.setOut(me, "shuya",
+                Arrays.asList(null, null, null, null, null, knife.id()), bag.id()),
+                "a small bag gives five");
+        assertThrows(InvalidLoadoutException.class, () -> hideout.setOut(me, "shuya",
+                List.of(), knife.id()), "only a bag is worn");
+        assertThrows(InvalidLoadoutException.class, () -> hideout.setOut(me, "shuya",
+                List.of(bag.id()), bag.id()), "the same bag worn and carried");
+        assertFalse(hideout.view(me).out(), "a refused loadout opens no sortie");
+    }
+
+    @Test
     void anAccountCannotSetOutTwice() {
         hideout.setOut(me, "shuya", List.of());
 

@@ -36,9 +36,10 @@ public class GameSessionService implements DepartureListener {
      * @param accountId null for a guest
      * @param loadout   what the player carries in, slot by slot (nulls for empty slots);
      *                  empty for a guest, who always starts with nothing
+     * @param bag       the bag worn in, or null
      */
     public record GameSession(String token, String playerId, String nickname, Long accountId,
-                              List<Item> loadout) {
+                              List<Item> loadout, Item bag) {
     }
 
     /** Thrown for a nickname {@link NicknamePolicy} refuses. The message is shown to the player. */
@@ -58,7 +59,7 @@ public class GameSessionService implements DepartureListener {
             nickname = nickname.substring(GameConstants.UNRANKED_PREFIX.length()).trim();
         }
         NicknamePolicy.require(nickname);
-        return issue(GameConstants.UNRANKED_PREFIX + nickname, null, List.of());
+        return issue(GameConstants.UNRANKED_PREFIX + nickname, null, List.of(), null);
     }
 
     /**
@@ -66,7 +67,12 @@ public class GameSessionService implements DepartureListener {
      * carrying what it picked from the stash.
      */
     public GameSession issueForAccount(long accountId, String nickname, List<Item> loadout) {
-        return issue(nickname, accountId, loadout);
+        return issueForAccount(accountId, nickname, loadout, null);
+    }
+
+    public GameSession issueForAccount(long accountId, String nickname, List<Item> loadout,
+                                       Item bag) {
+        return issue(nickname, accountId, loadout, bag);
     }
 
     public GameSession resolve(String token) {
@@ -88,13 +94,14 @@ public class GameSessionService implements DepartureListener {
         byToken.values().removeIf(session -> session.playerId().equals(playerId));
     }
 
-    private GameSession issue(String nickname, Long accountId, List<Item> loadout) {
+    private GameSession issue(String nickname, Long accountId, List<Item> loadout, Item bag) {
         GameSession session = new GameSession(
                 UUID.randomUUID().toString(),
                 "p-" + playerSequence.incrementAndGet(),
                 nickname,
                 accountId,
-                Collections.unmodifiableList(new ArrayList<>(loadout)));
+                Collections.unmodifiableList(new ArrayList<>(loadout)),
+                bag);
         byToken.put(session.token(), session);
         return session;
     }
