@@ -11,8 +11,8 @@ The extraction loop (`docs/V2_PLAN.md` §7): Google accounts, crates, three-slot
 stash in the DB, sorties, two private exits and a compass, extraction, trader, money,
 ranking by haul; empty guns reload from ammo bundles. The hideout opens like the title
 screen with a short ASCII banner (`tools/hideout-art.py`); every inventory is a grid,
-the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash upgrades
-are V2.1. Exact next step: see Next, item 1.
+the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash upgrades and bags
+(V2.1) are built, not deployed. Exact next step: see Next, item 1.
 
 ## Completed
 
@@ -314,16 +314,20 @@ Nothing.
 
 ## Next
 
-1. **v2.0 production check (user).** Sign in with Google on https://battleroyale.site
+1. **Deploy V2.1 part 1 — ask first, a push to `main` deploys.** Local `main` is ahead of
+   origin with the 창고 grids, stash upgrades and bags (`e8b2c16`..). Smoke passed on a
+   local server with this code (port 8081). On RDS the deploy adds `account.stash_size`
+   (default 0) through `ddl-auto=update`; `SMALL_BAG`/`BIG_BAG` fit the VARCHAR `kind`.
+2. **v2.0 production check (user).** Sign in with Google on https://battleroyale.site
    and do one trip (nickname, hideout, sortie, extract, stash), then
    `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
    permitted to run it against production).
-2. Hideout look, on a real phone: the art is sized from the viewport, never checked off
+3. Hideout look, on a real phone: the art is sized from the viewport, never checked off
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
-3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
+4. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-4. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
-5. Later: two EC2 instances with deploys that keep players (world handoff or rooms
+5. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
+6. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.
 
