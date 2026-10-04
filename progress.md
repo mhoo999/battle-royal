@@ -130,7 +130,8 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       guards. Exits now never go in outposts, the smoke treats guards as obstacles, and
       CI runs it with `--game.outposts=false` (on by default). A local smoke run takes
       40-110s; a shorter timeout looks like a hang. Against a server with outposts it
-      passed 3 of 4 (once the two walkers never met).
+      passed 3 of 4 (once the two walkers never met). Deployed 2026-10-04 (`60f2d7e`,
+      run 37192660410).
 - [x] **V2.2 quests (2026-10-04, user's choices, draft list approved as is):** the trader's
       ten errands in order (`Quests.ALL`), deliveries from the stash (`POST
       /api/hideout/quest/deliver`) and kills counted when a trip ends, death included;
@@ -364,8 +365,9 @@ Nothing.
    from the next season; season 1's deadline is stored in `season.ends_at`.
 3. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
    (the last two drop everyone).
-4. **Deploy outposts — ask first.** No schema change. V2.2 left after that: a player
-   market (planning first; needs players to matter).
+4. V2.2 built and live except a player market, which needs players to matter. Before
+   more features: play V2.1/V2.2 in production and tune numbers (prices, loot odds,
+   guard strength, quest rewards are all starting values).
 5. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
    this more pressing: a restart costs players their gear.
 
