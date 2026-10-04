@@ -48,6 +48,13 @@ room in nine, two `Guard`s (own entity, not a `Player`) that turn every 3s and f
 down their line after 0.5s of sight; 60 health, drop 6 rounds, stand again after 2 min
 empty; military loot table; no exits in outposts.
 
+**Errand compass (2026-10-05, built, not deployed).** Outpost enemies are called 군인
+(user). Three location errands inserted (정찰, 수색, 위험 지역; 13 in all): a trip out
+with one gets private marks ✦ some doors away (never the start, an outpost or an exit
+tile), the compass points at them, standing on them all and getting out completes it.
+Inserting shifted `quest_step` meanings: a live account part-way through may redo one
+errand or meet a new one early; season 1's wipe resets it anyway.
+
 **Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
 crate closes the bag window. `stash_item.kind` is a VARCHAR, not an ENUM.

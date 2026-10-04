@@ -63,8 +63,10 @@ public class RoomRegistry {
     /**
      * @param loadout what the player carries in, slot by slot; nulls are empty slots
      * @param bag     the bag worn in, or null
+     * @param marks   errand marks to place (V2.2), and how many doors from the start
      */
-    public record JoinRequest(String playerId, String nickname, List<Item> loadout, Item bag) {
+    public record JoinRequest(String playerId, String nickname, List<Item> loadout, Item bag,
+                              int marks, int markDoors) {
     }
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
@@ -156,7 +158,12 @@ public class RoomRegistry {
     }
 
     public void requestJoin(String playerId, String nickname, List<Item> loadout, Item bag) {
-        joins.add(new JoinRequest(playerId, nickname, loadout, bag));
+        requestJoin(playerId, nickname, loadout, bag, 0, 0);
+    }
+
+    public void requestJoin(String playerId, String nickname, List<Item> loadout, Item bag,
+                            int marks, int markDoors) {
+        joins.add(new JoinRequest(playerId, nickname, loadout, bag, marks, markDoors));
     }
 
     public void requestLeave(String playerId) {
@@ -333,6 +340,7 @@ public class RoomRegistry {
         for (Room room : rooms.values()) {
             for (Player player : room.players()) {
                 rerollLostExits(player, room);
+                dropLostMarks(player);
                 pointCompass(player, room);
             }
         }
@@ -420,6 +428,7 @@ public class RoomRegistry {
         // Where you start is not somewhere you travelled to.
         player.visitRoom(room.id());
         player.setExits(rollExits(room, List.of()));
+        player.setMarks(rollMarks(room, player, request.marks(), request.markDoors()));
         pointCompass(player, room);
         place(player, room);
         log.info("{} joined {} ({}x{} world)",
@@ -669,6 +678,58 @@ public class RoomRegistry {
         }
     }
 
+    /**
+     * The places an errand marks (V2.2): {@code count} rooms {@code doors} doors from the
+     * start (or as far as the island allows), never the start or an outpost, one tile
+     * each that is clear like an exit's.
+     */
+    private List<Exit> rollMarks(Room start, Player player, int count, int doors) {
+        List<Exit> marks = new ArrayList<>();
+        if (count <= 0) {
+            return marks;
+        }
+        Cell origin = cellOf(start);
+        int distance = Math.min(doors, grid.rows() / 2 + grid.columns() / 2);
+        for (int i = 0; i < count; i++) {
+            List<Room> ring = new ArrayList<>();
+            List<Room> fallback = new ArrayList<>();
+            for (int row = 0; row < grid.rows(); row++) {
+                for (int column = 0; column < grid.columns(); column++) {
+                    Room room = cells[row][column];
+                    boolean taken = marks.stream().anyMatch(mark -> mark.in(room));
+                    if (room == start || taken || room.map().isOutpost()) {
+                        continue;
+                    }
+                    int away = Math.abs(around(origin.row(), row, grid.rows()))
+                            + Math.abs(around(origin.column(), column, grid.columns()));
+                    (away == distance ? ring : fallback).add(room);
+                }
+            }
+            List<Room> choice = ring.isEmpty() ? fallback : ring;
+            if (choice.isEmpty()) {
+                break;
+            }
+            Room room = choice.get(exitRandom.nextInt(choice.size()));
+            Pos at = exitTile(room);
+            boolean onExit = player.exits().stream()
+                    .anyMatch(exit -> exit.in(room) && exit.at().equals(at));
+            if (at != null && !onExit) {
+                marks.add(new Exit(room.id(), at, 0, 0));
+            }
+        }
+        return marks;
+    }
+
+    /** A mark whose room the world dropped is gone; the errand waits for the next trip. */
+    private void dropLostMarks(Player player) {
+        List<Exit> kept = player.marks().stream()
+                .filter(mark -> rooms.containsKey(mark.roomId()))
+                .toList();
+        if (kept.size() < player.marks().size()) {
+            player.setMarks(kept);
+        }
+    }
+
     /** Points every exit's bearing from the room the player is in now. */
     private void pointCompass(Player player, Room here) {
         Cell origin = cellOf(here);
@@ -680,6 +741,14 @@ public class RoomRegistry {
                     around(origin.row(), target.row(), grid.rows())));
         }
         player.setExits(pointed);
+        List<Exit> marks = new ArrayList<>();
+        for (Exit mark : player.marks()) {
+            Cell target = cellOf(rooms.get(mark.roomId()));
+            marks.add(mark.pointedFrom(
+                    around(origin.column(), target.column(), grid.columns()),
+                    around(origin.row(), target.row(), grid.rows())));
+        }
+        player.setMarks(marks);
     }
 
     private <T> T pick(List<T> candidates) {

@@ -61,6 +61,7 @@ public record Snapshot(
             Concealment concealment,
             Integer lootMsLeft,
             List<Bearing> exits,
+            List<Bearing> marks,
             Integer extractMsLeft,
             int score,
             int kills,

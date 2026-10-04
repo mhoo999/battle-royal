@@ -238,6 +238,9 @@ bare-hand kill.
 
 **V2: 인벤토리 3칸.** `self.inventory`는 칸 순서대로 `{kind, ammo}` 또는 빈 칸 `null`,
 `self.equipped`는 A가 쓰는 칸, `self.item`/`self.ammo`는 장착 칸의 것이다.
+**V2.2:** `self.marks`는 들고 나간 장소 의뢰의 표식들로 `exits`와 같은 모양(`{dx, dy, x, y}`,
+그 방에 있을 때만 `x`/`y`)이다. 밟은 표식은 빠진다. 장소 의뢰가 아니면 빈 배열. 거점의 `quest`에는
+`visits`(밟을 표식 수, 장소 의뢰가 아니면 0)가 있다.
 **V2.1:** `self.bag`은 가방 칸에 멘 가방(`{kind}`, `SMALL_BAG` | `BIG_BAG`) 또는 `null`이고,
 `self.inventory`의 길이는 3 + 가방이 더하는 칸(작은 2, 큰 4)이다. 가방은 다른 사람에게
 보내지 않는다.
@@ -310,10 +313,10 @@ actionB   EXTRACT | OPEN | CLOSE | DOOR | null      (V1: PICKUP | SWAP | DOOR)
   "killer": "kang", "weapon": "PISTOL", "byGuard": false }
 ```
 
-`byGuard`(V2.2)는 군 초소 보초에게 맞아 죽었을 때 `true`이고, 그때 `killer`/`weapon`은 `null`이다.
+`byGuard`(V2.2)는 군 초소 군인에게 맞아 죽었을 때 `true`이고, 그때 `killer`/`weapon`은 `null`이다.
 
-`guards`(스냅샷, V2.2)는 그 방에 서 있는 군 초소 보초의 위치와 방향이다. 초소가 아니면 빈 배열,
-쓰러진 보초는 빠진다. 보초의 체력은 보내지 않는다(플레이어처럼).
+`guards`(스냅샷, V2.2)는 그 방에 서 있는 군 초소 군인의 위치와 방향이다. 초소가 아니면 빈 배열,
+쓰러진 군인은 빠진다. 군인의 체력은 보내지 않는다(플레이어처럼).
 
 `killer`/`weapon`은 **사망자에게만** 간다. 살아 있는 동안 숨겨지는 정보(상대 무기)지만
 이 시점에 받는 사람은 이미 탈락했다. 처치자가 없는 사망(향후 끊김 타임아웃)이면 둘 다

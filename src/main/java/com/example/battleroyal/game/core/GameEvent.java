@@ -75,10 +75,16 @@ public sealed interface GameEvent {
      *                then the bag if one was worn
      */
     record Extracted(String playerId, String nickname, int score, int kills,
-                     long survivedTicks, List<Item> carried) implements GameEvent {
+                     long survivedTicks, List<Item> carried, int marksReached)
+            implements GameEvent {
 
         public Extracted {
             carried = List.copyOf(carried);
+        }
+
+        public Extracted(String playerId, String nickname, int score, int kills,
+                         long survivedTicks, List<Item> carried) {
+            this(playerId, nickname, score, kills, survivedTicks, carried, 0);
         }
     }
 

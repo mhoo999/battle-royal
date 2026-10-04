@@ -419,6 +419,10 @@ header.hud-bar {
 .cell.fell  { color: var(--enemy); font-weight: bold; }
 /* One of my own exits. Nobody else's board has it. */
 .cell.exit  { color: var(--self); font-weight: bold; }
+/* An errand's mark (V2.2): the trader's colour, the quest panel's gold. */
+.cell.mark  { color: var(--item); font-weight: bold; }
+.compass .mark-label { color: var(--item); }
+.compass .mark-label.after { margin-left: 1em; }
 
 /* Where my exits lie, a needle and a count of rooms for each. */
 .compass {

@@ -151,6 +151,14 @@ function paint(snapshot) {
     cell.textContent = '';
   }
 
+  // My errand's marks (V2.2), like the exits: only ever in my snapshot.
+  for (const mark of snapshot.self.marks || []) {
+    if (mark.x === null) continue;
+    const cell = cells[mark.y * GRID + mark.x];
+    cell.classList.add('mark');
+    cell.textContent = '✦';
+  }
+
   // My own exits, under anything standing on them. Only ever in my snapshot.
   for (const exit of snapshot.self.exits) {
     if (exit.x === null) continue;
@@ -317,18 +325,31 @@ function needle(dx, dy) {
   return [['↖', '↑', '↗'], ['←', '◎', '→'], ['↙', '↓', '↘']][row][col];
 }
 
+/** One compass reading per bearing: a needle and the doors, or "here" in its room. */
+function bearings(list, here) {
+  return list.map((b) => {
+    const doors = Math.abs(b.dx) + Math.abs(b.dy);
+    return doors === 0 ? here : `${needle(b.dx, b.dy)} ${doors}`;
+  }).join('  ·  ');
+}
+
+/* Your exits, and the places your errand marked (V2.2), both private to you. */
 function paintCompass(self) {
-  if (self.exits.length === 0) {
-    ui.compass.textContent = '';
-    return;
+  const marks = self.marks || [];
+  const parts = [];
+  if (self.exits.length > 0) {
+    const label = document.createElement('b');
+    label.textContent = '탈출구 ';
+    parts.push(label, bearings(self.exits, '◎ 이 방'));
   }
-  const parts = self.exits.map((exit) => {
-    const doors = Math.abs(exit.dx) + Math.abs(exit.dy);
-    return doors === 0 ? '◎ 이 방' : `${needle(exit.dx, exit.dy)} ${doors}`;
-  });
-  const label = document.createElement('b');
-  label.textContent = '탈출구 ';
-  ui.compass.replaceChildren(label, parts.join('  ·  '));
+  if (marks.length > 0) {
+    const label = document.createElement('b');
+    label.className = 'mark-label';
+    label.textContent = '의뢰 ';
+    if (parts.length) label.classList.add('after');
+    parts.push(label, bearings(marks, '✦ 이 방'));
+  }
+  ui.compass.replaceChildren(...parts);
 }
 
 function setAction(button, letter, label, idleLabel = null) {
@@ -709,7 +730,7 @@ function showDeath(message) {
   forgetSession();
   ui.deadTitle.textContent = 'GAME OVER';
   ui.deadCause.textContent = message.byGuard
-    ? '군 초소 보초의 총에 맞고 당신은 사망했다.'
+    ? '군인의 총에 맞고 당신은 사망했다.'
     : deathCause(message.killer, message.weapon);
   showRecord(message);
 }
@@ -1293,7 +1314,9 @@ function paintQuest() {
       if (need.have >= need.count) span.className = 'done';
       return span;
     })
-    : [`${quest.kills}명 처치 (${quest.killsDone}/${quest.kills}) · 판이 끝나면 센다`];
+    : quest.visits > 0
+      ? [`표시된 곳 ${quest.visits}곳을 한 판에 밟고 탈출 · 섬에서 나침반이 가리킨다`]
+      : [`${quest.kills}명 처치 (${quest.killsDone}/${quest.kills}) · 판이 끝나면 센다`];
   ui.questGoal.replaceChildren(...goal.flatMap((part, i) => (i === 0 ? [part] : [' · ', part])));
   const item = quest.reward
     ? ` + ${slotText({ kind: quest.reward, ammo: quest.rewardAmmo })}` : '';

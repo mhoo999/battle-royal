@@ -17,27 +17,36 @@ public final class Quests {
     }
 
     /**
-     * @param deliver what to hand over, by kind and count; empty for a kill errand
-     * @param kills   kills to make since the errand was taken; 0 for a delivery
-     * @param reward  an item that goes to the stash on completion, or null
+     * @param deliver       what to hand over, by kind and count; empty otherwise
+     * @param kills         kills to make since the errand was taken; 0 otherwise
+     * @param visits        marked places to reach in one trip and get out alive; 0 otherwise
+     * @param visitDistance how many doors from the start the marks lie
+     * @param reward        an item that goes to the stash on completion, or null
      */
-    public record Quest(String title, Map<ItemKind, Integer> deliver, int kills, int money,
-                        ItemKind reward, int rewardAmmo) {
+    public record Quest(String title, Map<ItemKind, Integer> deliver, int kills, int visits,
+                        int visitDistance, int money, ItemKind reward, int rewardAmmo) {
 
         public boolean isDelivery() {
             return !deliver.isEmpty();
+        }
+
+        public boolean isVisit() {
+            return visits > 0;
         }
     }
 
     public static final List<Quest> ALL = List.of(
             deliver("첫 납품", Map.of(ItemKind.SPOON, 1), 30, null),
             deliver("소풍 준비물", Map.of(ItemKind.CUP, 2), 60, null),
+            visit("정찰", 1, 2, 80, null),
             kill("첫 피", 1, 100, null, 0),
             deliver("음악 시간", Map.of(ItemKind.RECORDER, 2), 80, ItemKind.SMALL_BAG),
             deliver("응급 상자", Map.of(ItemKind.MEDKIT, 1), 120, null),
+            visit("수색", 2, 2, 150, ItemKind.MEDKIT),
             kill("사냥", 3, 200, ItemKind.ROUNDS, GameConstants.PISTOL_MAGAZINE),
             deliver("출석 확인", Map.of(ItemKind.REGISTER, 2, ItemKind.DOLL, 1), 150, null),
             deliver("무기 회수", Map.of(ItemKind.KNIFE, 1, ItemKind.BAT, 1), 250, null),
+            visit("위험 지역", 1, 4, 300, ItemKind.SMALL_BAG),
             kill("학살", 5, 400, ItemKind.PISTOL, 0),
             deliver("마지막 의뢰", Map.of(ItemKind.PISTOL, 1), 600, ItemKind.BIG_BAG));
 
@@ -48,10 +57,19 @@ public final class Quests {
 
     private static Quest deliver(String title, Map<ItemKind, Integer> what, int money,
                                  ItemKind reward) {
-        return new Quest(title, what, 0, money, reward, 0);
+        return new Quest(title, what, 0, 0, 0, money, reward, 0);
     }
 
     private static Quest kill(String title, int kills, int money, ItemKind reward, int ammo) {
-        return new Quest(title, Map.of(), kills, money, reward, ammo);
+        return new Quest(title, Map.of(), kills, 0, 0, money, reward, ammo);
+    }
+
+    /**
+     * Places the trader marked on the map: each trip out with this errand puts that many
+     * marks that many doors from the start, for the taker alone, and the compass points
+     * at them. Standing on every one and getting out alive completes it.
+     */
+    private static Quest visit(String title, int marks, int doors, int money, ItemKind reward) {
+        return new Quest(title, Map.of(), 0, marks, doors, money, reward, 0);
     }
 }

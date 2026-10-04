@@ -28,7 +28,7 @@ public final class QuestLedger {
      * @param ready true when a delivery can be handed over now
      */
     public record QuestView(int step, int total, String title, List<Need> deliver, int kills,
-                     int killsDone, int money, ItemKind reward, Integer rewardAmmo,
+                     int killsDone, int visits, int money, ItemKind reward, Integer rewardAmmo,
                      boolean ready) {
     }
 
@@ -51,7 +51,7 @@ public final class QuestLedger {
         }
         needs.sort((a, b) -> a.kind().compareTo(b.kind()));
         return new QuestView(account.questStep() + 1, Quests.ALL.size(), quest.title(), needs,
-                quest.kills(), account.questKills(), quest.money(), quest.reward(),
+                quest.kills(), account.questKills(), quest.visits(), quest.money(), quest.reward(),
                 quest.reward() != null && quest.reward().usesAmmo() ? quest.rewardAmmo() : null,
                 ready);
     }
@@ -87,13 +87,28 @@ public final class QuestLedger {
     /** Kills from a trip that ended, by death or extraction, count towards a kill errand. */
     static void addKills(Account account, int kills, StashItemRepository items) {
         Quests.Quest quest = Quests.at(account.questStep());
-        if (quest == null || quest.isDelivery() || kills <= 0) {
+        if (quest == null || quest.kills() == 0 || kills <= 0) {
             return;
         }
         account.addQuestKills(kills);
         if (account.questKills() >= quest.kills()) {
             complete(account, quest, items);
         }
+    }
+
+    /** A trip that got out having stood on this many of its marks. */
+    static void reachedMarks(Account account, int marks, StashItemRepository items) {
+        Quests.Quest quest = Quests.at(account.questStep());
+        if (quest != null && quest.isVisit() && marks >= quest.visits()) {
+            complete(account, quest, items);
+        }
+    }
+
+    /** The marks a trip out should carry for the errand under way: count and doors. */
+    static int[] marksFor(Account account) {
+        Quests.Quest quest = Quests.at(account.questStep());
+        return quest != null && quest.isVisit()
+                ? new int[] {quest.visits(), quest.visitDistance()} : new int[] {0, 0};
     }
 
     /** Pays, and moves on. A reward item lands in the stash even when it is full. */

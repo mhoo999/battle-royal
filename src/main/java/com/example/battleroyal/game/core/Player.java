@@ -50,6 +50,8 @@ public final class Player {
     private long bufferedMoveExpiresTick;
 
     private List<Exit> exits = List.of();
+    private List<Exit> marks = List.of();
+    private int marksReached;
     private Pos extractPos;
     private long extractDoneTick;
     private boolean extracted;
@@ -348,6 +350,33 @@ public final class Player {
         String itemId = pos.equals(lootPos) ? lootItemId : null;
         cancelLoot();
         return itemId;
+    }
+
+    // --- Errand marks (V2.2) ------------------------------------------------
+
+    /**
+     * Places the trader marked for this player's errand still to be reached, compass
+     * bearings included; private like the exits. Reached ones leave the list.
+     */
+    public List<Exit> marks() {
+        return marks;
+    }
+
+    public void setMarks(List<Exit> marks) {
+        this.marks = List.copyOf(marks);
+    }
+
+    /** Standing on this mark: it is reached and leaves the list. */
+    public void reachMark(Exit mark) {
+        List<Exit> left = new ArrayList<>(marks);
+        if (left.remove(mark)) {
+            marks = List.copyOf(left);
+            marksReached++;
+        }
+    }
+
+    public int marksReached() {
+        return marksReached;
     }
 
     // --- Exits ------------------------------------------------------------

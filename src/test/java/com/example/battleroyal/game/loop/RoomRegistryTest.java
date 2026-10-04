@@ -652,6 +652,26 @@ class RoomRegistryTest {
     }
 
     @Test
+    void aJoinWithAnErrandGetsItsMarksAwayFromTheStartAndOffItsExits() {
+        RoomRegistry registry = registry(1);
+        registry.requestJoin("a", "a", java.util.List.of(), null, 2, 2);
+
+        registry.processPending(0);
+
+        com.example.battleroyal.game.core.Player player = registry.player("a");
+        assertEquals(2, player.marks().size());
+        String start = registry.roomOf("a").id();
+        for (com.example.battleroyal.game.core.Exit mark : player.marks()) {
+            assertNotEquals(start, mark.roomId(), "never in the room you start in");
+            assertEquals(2, Math.abs(mark.dx()) + Math.abs(mark.dy()), "two doors away");
+            assertTrue(player.exits().stream().noneMatch(exit -> exit.roomId().equals(mark.roomId())
+                    && exit.at().equals(mark.at())), "never on an exit's tile");
+        }
+        assertEquals(2, player.marks().stream().map(com.example.battleroyal.game.core.Exit::roomId)
+                .distinct().count(), "two different rooms");
+    }
+
+    @Test
     void aReconnectKeepsWhatThePlayerHoldsNow() {
         RoomRegistry registry = withPlayers("a");
         registry.requestDisconnect("a");

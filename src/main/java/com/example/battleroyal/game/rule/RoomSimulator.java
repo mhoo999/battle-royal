@@ -5,6 +5,7 @@ import com.example.battleroyal.game.core.ActionB;
 import com.example.battleroyal.game.core.Command;
 import com.example.battleroyal.game.core.Crate;
 import com.example.battleroyal.game.core.Direction;
+import com.example.battleroyal.game.core.Exit;
 import com.example.battleroyal.game.core.GameEvent;
 import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
@@ -95,7 +96,23 @@ public final class RoomSimulator {
                 step(room, player, pending, nowTick);
             }
         }
+        for (Player player : room.players()) {
+            if (player.active()) {
+                reachMarks(room, player);
+            }
+        }
         GuardRules.tick(room, nowTick);
+    }
+
+    /** Standing on one of your errand's marks reaches it (V2.2). */
+    private static void reachMarks(Room room, Player player) {
+        for (Exit mark : player.marks()) {
+            if (mark.in(room) && mark.at().equals(player.pos())) {
+                player.reachMark(mark);
+                room.markDirty();
+                return;
+            }
+        }
     }
 
     private static void move(Room room, Player player, Direction dir, long nowTick) {
@@ -441,7 +458,7 @@ public final class RoomSimulator {
         List<Item> carried = player.dropAll();
         player.markExtracted();
         room.emit(new GameEvent.Extracted(player.id(), player.nickname(), player.score(),
-                player.kills(), nowTick - player.joinedTick(), carried));
+                player.kills(), nowTick - player.joinedTick(), carried, player.marksReached()));
         room.markDirty();
         return true;
     }

@@ -5,6 +5,7 @@ import com.example.battleroyal.game.core.Item;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemValues;
+import com.example.battleroyal.game.rule.Quests;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.AccountRepository;
 import com.example.battleroyal.persistence.Sortie;
@@ -356,7 +357,7 @@ class HideoutServiceTest {
     void theFirstErrandIsADeliveryHandedOverFromTheStash() {
         QuestLedger.QuestView first = hideout.view(me).quest();
         assertEquals(1, first.step());
-        assertEquals(10, first.total());
+        assertEquals(Quests.ALL.size(), first.total());
         assertEquals("첫 납품", first.title());
         assertEquals(List.of(new QuestLedger.Need(ItemKind.SPOON, 1, 0)), first.deliver());
         assertFalse(first.ready());
@@ -377,7 +378,7 @@ class HideoutServiceTest {
 
     @Test
     void killsFromATripCountTowardsAKillErrandWhetherItEndsInDeathOrEscape() {
-        skipQuests(5);      // 사냥: three kills
+        skipQuests(7);      // 사냥: three kills
         assertEquals("사냥", hideout.view(me).quest().title());
         assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me),
                 "a kill errand is not handed over");
@@ -400,7 +401,7 @@ class HideoutServiceTest {
 
     @Test
     void anErrandsRewardItemLandsInTheStashEvenWhenItIsFull() {
-        skipQuests(3);      // 음악 시간: two recorders, a small bag
+        skipQuests(4);      // 음악 시간: two recorders, a small bag
         stash(me, ItemKind.RECORDER, 0);
         stash(me, ItemKind.RECORDER, 0);
         for (int i = 2; i < GameConstants.STASH_CAPACITY; i++) {
@@ -415,8 +416,48 @@ class HideoutServiceTest {
     }
 
     @Test
+    void aVisitErrandMarksPlacesForTheTripAndAnEscapeHavingReachedThemCompletesIt() {
+        skipQuests(2);      // 정찰: one mark, two doors out
+        assertEquals("정찰", hideout.view(me).quest().title());
+        assertEquals(1, hideout.view(me).quest().visits());
+        assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me));
+
+        GameSession first = hideout.setOut(me, "shuya", List.of());
+        assertEquals(1, first.marks());
+        assertEquals(2, first.markDoors());
+        hideout.onExtracted(new GameEvent.Extracted(first.playerId(), "shuya", 0, 0, 0,
+                List.of(), 0));
+        assertEquals("정찰", hideout.view(me).quest().title(), "out without the mark: not yet");
+
+        GameSession second = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(second.playerId(), "shuya", 0, 0, 0,
+                List.of(), 1));
+
+        HideoutService.StashView after = hideout.view(me);
+        assertEquals("첫 피", after.quest().title());
+        assertEquals(80, after.money());
+        assertEquals(0, hideout.setOut(me, "shuya", List.of()).marks(),
+                "a kill errand marks nothing");
+    }
+
+    @Test
+    void marksCountOnlyWithinOneTrip() {
+        skipQuests(6);      // 수색: two marks in one trip
+        GameSession one = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(one.playerId(), "shuya", 0, 0, 0, List.of(), 1));
+        GameSession two = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(two.playerId(), "shuya", 0, 0, 0, List.of(), 1));
+
+        assertEquals("수색", hideout.view(me).quest().title(), "one and one do not make two");
+
+        GameSession both = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(both.playerId(), "shuya", 0, 0, 0, List.of(), 2));
+        assertEquals("사냥", hideout.view(me).quest().title());
+    }
+
+    @Test
     void afterTheLastErrandThereIsNoneLeft() {
-        skipQuests(10);
+        skipQuests(Quests.ALL.size());
 
         assertNull(hideout.view(me).quest());
         assertThrows(TradeRefusedException.class, () -> hideout.deliverQuest(me));

@@ -246,10 +246,10 @@ public class HideoutService implements DepartureListener {
             }
         }
 
-        record Departure(long sortieId, List<Item> carried, Item bag) {
+        record Departure(long sortieId, List<Item> carried, Item bag, int[] marks) {
         }
         Departure departure = tx.execute(status -> {
-            accounts.lockById(accountId).orElseThrow();
+            Account account = accounts.lockById(accountId).orElseThrow();
             Sortie open = sorties.findFirstByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT)
                     .orElse(null);
             if (open != null && !abandonIfNeverJoined(open)) {
@@ -279,11 +279,11 @@ public class HideoutService implements DepartureListener {
                 item.sendOut(sortie.id());
                 carried.add(new Item(item.gameItemId(), item.kind(), item.ammo()));
             }
-            return new Departure(sortie.id(), carried, bag);
+            return new Departure(sortie.id(), carried, bag, QuestLedger.marksFor(account));
         });
 
         GameSession session = sessions.issueForAccount(accountId, nickname, departure.carried(),
-                departure.bag());
+                departure.bag(), departure.marks()[0], departure.marks()[1]);
         sortieOfPlayer.put(session.playerId(), departure.sortieId());
         log.info("Account {} set out on sortie {} as {}", accountId, departure.sortieId(),
                 session.playerId());
@@ -371,7 +371,8 @@ public class HideoutService implements DepartureListener {
         List<Item> carried = extracted.carried();
         writer.execute(() -> {
             try {
-                tx.executeWithoutResult(status -> settle(sortieId, carried, extracted.kills()));
+                tx.executeWithoutResult(status -> settle(sortieId, carried, extracted.kills(),
+                        extracted.marksReached()));
             } catch (RuntimeException e) {
                 // Left out: the next start-up hands back what was taken out, at least.
                 log.error("Could not close sortie {} as extracted", sortieId, e);
@@ -379,7 +380,7 @@ public class HideoutService implements DepartureListener {
         });
     }
 
-    private void settle(long sortieId, List<Item> carried, int kills) {
+    private void settle(long sortieId, List<Item> carried, int kills, int marksReached) {
         Sortie sortie = sorties.findById(sortieId).orElseThrow();
         if (sortie.outcome() != Sortie.Outcome.OUT) {
             return;     // closed by a season's end: what came out went with the wipe
@@ -403,6 +404,7 @@ public class HideoutService implements DepartureListener {
         Account account = accounts.lockById(sortie.accountId()).orElseThrow();
         account.addHaul(found);
         QuestLedger.addKills(account, kills, items);
+        QuestLedger.reachedMarks(account, marksReached, items);
         // Taken out and not brought back: left in a crate somewhere, so lost.
         items.deleteAll(wentOut.values());
     }

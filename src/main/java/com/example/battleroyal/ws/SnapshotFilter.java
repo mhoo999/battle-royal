@@ -83,6 +83,7 @@ public class SnapshotFilter {
                         ? (int) (viewer.lootDoneTick() - tick) * GameConstants.TICK_MS
                         : null,
                 viewer.exits().stream().map(exit -> bearing(room, exit)).toList(),
+                viewer.marks().stream().map(mark -> bearing(room, mark)).toList(),
                 viewer.extracting()
                         ? (int) (viewer.extractDoneTick() - tick) * GameConstants.TICK_MS
                         : null,

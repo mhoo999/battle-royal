@@ -38,9 +38,10 @@ public class GameSessionService implements DepartureListener {
      * @param loadout   what the player carries in, slot by slot (nulls for empty slots);
      *                  empty for a guest, who always starts with nothing
      * @param bag       the bag worn in, or null
+     * @param marks     errand marks to place on the island (V2.2), and how many doors out
      */
     public record GameSession(String token, String playerId, String nickname, Long accountId,
-                              List<Item> loadout, Item bag) {
+                              List<Item> loadout, Item bag, int marks, int markDoors) {
     }
 
     /** Thrown for a nickname {@link NicknamePolicy} refuses. The message is shown to the player. */
@@ -62,7 +63,7 @@ public class GameSessionService implements DepartureListener {
             nickname = nickname.substring(GameConstants.UNRANKED_PREFIX.length()).trim();
         }
         NicknamePolicy.require(nickname);
-        return issue(GameConstants.UNRANKED_PREFIX + nickname, null, List.of(), null);
+        return issue(GameConstants.UNRANKED_PREFIX + nickname, null, List.of(), null, 0, 0);
     }
 
     /**
@@ -75,7 +76,12 @@ public class GameSessionService implements DepartureListener {
 
     public GameSession issueForAccount(long accountId, String nickname, List<Item> loadout,
                                        Item bag) {
-        return issue(nickname, accountId, loadout, bag);
+        return issueForAccount(accountId, nickname, loadout, bag, 0, 0);
+    }
+
+    public GameSession issueForAccount(long accountId, String nickname, List<Item> loadout,
+                                       Item bag, int marks, int markDoors) {
+        return issue(nickname, accountId, loadout, bag, marks, markDoors);
     }
 
     public GameSession resolve(String token) {
@@ -130,14 +136,15 @@ public class GameSessionService implements DepartureListener {
         attached.remove(playerId);
     }
 
-    private GameSession issue(String nickname, Long accountId, List<Item> loadout, Item bag) {
+    private GameSession issue(String nickname, Long accountId, List<Item> loadout, Item bag,
+                              int marks, int markDoors) {
         GameSession session = new GameSession(
                 UUID.randomUUID().toString(),
                 "p-" + playerSequence.incrementAndGet(),
                 nickname,
                 accountId,
                 Collections.unmodifiableList(new ArrayList<>(loadout)),
-                bag);
+                bag, marks, markDoors);
         byToken.put(session.token(), session);
         return session;
     }
