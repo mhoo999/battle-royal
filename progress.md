@@ -2,19 +2,17 @@
 
 ## Current Milestone
 
-V1 done (2026-10-03, user's call). V2 planning: `docs/V2_PLAN.md`.
+V1 done (2026-10-03). V2.0 released 2026-10-04 (`docs/V2_PLAN.md`); next V2.1.
 
 ## Current Task
 
-**On branch `v2`.** V2.0 (extraction loop, `docs/V2_PLAN.md` §7) is built here and merged
-to `main` in one go; `main` stays the live V1 (fixes tagged v1.1, v1.2 …). Steps 2–4 are
-done: crates, three-slot inventory, bag window, stash in the DB, sorties, two private
-exits and a compass, extraction, trader, money, ranking by haul; empty guns stay and
-reload from ammo bundles bought apart. The hideout (2026-10-04) opens like the title
-screen: a short ASCII banner on top (rows 9-33 of `tools/hideout-art.py`, a ruin in the
-woods cut out of a big moon), block-letter HIDEOUT, a red 隠れ家 rule, one column of
-equal buttons; 창고 and 상점 are pages of their own. Every inventory is a grid. MySQL 8.4 rehearsal
-passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
+**v2.0 is live (2026-10-04, `main` = `v2` = tag `v2.0`, Actions run 37181782549).**
+The extraction loop (`docs/V2_PLAN.md` §7): Google accounts, crates, three-slot inventory,
+stash in the DB, sorties, two private exits and a compass, extraction, trader, money,
+ranking by haul; empty guns reload from ammo bundles. The hideout opens like the title
+screen with a short ASCII banner (`tools/hideout-art.py`); every inventory is a grid,
+the looting window and 상점 as 4x4 pages. Work now goes on `main` again. Stash upgrades
+are V2.1. Exact next step: see Next, item 1.
 
 ## Completed
 
@@ -117,6 +115,11 @@ passed. Stash upgrades wait for V2.1. Exact next step: see Next, item 1.
       each side is half its width, so the bag alone is the same size centred. A crate
       emptied by the last TAKE still vanishes on the server, but its six cells stay drawn
       empty (inert) until you move or close; you cannot PUT back into it.
+- [x] **v2.0 released (2026-10-04):** `v2` fast-forwarded into `main` at `fe948bd`, tag
+      `v2.0`, Actions run 37181782549 test + deploy green. Production: `/`, `/api/ranking`
+      (`top` empty, as expected), `/api/me` 200, `/h2-console` 404, the new `game.js`
+      served, `/oauth2/authorization/google` redirects with the real client ID and the
+      https redirect URI. Lobby shows Google and guest entries.
 - [x] Real Google sign-in round trip, local (2026-10-04, user): signed in through Google,
       nickname, hideout, sortie, extraction, haul in the stash. The secret had been
       pasted into a chat once; rotating it (local and `/etc/battle-royal/env`) was advised.
@@ -297,9 +300,10 @@ Nothing.
 
 ## Next
 
-1. **Merge `v2` into `main` as v2.0 — ask first, it deploys.** Then on production:
-   `account` / `stash_item` / `sortie` created on RDS, smoke, a browser trip, a
-   screenshot. The lobby ranking starts empty (Known Issues).
+1. **v2.0 production check (user).** Sign in with Google on https://battleroyale.site
+   and do one trip (nickname, hideout, sortie, extract, stash), then
+   `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
+   permitted to run it against production).
 2. Hideout look, on a real phone: the art is sized from the viewport, never checked off
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
 3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
