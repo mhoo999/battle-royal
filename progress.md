@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-V1 done (2026-10-03). V2.0 released 2026-10-04 (`docs/V2_PLAN.md`); next V2.1.
+V1 done (2026-10-03). V2.0 and V2.1 released 2026-10-04 (tags `v2.0`, `v2.1`; `docs/V2_PLAN.md`).
 
 ## Current Task
 
