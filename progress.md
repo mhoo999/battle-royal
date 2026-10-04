@@ -2,16 +2,17 @@
 
 ## Current Milestone
 
-V1 done (2026-10-03). V2.0, V2.1 and V2.2 (without the player market) live since
-2026-10-04 on https://battleroyale.site. Tags `v1.0`, `v2.0`, `v2.1`. Plan:
+V1 done (2026-10-03). V2.0, V2.1 and V2.2 (everything but a player market, which is
+postponed) live on https://battleroyale.site. Tags `v1.0`, `v2.0`, `v2.1`, `v2.2`. Plan:
 `docs/V2_PLAN.md`. Numbers: `docs/GAME_RULES.md`. This file was condensed on
 2026-10-04; the history before that is in git (`git log -- progress.md`).
 
 ## Current Task
 
-None in flight. Everything on `main` is deployed (last code deploy `60f2d7e`, Actions
-run 37192660410). **Season 1 ends 2026-11-01 00:00 KST** — the first wipe in
-production. Exact next step: see Next, item 1.
+None in flight; the 2026-10-05 session ended with everything deployed (last code
+deploy `a21b5ce`, Actions run 37216674983) and checked from outside (pages 200, hideout
+APIs 401 without sign-in, new client served, season 1 intact). **Season 1 ends
+2026-11-01 00:00 KST** — the first wipe in production. Exact next step: Next, item 1.
 
 ## Completed
 
@@ -41,30 +42,16 @@ at midnight Seoul (`SeasonService`, checked each minute); at the deadline accoun
 players on the island get `SEASON_OVER`, trophies by final rank (CHAMPION / TOP10 /
 PARTICIPANT), then ranking, stash items, money, stash size and quests are wiped.
 
-**V2.2 (live 2026-10-04).** Six rooms from the film's island (14 layouts). The trader's
-ten errands (`Quests.ALL`): deliveries from the stash and kills counted when a trip
-ends; money and sometimes an item; wiped each season. Military outposts: about one new
-room in nine, two `Guard`s (own entity, not a `Player`) that turn every 3s and fire
-down their line after 0.5s of sight; 60 health, drop 6 rounds, stand again after 2 min
-empty; military loot table; no exits in outposts.
-
-**Errands by kind (2026-10-05, built, not deployed).** Outpost enemies are called 군인
-(user). The trader's errands are three ladders, easy to hard, one of each under way at
-once (user: so a hard kind never blocks an early player): 납품 (6), 장소 (3, private
-marks ✦ some doors away that the compass points at; stand on them all and get out),
-군인 처치 (3, soldiers brought down, counted at the end of a trip). Player-kill errands
-are gone. Account columns `quest_step` (delivery, reused), `quest_visit_step`,
-`quest_soldier_step`, `quest_kills` (now soldiers); a live account mid-way keeps its old
-`quest_step` as a delivery step, and season 1's wipe resets it all anyway.
-
-**Daily errands (2026-10-05, built, not deployed).** Three a day per account (two easy,
-one normal), new at midnight Seoul, apart from the ladders so a player stuck at hard
-steps always has something (user). Junk delivery 40원, an escape 50원, then a medkit or
-ammo bundle delivery or one soldier 120원 (`DailyQuests`, worked out from account and
-date). Account columns `daily_day`, `daily_done`, `daily_extracts`, `daily_soldiers`.
-Errands moved from 상점 to their own 의뢰 page (hideout menu), dailies on top with a
-countdown. The compass shows needles only, no labels and no room counts (user: the
-distance made it too easy): exits mint, errand marks gold, ◎ / ✦ once in the room.
+**V2.2 (live 2026-10-04/05).** Six rooms from the film's island (14 layouts). Military
+outposts: about one new room in nine, two soldiers (군인; `Guard`, its own entity, not a
+`Player`) that turn every 3s and fire down their line after 0.5s of sight; 60 health,
+drop 6 rounds, stand again after 2 min empty; military loot table; no exits in
+outposts. The trader's errands are three ladders by kind, easy to hard, one of each
+under way at once (`Quests.LADDERS`): 납품 (6, from the stash), 장소 (3, private marks ✦
+some doors away, stand on them all and get out), 군인 처치 (3, soldiers counted when a
+trip ends). Plus three daily errands a day per account, new at midnight Seoul
+(`DailyQuests`). Errands live on the hideout's 의뢰 page. The compass shows needles only:
+exits mint, errand marks gold, no labels and no distance.
 
 **Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
@@ -78,26 +65,26 @@ Nothing.
 
 ## Next
 
-1. **Production play check (user).** Signed in on https://battleroyale.site: a trip
-   (sortie, extract, stash), a small bag worn out (5 slots), the 20-slot stash once the
-   money is there, the first errand (a spoon), an outpost if one turns up, and
-   시즌 1 · n일 남음 in the lobby and hideout. Then
-   `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was
-   not permitted to run it against production; with outposts on, a rare failure on the
-   walk can be a guard).
-2. **Tune numbers from that play (user's impressions).** Prices, loot odds, guard
-   strength (60 health = 3 pistol shots), quest rewards are all starting values.
-3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
+1. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
+   and back, a small bag worn (5 slots), the 20-slot stash, an errand of each kind (the
+   정찰 mark via the gold needle, a junk delivery, a soldier at an outpost if one turns
+   up), a daily, and the 의뢰 page countdown. Then
+   `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
+   permitted to run it against production; with outposts on, a rare failure on the walk
+   can be a guard).
+2. **Tune numbers from that play (user's impressions).** Prices, loot odds, soldier
+   strength (60 health = 3 pistol shots), errand and daily rewards are all starting values.
+3. **Trader reputation (Tarkov-like, user's idea).** Errand rewards would add standing;
+   decide what standing unlocks (discounts, stock, better dailies) before building.
+4. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
    the user leans towards about three months (91 days suggested). Applies from the next
    season; season 1's deadline is stored in `season.ends_at`.
-4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
-   (the last two drop everyone).
-5. Trader reputation (Tarkov-like, user's idea, next after errands): design what it
-   unlocks (discounts, stock) before building.
+5. Hideout look and touch input on a real phone (the 의뢰 page is long on a phone);
+   rollback drill; `sudo reboot` check (the last two drop everyone).
 6. Player market: **postponed (user, 2026-10-04).** If it comes back: fixed-price listings
-   only, no auction (the user does not want auctions yet).
-7. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
-   this more pressing: a restart costs players the trip they are on (gear is refunded).
+   only, no auction.
+7. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). A restart
+   costs players the trip they are on (gear is refunded).
 
 ## Known Issues
 
@@ -108,6 +95,9 @@ Nothing.
   account A's stash item ends up extracted by B and the server restarts while A is still
   out, D6 refunds A's copy too. Needs a restart mid-trip and two accounts.
 - **V1 `game_result` rows stay in the table**; nothing reads them since v2.0.
+- **Errand progress made before 2026-10-05 was reinterpreted**: `quest_step` became the
+  delivery ladder's step and `quest_kills` the soldier count. An account part-way through
+  the old single list may sit a step off; season 1's wipe resets it.
 - **The Google client secret was pasted into a chat once (2026-10-04).** Rotation was
   advised (local env and `/etc/battle-royal/env`); not confirmed done.
 - `bootRun` serves static files copied at build time: after editing
@@ -135,7 +125,9 @@ Standing decisions; each was the user's call unless marked otherwise.
   buying needs a free slot.
 - **Guards (군인) are not players**: no score, kills, results or population; bringing one
   down counts only for the soldier errands. They see by the players' rules.
-- **Errands are three ladders by kind**, one of each under way (2026-10-05).
+- **Errands are three ladders by kind**, one of each under way, plus three dailies a
+  day (2026-10-05); no player-kill errands. Rewards grow with difficulty.
+- **The compass gives the way, never the distance** (2026-10-05).
 - **No player market for now, and no auction** (2026-10-04).
 - **Seasons**: 4 weeks for season 1 so the first wipe runs in production within a month,
   probably about 3 months after (pending, Next 3).
@@ -169,3 +161,5 @@ Standing decisions; each was the user's call unless marked otherwise.
 - `ROOMS_PER_OTHER_PLAYER` 7: watch whether meetings feel too rare or too frequent.
 - Fist 5 (20 blows): whether bare-hand brawls drag.
 - Season length after season 1.
+- Errand ladders and dailies: whether players climb too fast or stall; daily rewards
+  against the economy.
