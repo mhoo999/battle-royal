@@ -74,7 +74,8 @@ Nothing.
    season; season 1's deadline is stored in `season.ends_at`.
 4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check
    (the last two drop everyone).
-5. V2.2 left: a player market — planning first, and it needs players to matter.
+5. Player market: **postponed (user, 2026-10-04).** If it comes back: fixed-price listings
+   only, no auction (the user does not want auctions yet).
 6. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). V2 makes
    this more pressing: a restart costs players the trip they are on (gear is refunded).
 
@@ -114,6 +115,7 @@ Standing decisions; each was the user's call unless marked otherwise.
   buying needs a free slot.
 - **Guards are not players**: no score, kills, results or population; their kills do not
   count for errands. They see by the players' rules.
+- **No player market for now, and no auction** (2026-10-04).
 - **Seasons**: 4 weeks for season 1 so the first wipe runs in production within a month,
   probably about 3 months after (pending, Next 3).
 - **Deploys drop every player** (one server, world in memory), so docs-only pushes do not
