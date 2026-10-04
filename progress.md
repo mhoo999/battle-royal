@@ -323,7 +323,7 @@ Nothing.
    a desktop browser. Tweak `tools/hideout-art.py` if the user wants more.
 3. Left over from V1, whenever convenient: real-phone check of touch input; rollback
    drill; `sudo reboot` comes back on its own. Both of the last two drop everyone.
-4. V2.1: stash upgrades (`docs/V2_PLAN.md` §7).
+4. V2.1 part 2: seasons — length, wipe, trophies (`docs/V2_PLAN.md` D12, D13, Q11, Q13).
 5. Later: two EC2 instances with deploys that keep players (world handoff or rooms
    pinned to servers, CLAUDE.md §10). V2 makes this more pressing: a restart costs
    players their gear.
