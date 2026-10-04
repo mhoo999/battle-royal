@@ -143,10 +143,40 @@ class HideoutServiceTest {
 
     @Test
     void anAccountCannotSetOutTwice() {
-        hideout.setOut(me, "shuya", List.of());
+        GameSession first = hideout.setOut(me, "shuya", List.of());
+        sessions.attach(first.token());     // its socket is on the island
 
         assertThrows(AlreadyOutException.class, () -> hideout.setOut(me, "shuya", List.of()),
                 "one sortie at a time, or one stash item could leave twice");
+    }
+
+    @Test
+    void aSortieThatNeverReachedTheIslandGivesWayToTheNext() {
+        StashItem pistol = stash(me, ItemKind.PISTOL, 6);
+        GameSession lost = hideout.setOut(me, "shuya", List.of(pistol.id()));
+        // The page closed before the socket attached.
+
+        GameSession next = hideout.setOut(me, "shuya", List.of(pistol.id()));
+
+        assertNull(sessions.attach(lost.token()), "the abandoned token cannot bring the pistol in");
+        assertEquals(pistol.gameItemId(), next.loadout().getFirst().id(), "the pistol goes again");
+        assertEquals(List.of(Sortie.Outcome.REFUNDED, Sortie.Outcome.OUT), sorties.findAll().stream()
+                .sorted(java.util.Comparator.comparing(Sortie::id)).map(Sortie::outcome).toList());
+        assertEquals(StashItem.Location.OUT, items.findById(pistol.id()).orElseThrow().location());
+    }
+
+    @Test
+    void aSortieWhoseRetryIsRefusedStaysClosedAndItsGearAtHome() {
+        StashItem pistol = stash(me, ItemKind.PISTOL, 6);
+        hideout.setOut(me, "shuya", List.of(pistol.id()));
+
+        assertThrows(InvalidLoadoutException.class,
+                () -> hideout.setOut(me, "shuya", List.of(1L, 2L, 3L, 4L)));
+
+        // The refused retry rolled back, but the old session is retired all the same:
+        // the next try finds no player for the sortie and sends the gear home.
+        hideout.setOut(me, "shuya", List.of());
+        assertEquals(StashItem.Location.STASH, items.findById(pistol.id()).orElseThrow().location());
     }
 
     @Test

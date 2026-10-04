@@ -6,6 +6,8 @@ import com.example.battleroyal.web.GameSessionService.InvalidNicknameException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -68,5 +70,19 @@ class GameSessionServiceTest {
         assertEquals("kang", session.nickname());
         assertEquals(7L, session.accountId());
         assertNull(sessions.issueGuest("lee").accountId());
+    }
+
+    @Test
+    void aSessionIsEitherClaimedByItsSocketOrRetiredNeverBoth() {
+        GameSessionService sessions = new GameSessionService();
+        GameSession joined = sessions.issueForAccount(7, "kang", java.util.List.of());
+        GameSession lost = sessions.issueForAccount(8, "lee", java.util.List.of());
+
+        assertNotNull(sessions.attach(joined.token()));
+        assertFalse(sessions.retireIfNeverAttached(joined.playerId()), "on the island: kept");
+        assertNotNull(sessions.resolve(joined.token()));
+
+        assertTrue(sessions.retireIfNeverAttached(lost.playerId()));
+        assertNull(sessions.attach(lost.token()), "retired first: its socket is refused");
     }
 }

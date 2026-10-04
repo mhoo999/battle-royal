@@ -28,6 +28,9 @@ class SignInWebTest {
     @Autowired
     private MockMvc mvc;
 
+    @Autowired
+    private GameSessionService sessions;
+
     private static RequestPostProcessor google(String subject) {
         return oidcLogin().idToken(token -> token.subject(subject));
     }
@@ -103,10 +106,13 @@ class SignInWebTest {
                 .andExpect(jsonPath("$.out").value(false));
         mvc.perform(post("/api/hideout/stash-upgrade").with(google("g-web-1")))
                 .andExpect(status().isConflict());
-        mvc.perform(post("/api/hideout/sortie").with(google("g-web-1"))
+        String sortie = mvc.perform(post("/api/hideout/sortie").with(google("g-web-1"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"loadout\":[]}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nickname").value("shuya"));
+                .andExpect(jsonPath("$.nickname").value("shuya"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        // On the island once its socket attaches; until then a retry would replace it.
+        sessions.attach(com.jayway.jsonpath.JsonPath.read(sortie, "$.token"));
         mvc.perform(post("/api/hideout/sortie").with(google("g-web-1")))
                 .andExpect(status().isConflict());
     }

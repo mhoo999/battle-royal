@@ -6,12 +6,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface SortieRepository extends JpaRepository<Sortie, Long> {
 
     boolean existsByAccountIdAndOutcome(Long accountId, Sortie.Outcome outcome);
 
     List<Sortie> findByOutcome(Sortie.Outcome outcome);
+
+    Optional<Sortie> findFirstByAccountIdAndOutcome(Long accountId, Sortie.Outcome outcome);
 
     /** Accounts with a sortie that ended this way and set out at or after {@code since}. */
     @Query("select distinct s.accountId from Sortie s where s.outcome = :outcome and s.startedAt >= :since")

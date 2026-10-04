@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -50,6 +51,8 @@ public class GameSessionService implements DepartureListener {
     }
 
     private final Map<String, GameSession> byToken = new ConcurrentHashMap<>();
+    /** Players whose socket has attached at least once: from then on they are in the game. */
+    private final Set<String> attached = ConcurrentHashMap.newKeySet();
     private final AtomicLong playerSequence = new AtomicLong();
 
     /** A guest trial. Whatever the name, it plays unranked. */
@@ -79,6 +82,32 @@ public class GameSessionService implements DepartureListener {
         return token == null ? null : byToken.get(token);
     }
 
+    /**
+     * Resolves a socket's token and records that the player has attached. Atomic with
+     * {@link #retireIfNeverAttached}: a session is either claimed by its socket or
+     * retired, never both, so a sortie refunded as abandoned cannot also walk in.
+     */
+    public synchronized GameSession attach(String token) {
+        GameSession session = resolve(token);
+        if (session != null) {
+            attached.add(session.playerId());
+        }
+        return session;
+    }
+
+    /**
+     * Retires a session whose socket never attached, so its token can no longer be used.
+     *
+     * @return false, changing nothing, if the player has attached
+     */
+    public synchronized boolean retireIfNeverAttached(String playerId) {
+        if (attached.contains(playerId)) {
+            return false;
+        }
+        retire(playerId);
+        return true;
+    }
+
     @Override
     public void onDeath(GameEvent.Died died) {
         retire(died.playerId());
@@ -96,8 +125,9 @@ public class GameSessionService implements DepartureListener {
         retire(ejected.playerId());
     }
 
-    private void retire(String playerId) {
+    private synchronized void retire(String playerId) {
         byToken.values().removeIf(session -> session.playerId().equals(playerId));
+        attached.remove(playerId);
     }
 
     private GameSession issue(String nickname, Long accountId, List<Item> loadout, Item bag) {

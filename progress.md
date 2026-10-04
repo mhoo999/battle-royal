@@ -118,6 +118,11 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       창고 page (user): laid out like 상점, 가져갈 것 4x4 on the left, the stash 4x4 on the
       right, both paged. The loadout's cell count follows the carry slots, so bags bought
       later only need more slots. Stash grids now show its capacity, no locked next tier.
+- [x] **Fix: a sortie that never reached the island (2026-10-04).** Setting out again
+      while the old sortie's socket never attached retires that session first
+      (`GameSessionService.retireIfNeverAttached`, atomic with the handshake's `attach`),
+      sends its gear home and closes it REFUNDED. A player who did attach still blocks a
+      second sortie. Two tests that set out twice without attaching now attach first.
 - [x] **V2.1 seasons (2026-10-04, user's decisions):** 4 weeks ending at midnight Seoul
       (`SEASON_DAYS`), checked each minute by `SeasonService` (`@EnableScheduling`). At the
       deadline account players on the island get `SEASON_OVER` and leave (gear gone), open
@@ -324,20 +329,13 @@ Nothing.
 
 ## Next
 
-1. **Production play check (user).** On https://battleroyale.site, signed in: one trip
+1. **Deploy the stuck-sortie fix — ask first** (`main` ahead of origin; tests and a local
+   smoke on 8081 passed).
+2. **Production play check (user).** On https://battleroyale.site, signed in: one trip
    (sortie, extract, stash), buy a small bag and wear it out (5 slots), buy the 20-slot
    stash once the money is there, and see 시즌 1 · n일 남음 in the lobby and hideout.
    Then `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent
    was not permitted to run it against production).
-2. **Fix: a sortie whose socket never attaches stays OUT until a restart** (V2_PLAN §8
-   step 2, known gap): the account cannot set out again. Prepared plan, not started:
-   when setting out finds an OUT sortie whose player is not in the game (never joined,
-   or already gone), retire that session's token first, then refund its items and close
-   it REFUNDED, then set out. Retiring the token before refunding is what stops the old
-   session joining later with items that are back in the stash. Needs a way for
-   `HideoutService` to ask whether a player id is live (RoomRegistry lookup across the
-   thread boundary: a concurrent set of joined ids kept by the loop, read-only from web).
-   Test: set out, never join, set out again succeeds and the old token is refused.
 3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
    the user leans towards about three months later (91 days suggested). A change applies
    from the next season; season 1's deadline is stored in `season.ends_at`.

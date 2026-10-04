@@ -53,7 +53,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
         String token = tokenOf(session);
-        GameSession guest = guests.resolve(token);
+        GameSession guest = guests.attach(token);
         if (guest == null) {
             log.debug("Rejecting socket with unknown token");
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unknown session token"));

@@ -237,7 +237,9 @@ public class HideoutService implements DepartureListener {
         }
         Departure departure = tx.execute(status -> {
             accounts.lockById(accountId).orElseThrow();
-            if (sorties.existsByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT)) {
+            Sortie open = sorties.findFirstByAccountIdAndOutcome(accountId, Sortie.Outcome.OUT)
+                    .orElse(null);
+            if (open != null && !abandonIfNeverJoined(open)) {
                 throw new AlreadyOutException();
             }
             Sortie sortie = sorties.save(new Sortie(accountId, clock.instant()));
@@ -273,6 +275,32 @@ public class HideoutService implements DepartureListener {
         log.info("Account {} set out on sortie {} as {}", accountId, departure.sortieId(),
                 session.playerId());
         return session;
+    }
+
+    /**
+     * A sortie whose player never reached the island (the page closed between setting
+     * out and the socket attaching) would otherwise hold the account until a restart.
+     * Its session is retired first, so its token cannot bring the gear in afterwards,
+     * and only then does the gear go home.
+     *
+     * @return false, changing nothing, while the player is in the game
+     */
+    private boolean abandonIfNeverJoined(Sortie sortie) {
+        String playerId = sortieOfPlayer.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(sortie.id()))
+                .map(Map.Entry::getKey)
+                .findFirst().orElse(null);
+        // No player for it at all: nobody can be on the island with it.
+        if (playerId != null && !sessions.retireIfNeverAttached(playerId)) {
+            return false;
+        }
+        if (playerId != null) {
+            sortieOfPlayer.remove(playerId);
+        }
+        items.findBySortieId(sortie.id()).forEach(StashItem::bringBack);
+        sortie.end(Sortie.Outcome.REFUNDED, clock.instant());
+        log.info("Sortie {} never reached the island; its gear went home", sortie.id());
+        return true;
     }
 
     private StashItem atHome(long accountId, long id) {
