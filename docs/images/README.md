@@ -33,6 +33,7 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-04-v2-bag-slot-looting.png` | 2026-10-04 | The looting window: the worn bag's slot beside 인벤토리 (작은 가방 +2, five cells) and a big bag in the crate (both boxed). Staged: snapshot stubbed | V2.1 bags |
 | `2026-10-04-v2-season-trophy-line.png` | 2026-10-04 | The hideout front with the season line (boxed): 시즌 2 · 12일 남음 · 트로피 S1 1위. Staged: hideout and season stubbed | V2.1 seasons |
 | `2026-10-04-v2-season-over.png` | 2026-10-04 | The screen a player on the island gets at a season's deadline (boxed): 시즌 종료, gear and stash wiped, trophies stay. Staged: shown without a deadline | V2.1 seasons |
+| `2026-10-04-v2-new-rooms.png` | 2026-10-04 | The six V2.2 rooms on the game board: 교실, 보건소, 등대 (its tower boxed: one way in, a cabinet inside), 숲, 민가, 해변. Staged: terrain painted from the templates | V2.2 room kinds |
 | `2026-10-03-v2-exit-compass.png` | 2026-10-03 | V2 compass above the board (`탈출구 ◎ 이 방 · ↓ 1`) and my own exit `◎` on the floor beside me | V2 step 3, exits and compass |
 | `2026-10-03-v2-extracting.png` | 2026-10-03 | Standing on the exit holding B: [B 탈출], "탈출 중 — B를 떼거나 움직이거나 맞으면 취소", the gauge starting | V2 step 3, extraction |
 | `2026-10-03-v2-extracted.png` | 2026-10-03 | The 탈출 성공 screen with the haul line and the record | V2 step 3, extraction |

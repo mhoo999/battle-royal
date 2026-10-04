@@ -118,6 +118,11 @@ seasons (V2.1) are live since 2026-10-04; season 1 ends 2026-11-01 00:00 KST. Ex
       창고 page (user): laid out like 상점, 가져갈 것 4x4 on the left, the stash 4x4 on the
       right, both paged. The loadout's cell count follows the carry slots, so bags bought
       later only need more slots. Stash grids now show its capacity, no locked next tier.
+- [x] **V2.2 room kinds (2026-10-04, user chose this first):** six layouts after places on
+      the film's island — CLASSROOM, CLINIC, LIGHTHOUSE, FOREST, VILLAGE, BEACH — so 14 in
+      all. Each keeps the shipped-template rules (2 cabinets, 4 spawns, exactly 2 bush
+      regions, 4 doors, no spawn by a door, all reachable). Seeded encounter tests unchanged.
+      Not deployed yet.
 - [x] **Fix: a sortie that never reached the island (2026-10-04).** Setting out again
       while the old sortie's socket never attached retires that session first
       (`GameSessionService.retireIfNeverAttached`, atomic with the handshake's `attach`),
