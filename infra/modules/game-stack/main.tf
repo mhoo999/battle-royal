@@ -137,7 +137,8 @@ resource "aws_instance" "server" {
     throughput  = 125
   }
 
-  user_data = templatefile("${path.module}/user-data.sh.tftpl", {
+  # Carriage returns stripped: a Windows checkout must not reach bash or Nginx.
+  user_data = replace(templatefile("${path.module}/user-data.sh.tftpl", {
     release_bucket = var.release_bucket
     release_key    = var.release_key
     secrets_path   = var.secrets_path
@@ -145,10 +146,10 @@ resource "aws_instance" "server" {
     domain         = var.domain
     certbot_email  = var.certbot_email
     public_ip      = var.public_ip
-    service_b64    = filebase64("${path.module}/../../../deploy/battle-royal.service")
-    nginx_b64      = filebase64("${path.module}/nginx.conf")
-    site_b64       = base64encode(templatefile("${path.module}/site.conf.tftpl", { domain = var.domain }))
-  })
+    service_b64    = base64encode(replace(file("${path.module}/../../../deploy/battle-royal.service"), "\r", ""))
+    nginx_b64      = base64encode(replace(file("${path.module}/nginx.conf"), "\r", ""))
+    site_b64       = base64encode(replace(templatefile("${path.module}/site.conf.tftpl", { domain = var.domain }), "\r", ""))
+  }), "\r", "")
 
   tags = {
     Name   = "${var.name}-server"
