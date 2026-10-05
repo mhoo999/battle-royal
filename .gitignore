@@ -50,3 +50,10 @@ e2e/playwright-report/
 
 # AWS key pairs
 *.pem
+
+# Terraform: providers, local state (may hold resource attributes), plans
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/*.tfplan
+infra/**/crash.log

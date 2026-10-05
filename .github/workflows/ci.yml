@@ -88,14 +88,15 @@ jobs:
           fetch-depth: 0
 
       # A deploy restarts the server, which drops everyone and resets the world. Not
-      # worth it for a commit that only touches documentation.
+      # worth it for a commit that only touches documentation or the Terraform code
+      # (infra/ is applied by hand, never by this job).
       - name: Decide whether this push changes the server
         id: changes
         run: |
           before='${{ github.event.before }}'
           if ! git cat-file -e "$before^{commit}" 2>/dev/null; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$before" "$GITHUB_SHA" | grep -qvE '^docs/|\.md$'; then
+          elif git diff --name-only "$before" "$GITHUB_SHA" | grep -qvE '^docs/|^infra/|\.md$'; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "Documentation only; not deploying."
