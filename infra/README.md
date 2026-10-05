@@ -30,6 +30,16 @@ terraform plan    # expect "No changes"
 - `apply` is run by the operator, not by CI. Pushes that only touch `infra/` do not
   redeploy the game.
 
+## Known quirks
+
+- **AWS provider 6.67: a tag change and `disable_api_termination` in one apply drops the
+  protection change.** Terraform reported success, AWS still said `false`, and the next plan
+  showed it again (2026-10-05). A second apply with that change alone worked. After turning
+  protection on or off, check it: `aws ec2 describe-instance-attribute --attribute
+  disableApiTermination`.
+- On Git Bash, a Parameter Store path like `/battle-royal/prod` is rewritten into a Windows
+  path; prefix the command with `MSYS_NO_PATHCONV=1`.
+
 ## Not managed here
 
 - The RDS master password (set in the console) and `/etc/battle-royal/env` on the server.
