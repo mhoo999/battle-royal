@@ -137,13 +137,19 @@ resource "aws_db_instance" "main" {
   parameter_group_name   = "default.mysql8.4"
   option_group_name      = "default:mysql-8-4"
 
-  backup_retention_period = 1 # docs/ROADMAP.md C1: to be raised to 7
+  # A week is wanted (docs/ROADMAP.md C1), but the account's Free plan refuses more
+  # than 1 day (FreeTierRestrictionError, 2026-10-05). Raise it to 7 with the move to a
+  # paid plan (C15); until then manual snapshots cover the season wipe (C2).
+  backup_retention_period = 1
   backup_window           = "16:05-16:35"
   maintenance_window      = "wed:13:02-wed:13:32"
   copy_tags_to_snapshot   = true
 
   # 8.4 is on standard support; never fall into paid Extended Support.
   engine_lifecycle_support = "open-source-rds-extended-support-disabled"
+
+  # Deleting the database takes two deliberate steps, in the console as well.
+  deletion_protection = true
 
   # If this is ever deleted anyway, leave a snapshot behind.
   skip_final_snapshot       = false

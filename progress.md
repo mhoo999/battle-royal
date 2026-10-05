@@ -10,15 +10,15 @@ skeleton is committed on `main`, **not deployed**. Tags `v1.0`, `v2.0`, `v2.1`, 
 
 ## Current Task
 
-Terraform import (docs/ROADMAP.md S1). `infra/shared` imported, plan shows no changes.
-`infra/prod` is written and planned (10 imports, 0 create/destroy, one state-only change:
-final snapshot on delete); the saved plan `infra/prod/import.tfplan` waits for the user to
-run `cd infra/prod && ~/.local/bin/terraform apply import.tfplan` (the agent's apply was
-blocked by the permission classifier). Then re-plan: expect "No changes". Terraform 1.16.5
-is at `~/.local/bin`; AWS profile `battle-royal` (the default profile is another account).
-Reputation skeleton and the errand fold are committed, **not deployed**. **Season 1 ends
-2026-11-01 00:00 KST.** Exact next step: the prod apply above, then C1 (backups 7 days,
-deletion protection) as a Terraform change.
+Cloud hardening (docs/ROADMAP.md §3). Done 2026-10-05: S1 Terraform import (`infra/`,
+both layers plan "No changes") and C1's deletion protection on RDS, applied through
+Terraform. Backups stay at 1 day: the Free plan refuses more (FreeTierRestrictionError),
+so 7 days waits for the paid plan (C15). The user runs `terraform apply` (the agent's is
+blocked by the permission classifier); the agent writes code and saved plans. Terraform
+1.16.5 at `~/.local/bin`, AWS profile `battle-royal`. Reputation skeleton and the errand
+fold are committed, **not deployed**. **Season 1 ends 2026-11-01 00:00 KST.** Exact next
+step: C2 — check that a manual RDS snapshot works on the Free plan (asks first), then
+write the pre-wipe snapshot procedure.
 
 ## Completed
 

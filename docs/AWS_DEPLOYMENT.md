@@ -106,7 +106,7 @@ Phase 9는 건너뜀(수동 재배포 대신 자동 배포로 바로 감). Phase
 | 예산 알림 이름 / 금액 | battle-royal-monthly / $5 (월간 비용 예산) |
 | 보안 그룹 sg-web ID | sg-0494364a03526622b (`battle-royal-web`) |
 | 보안 그룹 sg-db ID | sg-0a8511e0c3c9f0f86 (`battle-royal-db`) |
-| RDS 식별자 | battle-royal-db |
+| RDS 식별자 | battle-royal-db (삭제 보호 켜짐 2026-10-05, 백업 보존 1일 — Free plan 상한) |
 | RDS 엔드포인트 | battle-royal-db.c1caasea602e.ap-northeast-2.rds.amazonaws.com (MySQL 8.4) |
 | RDS 초기 DB 이름 | battleroyal |
 | EC2 인스턴스 ID | i-02d65fab4965cb3c4 (`battle-royal-server`) |
