@@ -98,8 +98,6 @@ Nothing.
 - **Errand progress made before 2026-10-05 was reinterpreted**: `quest_step` became the
   delivery ladder's step and `quest_kills` the soldier count. An account part-way through
   the old single list may sit a step off; season 1's wipe resets it.
-- **The Google client secret was pasted into a chat once (2026-10-04).** Rotation was
-  advised (local env and `/etc/battle-royal/env`); not confirmed done.
 - `bootRun` serves static files copied at build time: after editing
   `src/main/resources/static`, run `./gradlew processResources` (a running server picks
   them up) and fetch `game.js`/`game.css` with `cache: 'reload'`. Background tabs throttle
