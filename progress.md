@@ -10,11 +10,11 @@ skeleton is committed on `main`, **not deployed**. Tags `v1.0`, `v2.0`, `v2.1`, 
 
 ## Current Task
 
-Trader reputation (V2.3). The system is built (standing, levels, display, wipe); what a
-level unlocks is still undecided (user: "system first, details later", 2026-10-05). Last
-code deploy is still `a21b5ce`; the reputation commit adds an `account.reputation`
-column, which `ddl-auto=update` adds with default 0. **Season 1 ends 2026-11-01 00:00
-KST** — the first wipe in production. Exact next step: Next, item 1.
+None in flight. Trader reputation's skeleton (V2.3: standing, levels, display, wipe) is
+committed but **not deployed**; its unlocks are deferred (Next 5). Last code deploy is
+still `a21b5ce`; the next one adds an `account.reputation` column, which
+`ddl-auto=update` adds with default 0. **Season 1 ends 2026-11-01 00:00 KST** — the
+first wipe in production. Exact next step: Next, item 1.
 
 ## Completed
 
@@ -73,24 +73,23 @@ Nothing.
 
 ## Next
 
-1. **Decide what reputation levels unlock (user)**, then build it on `Reputation`:
-   discounts, trader stock by level, better dailies, or something else; and whether the
-   numbers (1/2/4 per errand, levels at 10/25/50) feel right. Deploy after (asks first:
-   a deploy drops every player). Deploying the skeleton alone is also fine.
-2. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
+1. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
    and back, a small bag worn (5 slots), the 20-slot stash, an errand of each kind (the
    정찰 mark via the gold needle, a junk delivery, a soldier at an outpost if one turns
    up), a daily, and the 의뢰 page countdown. Then
    `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
    permitted to run it against production; with outposts on, a rare failure on the walk
    can be a guard).
-3. **Tune numbers from that play (user's impressions).** Prices, loot odds, soldier
+2. **Tune numbers from that play (user's impressions).** Prices, loot odds, soldier
    strength (60 health = 3 pistol shots), errand and daily rewards are all starting values.
-4. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
+3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
    the user leans towards about three months (91 days suggested). Applies from the next
    season; season 1's deadline is stored in `season.ends_at`.
-5. Hideout look and touch input on a real phone (the 의뢰 page is long on a phone);
+4. Hideout look and touch input on a real phone (the 의뢰 page is long on a phone);
    rollback drill; `sudo reboot` check (the last two drop everyone).
+5. **Reputation unlocks: deferred (user, 2026-10-05).** Build on `Reputation` once decided
+   (discounts, stock by level, better dailies…), and check 1/2/4 and 10/25/50. The
+   skeleton can be deployed with the next code deploy (asks first: drops every player).
 6. Player market: **postponed (user, 2026-10-04).** If it comes back: fixed-price listings
    only, no auction.
 7. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). A restart
