@@ -653,6 +653,10 @@ sudo journalctl -u battle-royal -n 50 --no-pager
 
 ## 8. 이후 개선 후보 (필요할 때만)
 
+> **2026-10-05: 인프라를 Terraform으로 가져왔다(`infra/`, 사용법은 `infra/README.md`).**
+> 이후 이 문서의 콘솔 절차로 만든 리소스를 바꿀 때는 콘솔이 아니라 `infra/`를 고치고
+> `terraform apply`한다. 콘솔에서 바꾸면 다음 `plan`이 되돌리려 한다.
+
 > 2026-10-05부터 공고화 계획(백업, IaC, Flyway, 지표, 점검 예고 배포)은
 > `docs/ROADMAP.md` §3이 우선순위와 함께 맡는다. 아래는 그 전의 목록이다.
 

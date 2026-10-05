@@ -57,3 +57,6 @@ infra/**/*.tfstate
 infra/**/*.tfstate.*
 infra/**/*.tfplan
 infra/**/crash.log
+
+# Terraform variable values: personal data (alert e-mail), never committed
+infra/**/terraform.tfvars
