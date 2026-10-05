@@ -10,16 +10,14 @@ skeleton is committed on `main`, **not deployed**. Tags `v1.0`, `v2.0`, `v2.1`, 
 
 ## Current Task
 
-Cloud hardening (docs/ROADMAP.md §3). Done 2026-10-05: S1 Terraform import (`infra/`,
-both layers plan "No changes") and C1's deletion protection on RDS, applied through
-Terraform. Backups stay at 1 day: the Free plan refuses more (FreeTierRestrictionError),
-so 7 days waits for the paid plan (C15). The user runs `terraform apply` (the agent's is
-blocked by the permission classifier); the agent writes code and saved plans. Terraform
-1.16.5 at `~/.local/bin`, AWS profile `battle-royal`. Reputation skeleton and the errand
-fold are committed, **not deployed**. **Season 1 ends 2026-11-01 00:00 KST.** Exact next
-step: C3 restore drill (creates a temporary DB instance; asks first). C2 is ready: the
-manual snapshot works on the Free plan (about 1 minute); **the user runs
-`docs/AWS_DEPLOYMENT.md` §12 at 2026-10-31 23:50 KST.**
+None in flight; the 2026-10-05 session ended at a clean stop. Production is untouched in
+behaviour (last code deploy still `a21b5ce`) but now managed by Terraform (`infra/`), with
+termination and deletion protection on and a `Deploy=battle-royal-prod` tag. `main` is
+**16 commits ahead of `origin/main`, not pushed**: pushing deploys the reputation
+skeleton and the errand fold (drops every player) and switches CI to find the server by
+its tag — both safe now, but ask before pushing. **Season 1 ends 2026-11-01 00:00 KST:
+the user takes the snapshot in `docs/AWS_DEPLOYMENT.md` §12 at 10-31 23:50.** Exact next
+step: Next, item 1 (the rebuild rehearsal).
 
 ## Completed
 
@@ -66,7 +64,20 @@ ladder or daily, adds standing by difficulty (1 / 2 / 4); levels at 0 / 10 / 25 
 line 평판 +N; the hideout view carries `standing`. Wiped with the season. Levels unlock
 nothing yet.
 
-**Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
+**Cloud hardening, first pass (2026-10-05).** `docs/ROADMAP.md` holds the plan, roadmap,
+marketing and BM options. Terraform (`infra/`, how-to in `infra/README.md`): `shared`
+(release bucket, GitHub OIDC and deploy role, instance role, alert topic, production's
+Elastic IP) and `prod` (module `game-stack`: security groups, EC2, RDS, alarms), both
+imported from the console with plan "No changes". The module builds a whole stack from
+nothing: user_data installs Java, Nginx, the jar from `current/app.jar`, systemd and the
+certificate; secrets come from Parameter Store `/battle-royal/prod/*` at every start (put
+by the user with `scripts/put-secrets.ps1`; all three are in); the database starts from a
+snapshot. `infra/rehearsal` is the same stack, unprotected, for a rebuild drill. CI
+(committed, not pushed) finds the server by tag and uploads `current/app.jar`. RDS
+deletion protection on; backups stay at 1 day (the Free plan refuses more). Manual
+snapshots work on the Free plan (about 1 minute).
+
+**Fixes worth remembering.****Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
 crate closes the bag window. `stash_item.kind` is a VARCHAR, not an ENUM.
 
@@ -78,32 +89,35 @@ Nothing.
 
 ## Next
 
-The wider plan — cloud hardening (P0 before the 11/01 wipe: backup retention 7 days,
-pre-wipe snapshot, restore drill), roadmap, marketing, BM options — is `docs/ROADMAP.md`.
+The wider plan is `docs/ROADMAP.md` (cloud hardening §3, the scale-out track S1–S5).
 
-1. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
-   and back, a small bag worn (5 slots), the 20-slot stash, an errand of each kind (the
-   정찰 mark via the gold needle, a junk delivery, a soldier at an outpost if one turns
-   up), a daily, and the 의뢰 page countdown. Then
-   `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
-   permitted to run it against production; with outposts on, a rare failure on the walk
-   can be a guard).
-2. **Tune numbers from that play (user's impressions).** Prices, loot odds, soldier
-   strength (60 health = 3 pistol shots), errand and daily rewards are all starting values.
-3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
-   the user leans towards about three months (91 days suggested). Applies from the next
-   season; season 1's deadline is stored in `season.ends_at`.
-4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check (the
-   last two drop everyone). The 의뢰 page was measured (2026-10-05): fits 390x844 with no
-   scroll; on 375x548 (iPhone SE with Safari's bars) the hideout overlay scrolls 47px,
-   nothing clipped, since finished errands fold to one line.
-5. **Reputation unlocks: deferred (user, 2026-10-05).** Build on `Reputation` once decided
-   (discounts, stock by level, better dailies…), and check 1/2/4 and 10/25/50. The
-   skeleton can be deployed with the next code deploy (asks first: drops every player).
-6. Player market: **postponed (user, 2026-10-04).** If it comes back: fixed-price listings
-   only, no auction.
-7. Later: two EC2 instances with deploys that keep players (CLAUDE.md §10). A restart
-   costs players the trip they are on (gear is refunded).
+1. **Rebuild rehearsal (asks first; postponed by the user on 2026-10-05).** Copy
+   `releases/a21b5ce3106de1efc3da2765b301a6c111397bfe/app.jar` to `current/app.jar`
+   (until CI does it), snapshot production as `rehearsal-source`, plan `infra/rehearsal`
+   with `-var snapshot=rehearsal-source`, the user applies (15–20 min, mostly RDS), then
+   check the lobby by IP, production's ranking in it, and the socket smoke against it;
+   `terraform destroy` and delete the snapshot. Watch for the Free plan refusing a second
+   RDS instance — that would also mean a restore is impossible when needed. After it
+   works, write "take production down / bring it back" in `infra/README.md`.
+2. **Push `main`** when the user says (deploys; see Current Task).
+3. **Season 1 wipe, 2026-11-01.** User: snapshot at 10-31 23:50 (`AWS_DEPLOYMENT.md` §12),
+   check after midnight. Also decide season 2's length before then (`SEASON_DAYS` 28;
+   about 91 days suggested).
+4. **Production play check (user)**, then tune numbers from it (prices, loot odds, soldier
+   strength, errand and daily rewards). `BASE_URL=https://battleroyale.site node
+   e2e/smoke-two-sockets.mjs` needs the user's go-ahead.
+5. **After season 1: production on demand.** Keep it up until the wipe; then, once the
+   rehearsal has proved a rebuild, take it down between uses and spend the credits on
+   the scale-out experiments (S2 bot load test, S3–S5).
+6. Remaining hardening (ROADMAP §3): S3 backend for the Terraform state (one new bucket),
+   Flyway (C5), app metrics and logs (C9, C10), maintenance notice before deploys (C11).
+7. Hideout on a real phone; jar rollback drill; `sudo reboot` check (both drop everyone).
+8. Deferred: reputation unlocks (user, 2026-10-05); player market (postponed 2026-10-04;
+   fixed-price only if it returns).
+9. **Before 2027-02: paid plan or close (C15).** The Free plan closes the account when
+   credits run out or on 2027-04-02; resources are deleted 90 days after unless upgraded.
+   Credits were $137.40 on 2026-10-05 (they do not refill). Check real monthly spend in
+   the Billing console (free; the Cost Explorer API costs $0.01 a call).
 
 ## Known Issues
 
@@ -123,6 +137,15 @@ pre-wipe snapshot, restore drill), roadmap, marketing, BM options — is `docs/R
   timers, so held-input cadence cannot be measured from an automated tab.
 - A second local server for checks needs its own DB: `--server.port=8081
   --spring.datasource.url=jdbc:h2:mem:check` (the shared H2 file's AUTO_SERVER times out).
+- **RDS backups are 1 day** (Free plan ceiling); a problem found later than that needs a
+  manual snapshot to recover from.
+- **EC2 CPU credits are `unlimited`**: bursts are billed from the credits rather than
+  throttled.
+- Infra gotchas (provider dropping `disable_api_termination` alongside a tag change; Git
+  Bash rewriting `/battle-royal/...` paths): `infra/README.md`, Known quirks.
+- Production's server was built by hand; its user_data is empty and ignored. A rebuilt
+  server gets the bootstrap (`infra/modules/game-stack/user-data.sh.tftpl`), untested
+  until the rehearsal.
 
 ## Recent Decisions
 
@@ -158,6 +181,16 @@ Standing decisions; each was the user's call unless marked otherwise.
   `Snapshot.GuardView` are the contract for what opponents see; A/B are tokens.
 - **Infra**: one EC2 + RDS, no ALB/Redis/containers until a second instance is needed;
   OIDC + S3 + SSM deploys, no SSH; RDS on MySQL 8.4 (8.0 forces paid Extended Support).
+- **Infra as code** (2026-10-05): every AWS change goes through `infra/` and a plan the
+  user has seen; **the user runs `terraform apply`** (the agent's is blocked by the
+  permission classifier, which is fine). Production is protected on the AWS side
+  (termination, deletion), not by `prevent_destroy`, so the same module serves
+  rehearsals. Production must be rebuildable: snapshot → apply → same IP and domain.
+- **Scale-out is an experiment, not production** (2026-10-05): production stays one
+  server; ALB, two servers and Redis are built in a separate stack, brought up to measure
+  and torn down (ROADMAP S2–S5), justified by bot load numbers first.
+- **Portfolio framing** (2026-10-05): with no real users, measure, break and rebuild
+  (load tests, drills) rather than claim operating experience.
 
 ## Testing Notes
 
