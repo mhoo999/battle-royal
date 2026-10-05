@@ -85,8 +85,10 @@ Nothing.
 3. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
    the user leans towards about three months (91 days suggested). Applies from the next
    season; season 1's deadline is stored in `season.ends_at`.
-4. Hideout look and touch input on a real phone (the 의뢰 page is long on a phone);
-   rollback drill; `sudo reboot` check (the last two drop everyone).
+4. Hideout look and touch input on a real phone; rollback drill; `sudo reboot` check (the
+   last two drop everyone). The 의뢰 page was measured (2026-10-05): fits 390x844 with no
+   scroll; on 375x548 (iPhone SE with Safari's bars) the hideout overlay scrolls 47px,
+   nothing clipped, since finished errands fold to one line.
 5. **Reputation unlocks: deferred (user, 2026-10-05).** Build on `Reputation` once decided
    (discounts, stock by level, better dailies…), and check 1/2/4 and 10/25/50. The
    skeleton can be deployed with the next code deploy (asks first: drops every player).

@@ -60,3 +60,4 @@ them is in `CLAUDE.md` §16 ("Screenshots for the portfolio").
 | `2026-10-03-actions-test-deploy.png` | 2026-10-03 | A GitHub Actions run: `test` (1m 57s) then `deploy` (38s), both green, from a push to `main` | Phase 10 `3638c1f`, run for `43ed5e5` |
 | `2026-10-03-cloudwatch-alarms.png` | 2026-10-03 | The four CloudWatch alarms, all OK, with their conditions | CloudWatch alarms |
 | `2026-10-05-v2-trader-standing.png` | 2026-10-05 | The 의뢰 page with trader standing (boxed): 상인의 의뢰 · 평판 Lv.2 · 12/25, and every errand's reward line ending in 평판 +N. Staged: hideout data stubbed | V2.3 trader reputation |
+| `2026-10-05-v2-errands-folded-small-phone.png` | 2026-10-05 | The 의뢰 page on a small phone (375x548, iPhone SE with Safari's bars): two finished dailies folded to their title line with 완료 (boxed), so the page needs 47px of scroll instead of 122px. Staged: hideout data stubbed | Errand page on a phone |

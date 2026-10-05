@@ -663,6 +663,8 @@ header.hud-bar {
 .quests-head { display: flex; justify-content: space-between; align-items: baseline; }
 .daily-timer { color: var(--dim); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .quest.done { opacity: 0.45; }
+/* A finished errand folds to its title line, so the page fits a small phone. */
+.quest.done .quest-goal, .quest.done .quest-foot { display: none; }
 .quest.done .quest-level { color: var(--self); }
 .quest {
   display: flex;
