@@ -13,7 +13,7 @@ skeleton is committed on `main`, **not deployed**. Tags `v1.0`, `v2.0`, `v2.1`, 
 None in flight; the 2026-10-05 session ended at a clean stop. Production is untouched in
 behaviour (last code deploy still `a21b5ce`) but now managed by Terraform (`infra/`), with
 termination and deletion protection on and a `Deploy=battle-royal-prod` tag. `main` is
-**16 commits ahead of `origin/main`, not pushed**: pushing deploys the reputation
+**ahead of `origin/main`, not pushed** (`git status -sb`): pushing deploys the reputation
 skeleton and the errand fold (drops every player) and switches CI to find the server by
 its tag — both safe now, but ask before pushing. **Season 1 ends 2026-11-01 00:00 KST:
 the user takes the snapshot in `docs/AWS_DEPLOYMENT.md` §12 at 10-31 23:50.** Exact next
