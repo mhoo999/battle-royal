@@ -14,7 +14,7 @@ None in flight; the 2026-10-05 session ended at a clean stop. Production is unto
 behaviour (last code deploy still `a21b5ce`) but now managed by Terraform (`infra/`), with
 termination and deletion protection on and a `Deploy=battle-royal-prod` tag. `main` is
 **ahead of `origin/main`, not pushed** (`git status -sb`): pushing deploys the reputation
-skeleton and the errand fold (drops every player) and switches CI to find the server by
+skeleton, the errand fold and the bots (prod target 4) (drops every player) and switches CI to find the server by
 its tag — both safe now, but ask before pushing. **Season 1 ends 2026-11-01 00:00 KST:
 the user takes the snapshot in `docs/AWS_DEPLOYMENT.md` §12 at 10-31 23:50.** Exact next
 step: Next, item 1 (server-side tick metrics), or item 2 (the rebuild rehearsal).
@@ -83,11 +83,21 @@ loop (hideout, sortie, crates, fights, exit or death, errands, selling). Bot sig
 beside `prod`, and leaves the same OIDC session as Google. First local run: 200 bots,
 move→snapshot p99 56ms, no errors (`docs/LOAD_TEST.md`, with the measurement pitfalls).
 
-**Fixes worth remembering.****Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
+**Bots on the island (V2.3, 2026-10-05, not deployed).** While at least one person is
+out, server-run classmates arrive every 3–12s until people and bots make
+`game.bots.target` (prod 4, else 0); they leave when the last person does. Unmarked (user's
+call): ordinary `p-N` ids, guest `~names`, no account, so no ranking, stash or results.
+`BotBrain` (bare hands; loot and hold the best; a knife or better → fight; else run from
+anyone within 5 tiles and leave; trips of 5–10 rooms and 1–2.5 min) issues the same
+`Command`s as a person at a person's pace and sees only what its snapshot would.
+`BotDirector` is a `TickDriver` on the loop thread; the world is sized for people only
+(`RoomRegistry.people()`). Rules: `docs/GAME_RULES.md` §10c.
+
+**Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
 crate closes the bag window. `stash_item.kind` is a VARCHAR, not an ENUM.
 
-Tests: `./gradlew test` all green (311). Socket smoke passes against a local server.
+Tests: `./gradlew test` all green (327). Socket smoke passes against a local server.
 
 ## In Progress
 
@@ -97,11 +107,15 @@ Nothing.
 
 The wider plan is `docs/ROADMAP.md` (cloud hardening §3, the scale-out track S1–S5).
 
-1. **Server-side tick metrics (C9)**, so a load run can tell a slow server from a slow
+1. **Bot tuning after a real play (user).** Locally an idle newcomer was killed by a bot
+   in 21–28s (knife, crossbow). If that feels harsh: bots fight only after some seconds on
+   the island, or only when the other came within N tiles, or fewer bots arm up. Ask before
+   changing the user's rules.
+2. **Server-side tick metrics (C9)**, so a load run can tell a slow server from a slow
    bot client: tick time p50/p99, players, sockets (Micrometer, or a log line per N ticks
    first). Then measure on the production-like stack (rehearsal + `loadtest`, bots on
    another machine) — `docs/LOAD_TEST.md` Next.
-2. **Rebuild rehearsal (asks first; postponed by the user on 2026-10-05).** Copy
+3. **Rebuild rehearsal (asks first; postponed by the user on 2026-10-05).** Copy
    `releases/a21b5ce3106de1efc3da2765b301a6c111397bfe/app.jar` to `current/app.jar`
    (until CI does it), snapshot production as `rehearsal-source`, plan `infra/rehearsal`
    with `-var snapshot=rehearsal-source`, the user applies (15–20 min, mostly RDS), then
@@ -109,22 +123,22 @@ The wider plan is `docs/ROADMAP.md` (cloud hardening §3, the scale-out track S1
    `terraform destroy` and delete the snapshot. Watch for the Free plan refusing a second
    RDS instance — that would also mean a restore is impossible when needed. After it
    works, write "take production down / bring it back" in `infra/README.md`.
-3. **Push `main`** when the user says (deploys; see Current Task).
-4. **Season 1 wipe, 2026-11-01.** User: snapshot at 10-31 23:50 (`AWS_DEPLOYMENT.md` §12),
+4. **Push `main`** when the user says (deploys; see Current Task).
+5. **Season 1 wipe, 2026-11-01.** User: snapshot at 10-31 23:50 (`AWS_DEPLOYMENT.md` §12),
    check after midnight. Also decide season 2's length before then (`SEASON_DAYS` 28;
    about 91 days suggested).
-5. **Production play check (user)**, then tune numbers from it (prices, loot odds, soldier
+6. **Production play check (user)**, then tune numbers from it (prices, loot odds, soldier
    strength, errand and daily rewards). `BASE_URL=https://battleroyale.site node
    e2e/smoke-two-sockets.mjs` needs the user's go-ahead.
-6. **After season 1: production on demand.** Keep it up until the wipe; then, once the
+7. **After season 1: production on demand.** Keep it up until the wipe; then, once the
    rehearsal has proved a rebuild, take it down between uses and spend the credits on
    the scale-out experiments (S2 bot load test, S3–S5).
-7. Remaining hardening (ROADMAP §3): S3 backend for the Terraform state (one new bucket),
+8. Remaining hardening (ROADMAP §3): S3 backend for the Terraform state (one new bucket),
    Flyway (C5), app metrics and logs (C9, C10), maintenance notice before deploys (C11).
-8. Hideout on a real phone; jar rollback drill; `sudo reboot` check (both drop everyone).
-9. Deferred: reputation unlocks (user, 2026-10-05); player market (postponed 2026-10-04;
+9. Hideout on a real phone; jar rollback drill; `sudo reboot` check (both drop everyone).
+10. Deferred: reputation unlocks (user, 2026-10-05); player market (postponed 2026-10-04;
    fixed-price only if it returns).
-10. **Before 2027-02: paid plan or close (C15).** The Free plan closes the account when
+11. **Before 2027-02: paid plan or close (C15).** The Free plan closes the account when
    credits run out or on 2027-04-02; resources are deleted 90 days after unless upgraded.
    Credits were $137.40 on 2026-10-05 (they do not refill). Check real monthly spend in
    the Billing console (free; the Cost Explorer API costs $0.01 a call).
@@ -199,6 +213,9 @@ Standing decisions; each was the user's call unless marked otherwise.
 - **Scale-out is an experiment, not production** (2026-10-05): production stays one
   server; ALB, two servers and Redis are built in a separate stack, brought up to measure
   and torn down (ROADMAP S2–S5), justified by bot load numbers first.
+- **Bots are not marked** (2026-10-05, user's call against the agent's advice to label
+  them): same ids and guest-style names as people; kept out of ranking and results. They
+  fill the island only while a person is on it, and never size the world.
 - **Portfolio framing** (2026-10-05): with no real users, measure, break and rebuild
   (load tests, drills) rather than claim operating experience.
 
