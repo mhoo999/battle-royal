@@ -28,10 +28,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -65,12 +67,18 @@ public class RoomRegistry {
      * @param bag     the bag worn in, or null
      * @param marks   errand marks to place (V2.2), and how many doors from the start
      */
+    /**
+     * @param bot     a server-run player (the bot package): placed like anyone, but not
+     *                counted when the world is sized, and never grows it
+     */
     public record JoinRequest(String playerId, String nickname, List<Item> loadout, Item bag,
-                              int marks, int markDoors) {
+                              int marks, int markDoors, boolean bot) {
     }
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
     private final Map<String, String> roomOfPlayer = new HashMap<>();
+    /** Server-run players now in the world; the rest of roomOfPlayer are people. */
+    private final Set<String> bots = new LinkedHashSet<>();
 
     /** Rooms by position, {@code cells[row][column]}. */
     private Room[][] cells = new Room[0][0];
@@ -163,7 +171,12 @@ public class RoomRegistry {
 
     public void requestJoin(String playerId, String nickname, List<Item> loadout, Item bag,
                             int marks, int markDoors) {
-        joins.add(new JoinRequest(playerId, nickname, loadout, bag, marks, markDoors));
+        joins.add(new JoinRequest(playerId, nickname, loadout, bag, marks, markDoors, false));
+    }
+
+    /** A server-run player arrives empty-handed, like a guest. */
+    public void requestBotJoin(String playerId, String nickname) {
+        joins.add(new JoinRequest(playerId, nickname, List.of(), null, 0, 0, true));
     }
 
     public void requestLeave(String playerId) {
@@ -279,7 +292,7 @@ public class RoomRegistry {
      * edge of the world may lead somewhere new afterwards.
      */
     public void fitWorld() {
-        int population = roomOfPlayer.size();
+        int population = people();
         WorldSize.Grid wanted = WorldSize.forPopulation(population);
         if (wanted.area() > grid.area()) {
             resize(wanted);
@@ -292,6 +305,20 @@ public class RoomRegistry {
 
     public WorldSize.Grid grid() {
         return grid;
+    }
+
+    /** People in the world, bots left out: what the world is sized for. */
+    public int people() {
+        return roomOfPlayer.size() - bots.size();
+    }
+
+    public boolean isBot(String playerId) {
+        return bots.contains(playerId);
+    }
+
+    /** The server-run players now in the world, in the order they came. */
+    public List<String> bots() {
+        return List.copyOf(bots);
     }
 
     /** Whether every room outside {@code next} is empty, so it can be dropped. */
@@ -401,13 +428,18 @@ public class RoomRegistry {
             roomOf(request.playerId()).markDirty();
             return;
         }
-        WorldSize.Grid wanted = WorldSize.forPopulation(roomOfPlayer.size() + 1);
-        if (wanted.area() > grid.area()) {
-            resize(wanted);
+        // The world is sized for people; a bot fits into it or does not come.
+        if (!request.bot()) {
+            WorldSize.Grid wanted = WorldSize.forPopulation(people() + 1);
+            if (wanted.area() > grid.area()) {
+                resize(wanted);
+            }
         }
         Room room = startingRoom();
         if (room == null) {
-            log.warn("No empty room for {}", request.playerId());
+            if (!request.bot()) {
+                log.warn("No empty room for {}", request.playerId());
+            }
             return;
         }
         Pos spawn = pickSpawn(room);
@@ -431,11 +463,15 @@ public class RoomRegistry {
         player.setMarks(rollMarks(room, player, request.marks(), request.markDoors()));
         pointCompass(player, room);
         place(player, room);
+        if (request.bot()) {
+            bots.add(player.id());
+        }
         log.info("{} joined {} ({}x{} world)",
                 request.playerId(), room.id(), grid.columns(), grid.rows());
     }
 
     private void removePlayer(String playerId) {
+        bots.remove(playerId);
         String roomId = roomOfPlayer.remove(playerId);
         if (roomId == null) {
             return;

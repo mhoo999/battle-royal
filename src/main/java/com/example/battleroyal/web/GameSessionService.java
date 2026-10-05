@@ -56,6 +56,14 @@ public class GameSessionService implements DepartureListener {
     private final Set<String> attached = ConcurrentHashMap.newKeySet();
     private final AtomicLong playerSequence = new AtomicLong();
 
+    /**
+     * The next player id. Server-run players (the bot package) take theirs from here too,
+     * so nothing an opponent receives tells them apart from people.
+     */
+    public String nextPlayerId() {
+        return "p-" + playerSequence.incrementAndGet();
+    }
+
     /** A guest trial. Whatever the name, it plays unranked. */
     public GameSession issueGuest(String rawNickname) {
         String nickname = rawNickname == null ? "" : rawNickname.trim();
@@ -140,7 +148,7 @@ public class GameSessionService implements DepartureListener {
                               int marks, int markDoors) {
         GameSession session = new GameSession(
                 UUID.randomUUID().toString(),
-                "p-" + playerSequence.incrementAndGet(),
+                nextPlayerId(),
                 nickname,
                 accountId,
                 Collections.unmodifiableList(new ArrayList<>(loadout)),

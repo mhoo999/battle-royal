@@ -26,7 +26,9 @@ com.example.battleroyal
 │   RoomSimulator, CombatRules(raycast 포함), ScoreRules, GuardRules (V2.2 초소 군인),
 │   Bags, Quests, ItemValues
 ├── game/map/      MapTemplate + 템플릿 문자열 상수
-├── game/loop/     GameLoopService, RoomRegistry (토러스 월드), RoomBroadcaster, DeathListener
+├── game/loop/     GameLoopService, RoomRegistry (토러스 월드), RoomBroadcaster, DeathListener,
+│                  TickDriver (루프 스레드에서 매 틱 행동하는 쪽의 자리)
+├── bot/           BotDirector (TickDriver: 사람이 있을 때 봇을 채움), BotBrain (봇 하나의 판단)
 ├── ws/            GameWebSocketHandler, SessionRegistry, SnapshotFilter, Outbound(이벤트 wire)
 ├── web/           SessionController, MeController, RankingController, GameSessionService,
 │                  AccountService (V2: Google sign-in), HideoutService/Controller (V2),
@@ -76,6 +78,11 @@ WS inbound thread              Game loop thread (20Hz)
 
 방 상태는 루프 스레드만 변경한다. **락을 추가하지 않는다. WebSocket 스레드에서 방
 상태를 변경하지 않는다.** 이 결정을 깨면 전면 재작업이 된다.
+
+**봇(`bot`)도 같은 길로만 세상을 바꾼다.** `BotDirector`는 루프 스레드에서 커맨드 적용
+직전에 불리고(`TickDriver`), 방을 읽어 봇마다 `BotBrain`으로 다음 행동을 고른 뒤 사람과 똑같은
+`Command`를 `RoomRegistry`에 넣는다. 봇은 소켓도 계정도 없는 `Player`일 뿐이라 브로드캐스터는
+보낼 곳이 없어 건너뛰고, 결과 기록은 `~` 이름이라 남기지 않는다. `game/loop`는 `bot`을 모른다.
 
 **쿨다운 중 도착한 커맨드는 버려진다. 큐에 쌓이지 않는다.** 따라서 클라이언트는
 쿨다운보다 긴 주기로 입력을 보내야 한다.

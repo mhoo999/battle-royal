@@ -33,16 +33,19 @@ public class GameLoopService {
     private final RoomRegistry registry;
     private final RoomBroadcaster broadcaster;
     private final List<DepartureListener> departureListeners;
+    private final List<TickDriver> drivers;
 
     private volatile boolean running;
     private Thread thread;
     private volatile long tick;
 
     public GameLoopService(RoomRegistry registry, RoomBroadcaster broadcaster,
-                           List<DepartureListener> departureListeners) {
+                           List<DepartureListener> departureListeners,
+                           List<TickDriver> drivers) {
         this.registry = registry;
         this.broadcaster = broadcaster;
         this.departureListeners = departureListeners;
+        this.drivers = drivers;
     }
 
     public long tick() {
@@ -98,6 +101,9 @@ public class GameLoopService {
 
     private void step() {
         registry.processPending(tick);
+        for (TickDriver driver : drivers) {
+            driver.drive(registry, tick);
+        }
         registry.applyCommands(tick);
         registry.tickRooms(tick);
 
