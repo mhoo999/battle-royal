@@ -3,16 +3,18 @@
 ## Current Milestone
 
 V1 done (2026-10-03). V2.0, V2.1 and V2.2 (everything but a player market, which is
-postponed) live on https://battleroyale.site. Tags `v1.0`, `v2.0`, `v2.1`, `v2.2`. Plan:
+postponed) live on https://battleroyale.site. V2.3 (trader reputation) started: the
+skeleton is committed on `main`, **not deployed**. Tags `v1.0`, `v2.0`, `v2.1`, `v2.2`. Plan:
 `docs/V2_PLAN.md`. Numbers: `docs/GAME_RULES.md`. This file was condensed on
 2026-10-04; the history before that is in git (`git log -- progress.md`).
 
 ## Current Task
 
-None in flight; the 2026-10-05 session ended with everything deployed (last code
-deploy `a21b5ce`, Actions run 37216674983) and checked from outside (pages 200, hideout
-APIs 401 without sign-in, new client served, season 1 intact). **Season 1 ends
-2026-11-01 00:00 KST** — the first wipe in production. Exact next step: Next, item 1.
+Trader reputation (V2.3). The system is built (standing, levels, display, wipe); what a
+level unlocks is still undecided (user: "system first, details later", 2026-10-05). Last
+code deploy is still `a21b5ce`; the reputation commit adds an `account.reputation`
+column, which `ddl-auto=update` adds with default 0. **Season 1 ends 2026-11-01 00:00
+KST** — the first wipe in production. Exact next step: Next, item 1.
 
 ## Completed
 
@@ -53,11 +55,17 @@ trip ends). Plus three daily errands a day per account, new at midnight Seoul
 (`DailyQuests`). Errands live on the hideout's 의뢰 page. The compass shows needles only:
 exits mint, errand marks gold, no labels and no distance.
 
+**V2.3 trader reputation, skeleton (2026-10-05, not deployed).** Every errand done,
+ladder or daily, adds standing by difficulty (1 / 2 / 4); levels at 0 / 10 / 25 / 50
+(`Reputation`, `account.reputation`). The 의뢰 page shows 평판 Lv.N · n/next, each reward
+line 평판 +N; the hideout view carries `standing`. Wiped with the season. Levels unlock
+nothing yet.
+
 **Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
 crate closes the bag window. `stash_item.kind` is a VARCHAR, not an ENUM.
 
-Tests: `./gradlew test` all green (~300). Socket smoke passes against a local server.
+Tests: `./gradlew test` all green (~307). Socket smoke passes against a local server.
 
 ## In Progress
 
@@ -65,17 +73,19 @@ Nothing.
 
 ## Next
 
-1. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
+1. **Decide what reputation levels unlock (user)**, then build it on `Reputation`:
+   discounts, trader stock by level, better dailies, or something else; and whether the
+   numbers (1/2/4 per errand, levels at 10/25/50) feel right. Deploy after (asks first:
+   a deploy drops every player). Deploying the skeleton alone is also fine.
+2. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
    and back, a small bag worn (5 slots), the 20-slot stash, an errand of each kind (the
    정찰 mark via the gold needle, a junk delivery, a soldier at an outpost if one turns
    up), a daily, and the 의뢰 page countdown. Then
    `BASE_URL=https://battleroyale.site node e2e/smoke-two-sockets.mjs` (the agent was not
    permitted to run it against production; with outposts on, a rare failure on the walk
    can be a guard).
-2. **Tune numbers from that play (user's impressions).** Prices, loot odds, soldier
+3. **Tune numbers from that play (user's impressions).** Prices, loot odds, soldier
    strength (60 health = 3 pistol shots), errand and daily rewards are all starting values.
-3. **Trader reputation (Tarkov-like, user's idea).** Errand rewards would add standing;
-   decide what standing unlocks (discounts, stock, better dailies) before building.
 4. **Season length after season 1 (user decides by 2026-11-01).** `SEASON_DAYS` is 28;
    the user leans towards about three months (91 days suggested). Applies from the next
    season; season 1's deadline is stored in `season.ends_at`.
@@ -126,6 +136,9 @@ Standing decisions; each was the user's call unless marked otherwise.
 - **Errands are three ladders by kind**, one of each under way, plus three dailies a
   day (2026-10-05); no player-kill errands. Rewards grow with difficulty.
 - **The compass gives the way, never the distance** (2026-10-05).
+- **Trader reputation: system first, unlocks later** (2026-10-05). Standing comes from
+  errands only (ladders and dailies), never from selling; it is wiped with the season
+  like errand progress (agent's call, change if wanted).
 - **No player market for now, and no auction** (2026-10-04).
 - **Seasons**: 4 weeks for season 1 so the first wipe runs in production within a month,
   probably about 3 months after (pending, Next 3).

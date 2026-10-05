@@ -80,11 +80,13 @@ public class HideoutService implements DepartureListener {
      * @param quests  the trader's errands under way, one per kind still to climb
      * @param dailies today's three daily errands
      * @param dailiesResetAt when today's dailies give way to tomorrow's: midnight in Seoul
+     * @param standing standing with the trader and its level
      */
     public record StashView(List<StashEntry> stash, int capacity, StashUpgrade upgrade,
                             boolean out, long money, long haul, List<ItemValues.Offer> trader,
                             List<QuestLedger.QuestView> quests,
-                            List<QuestLedger.DailyView> dailies, Instant dailiesResetAt) {
+                            List<QuestLedger.DailyView> dailies, Instant dailiesResetAt,
+                            QuestLedger.StandingView standing) {
     }
 
     /** Thrown for a sale or purchase the rules do not allow; the message says why. */
@@ -166,7 +168,8 @@ public class HideoutService implements DepartureListener {
                 account.money(), account.haul(), ItemValues.STOCK,
                 QuestLedger.view(account, items),
                 QuestLedger.dailies(account, items, today()),
-                today().plusDays(1).atStartOfDay(SeasonService.SEOUL).toInstant());
+                today().plusDays(1).atStartOfDay(SeasonService.SEOUL).toInstant(),
+                QuestLedger.standing(account));
     }
 
     private static int capacity(Account account) {

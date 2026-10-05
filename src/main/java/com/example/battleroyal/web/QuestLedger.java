@@ -3,6 +3,7 @@ package com.example.battleroyal.web;
 import com.example.battleroyal.game.core.ItemKind;
 import com.example.battleroyal.game.rule.DailyQuests;
 import com.example.battleroyal.game.rule.Quests;
+import com.example.battleroyal.game.rule.Reputation;
 import com.example.battleroyal.game.rule.Quests.Category;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.StashItem;
@@ -26,16 +27,26 @@ public final class QuestLedger {
     }
 
     /**
+     * Standing with the trader, as the hideout shows it.
+     *
+     * @param nextAt standing the next level needs, or null at the top level
+     */
+    public record StandingView(int standing, int level, Integer nextAt) {
+    }
+
+    /**
      * One kind's errand under way, as the hideout shows it.
      *
      * @param step         1-based place on its ladder
      * @param soldiersDone soldiers counted so far (a one-trip errand counts per trip, so 0)
      * @param ready        true when a delivery can be handed over now
+     * @param reputation   standing it adds when done
      */
     public record QuestView(Category category, Quests.Difficulty difficulty, int step, int total,
                             String title, List<Need> deliver, int visits, int soldiers,
                             boolean soldiersInOneTrip, int soldiersDone, int money,
-                            ItemKind reward, Integer rewardAmmo, boolean ready) {
+                            ItemKind reward, Integer rewardAmmo, boolean ready,
+                            int reputation) {
     }
 
     /**
@@ -44,10 +55,11 @@ public final class QuestLedger {
      * @param count    extractions or soldiers asked for (0 for a delivery)
      * @param progress how many of those today's trips have made
      * @param ready    true when a delivery can be handed over now
+     * @param reputation standing it adds when done
      */
     public record DailyView(int slot, String title, Quests.Difficulty difficulty,
                             DailyQuests.Goal goal, List<Need> deliver, int count, int progress,
-                            int money, boolean done, boolean ready) {
+                            int money, boolean done, boolean ready, int reputation) {
     }
 
     private QuestLedger() {
@@ -70,7 +82,7 @@ public final class QuestLedger {
                     && needs.stream().allMatch(need -> need.have() >= need.count());
             views.add(new DailyView(daily.slot(), daily.title(), daily.difficulty(), daily.goal(),
                     needs, daily.count(), Math.min(progress, daily.count()), daily.money(), done,
-                    ready));
+                    ready, Reputation.forErrand(daily.difficulty())));
         }
         return views;
     }
@@ -87,8 +99,7 @@ public final class QuestLedger {
             throw new HideoutService.TradeRefusedException("지금은 납품할 의뢰가 없습니다");
         }
         items.deleteAll(takeFromStash(account, daily.deliver(), items));
-        account.earn(daily.money());
-        account.markDailyDone(slot);
+        completeDaily(account, daily);
     }
 
     /** A trip ended today: an escape and soldiers count towards today's dailies. */
@@ -103,10 +114,20 @@ public final class QuestLedger {
                 case DELIVERY -> -1;
             };
             if (progress >= daily.count() && progress >= 0 && !account.dailyDone(daily.slot())) {
-                account.earn(daily.money());
-                account.markDailyDone(daily.slot());
+                completeDaily(account, daily);
             }
         }
+    }
+
+    private static void completeDaily(Account account, DailyQuests.Daily daily) {
+        account.earn(daily.money());
+        account.addReputation(Reputation.forErrand(daily.difficulty()));
+        account.markDailyDone(daily.slot());
+    }
+
+    static StandingView standing(Account account) {
+        int standing = account.reputation();
+        return new StandingView(standing, Reputation.level(standing), Reputation.nextAt(standing));
     }
 
     private static List<Need> needs(Map<ItemKind, Integer> what, Map<ItemKind, Integer> held) {
@@ -161,7 +182,7 @@ public final class QuestLedger {
                     quest.soldiersInOneTrip(), account.soldierKills(), quest.money(),
                     quest.reward(),
                     quest.reward() != null && quest.reward().usesAmmo() ? quest.rewardAmmo() : null,
-                    ready));
+                    ready, Reputation.forErrand(quest.difficulty())));
         }
         return views;
     }
@@ -213,9 +234,10 @@ public final class QuestLedger {
         return quest != null ? new int[] {quest.visits(), quest.visitDistance()} : new int[] {0, 0};
     }
 
-    /** Pays, and moves that ladder on. A reward item lands in the stash even when it is full. */
+    /** Pays, raises standing, and moves that ladder on. A reward item lands in the stash even when it is full. */
     private static void complete(Account account, Quests.Quest quest, StashItemRepository items) {
         account.earn(quest.money());
+        account.addReputation(Reputation.forErrand(quest.difficulty()));
         if (quest.reward() != null) {
             items.save(new StashItem(account.id(), quest.reward(), quest.rewardAmmo()));
         }

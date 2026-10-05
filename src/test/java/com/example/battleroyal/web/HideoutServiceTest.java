@@ -7,6 +7,7 @@ import com.example.battleroyal.game.rule.DailyQuests;
 import com.example.battleroyal.game.rule.GameConstants;
 import com.example.battleroyal.game.rule.ItemValues;
 import com.example.battleroyal.game.rule.Quests;
+import com.example.battleroyal.game.rule.Reputation;
 import com.example.battleroyal.persistence.Account;
 import com.example.battleroyal.persistence.AccountRepository;
 import com.example.battleroyal.persistence.Sortie;
@@ -397,6 +398,42 @@ class HideoutServiceTest {
         assertEquals(30, after.money());
         assertEquals("소풍 준비물", errand(Quests.Category.DELIVERY).title());
         assertEquals("정찰", errand(Quests.Category.VISIT).title(), "the other ladders untouched");
+    }
+
+    @Test
+    void anErrandDoneRaisesStandingByItsDifficulty() {
+        QuestLedger.StandingView before = hideout.view(me).standing();
+        assertEquals(new QuestLedger.StandingView(0, 1, Reputation.LEVEL_AT.get(1)), before);
+        assertEquals(Reputation.forErrand(Quests.Difficulty.EASY),
+                errand(Quests.Category.DELIVERY).reputation(), "shown before it is done");
+
+        stash(me, ItemKind.SPOON, 0);
+        HideoutService.StashView after = hideout.deliverQuest(me);
+
+        assertEquals(Reputation.forErrand(Quests.Difficulty.EASY), after.standing().standing());
+    }
+
+    @Test
+    void aDailyDoneRaisesStandingToo() {
+        GameSession out = hideout.setOut(me, "shuya", List.of());
+        hideout.onExtracted(new GameEvent.Extracted(out.playerId(), "shuya", 0, 0, 0, List.of()));
+
+        HideoutService.StashView after = hideout.view(me);
+        int expected = after.dailies().stream().filter(QuestLedger.DailyView::done)
+                .mapToInt(QuestLedger.DailyView::reputation).sum();
+        assertTrue(expected > 0, "the escape daily is done");
+        assertEquals(expected, after.standing().standing());
+    }
+
+    @Test
+    void enoughStandingRaisesTheLevel() {
+        Account account = accounts.findById(me).orElseThrow();
+        account.addReputation(Reputation.LEVEL_AT.get(1));
+        accounts.save(account);
+
+        QuestLedger.StandingView standing = hideout.view(me).standing();
+        assertEquals(2, standing.level());
+        assertEquals(Reputation.LEVEL_AT.get(2), standing.nextAt());
     }
 
     @Test

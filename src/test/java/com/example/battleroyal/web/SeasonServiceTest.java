@@ -90,6 +90,7 @@ class SeasonServiceTest {
         account.growStash();
         account.nextQuest(com.example.battleroyal.game.rule.Quests.Category.DELIVERY);
         account.nextQuest(com.example.battleroyal.game.rule.Quests.Category.SOLDIER);
+        account.addReputation(12);
         return accounts.save(account);
     }
 
@@ -141,6 +142,7 @@ class SeasonServiceTest {
             assertEquals(0, account.haul());
             assertEquals(0, account.money());
             assertEquals(0, account.stashSize(), "back to the plain box");
+            assertEquals(0, account.reputation(), "standing with the trader starts over");
             for (com.example.battleroyal.game.rule.Quests.Category category
                     : com.example.battleroyal.game.rule.Quests.Category.values()) {
                 assertEquals(0, account.questStep(category), "errands start over");

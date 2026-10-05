@@ -99,6 +99,11 @@ public class Account {
     @Column(name = "daily_soldiers", nullable = false)
     private int dailySoldiers;
 
+    /** Standing with the trader, from errands done (Reputation). */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private int reputation;
+
     protected Account() {
     }
 
@@ -222,8 +227,17 @@ public class Account {
         dailySoldiers += soldiers;
     }
 
+    public int reputation() {
+        return reputation;
+    }
+
+    public void addReputation(int standing) {
+        this.reputation += standing;
+    }
+
     /** A new season (D12): everyone back to the same starting line, errands included. */
     public void resetForSeason() {
+        this.reputation = 0;
         this.money = 0;
         this.haul = 0;
         this.stashSize = 0;

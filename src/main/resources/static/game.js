@@ -93,6 +93,7 @@ const ui = {
   deal: el('deal'), dealName: el('deal-name'), dealButton: el('deal-button'),
   grow: el('grow'), growName: el('grow-name'), growButton: el('grow-button'),
   questList: el('quest-list'), dailyList: el('daily-list'), dailyTimer: el('daily-timer'),
+  standing: el('standing'),
   hideoutQuests: el('hideout-quests'), questCount: el('quest-count'),
   hideoutHome: el('hideout-home'), hideoutStash: el('hideout-stash'), hideoutShop: el('hideout-shop'),
   carryCount: el('carry-count'),
@@ -1308,7 +1309,8 @@ function questGoal(quest) {
  * errands complete by themselves when a trip ends.
  */
 /** One errand row: kind and title, difficulty, what it asks, reward, and 납품 if handed over. */
-function questRow({ kind, title, difficulty, goal, money, reward, deliverSlot, ready, done }) {
+function questRow({ kind, title, difficulty, goal, money, reward, reputation, deliverSlot, ready,
+  done }) {
   const row = document.createElement('div');
   row.className = `quest ${difficulty.toLowerCase()}${done ? ' done' : ''}`;
 
@@ -1333,7 +1335,8 @@ function questRow({ kind, title, difficulty, goal, money, reward, deliverSlot, r
   foot.className = 'quest-foot';
   const rewardEl = document.createElement('span');
   rewardEl.className = 'quest-reward';
-  rewardEl.textContent = `보상 ${money}원${reward ? ` + ${reward}` : ''}`;
+  rewardEl.textContent = `보상 ${money}원${reward ? ` + ${reward}` : ''}`
+    + `${reputation ? ` · 평판 +${reputation}` : ''}`;
   foot.append(rewardEl);
   if (deliverSlot !== undefined && !done) {
     const deliver = document.createElement('button');
@@ -1389,6 +1392,7 @@ function paintDailies() {
     goal: DAILY_GOAL[daily.goal](daily),
     money: daily.money,
     reward: null,
+    reputation: daily.reputation,
     deliverSlot: daily.goal === 'DELIVERY' ? `daily-${daily.slot}` : undefined,
     ready: daily.ready,
     done: daily.done,
@@ -1398,8 +1402,20 @@ function paintDailies() {
   ui.questCount.textContent = open > 0 ? `${open}` : '';
 }
 
+/** "평판 Lv.2 · 12/25": standing with the trader (V2.3), from every errand done. */
+function paintStanding() {
+  const standing = hideoutView.standing;
+  if (!standing) {
+    ui.standing.textContent = '';
+    return;
+  }
+  ui.standing.textContent = `평판 Lv.${standing.level} · `
+    + (standing.nextAt === null ? `${standing.standing} 최고` : `${standing.standing}/${standing.nextAt}`);
+}
+
 function paintQuests() {
   paintDailies();
+  paintStanding();
   const quests = hideoutView.quests || [];
   if (quests.length === 0) {
     const done = document.createElement('p');
@@ -1415,6 +1431,7 @@ function paintQuests() {
     goal: questGoal(quest),
     money: quest.money,
     reward: quest.reward ? slotText({ kind: quest.reward, ammo: quest.rewardAmmo }) : null,
+    reputation: quest.reputation,
     deliverSlot: quest.category === 'DELIVERY' ? 'ladder' : undefined,
     ready: quest.ready,
     done: false,

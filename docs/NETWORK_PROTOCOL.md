@@ -37,12 +37,13 @@ GET   → { "stash": [ { "id": 11, "kind": "PISTOL", "ammo": 4, "price": 110 } ]
                         "deliver": [ { "kind": "SPOON", "count": 1, "have": 0 } ],
                         "visits": 0, "soldiers": 0, "soldiersInOneTrip": false,
                         "soldiersDone": 0, "money": 30, "reward": null,
-                        "rewardAmmo": null, "ready": false }, … ],
+                        "rewardAmmo": null, "ready": false, "reputation": 1 }, … ],
           "dailies": [ { "slot": 0, "title": "잡동사니", "difficulty": "EASY",
                          "goal": "DELIVERY", "deliver": [ { "kind": "CUP", "count": 1, "have": 0 } ],
                          "count": 0, "progress": 0, "money": 40, "done": false,
-                         "ready": false }, … ],
-          "dailiesResetAt": "2026-10-05T15:00:00Z" }
+                         "ready": false, "reputation": 1 }, … ],
+          "dailiesResetAt": "2026-10-05T15:00:00Z",
+          "standing": { "standing": 12, "level": 2, "nextAt": 25 } }
 POST  { "loadout": [ 11, null, 12 ], "bag": 13 }  → { "token": "<uuid>", "playerId": "p-3", "nickname": "shuya" }
 ```
 
@@ -90,6 +91,8 @@ GET의 `quests`는 종류(`DELIVERY` 납품, `VISIT` 장소, `SOLDIER` 군인 �
 
 오늘의 일일 의뢰 중 납품(`goal: DELIVERY`)인 `slot`을 창고에서 넘기고 보상을 받는다. `dailies`는
 오늘의 세 개(`goal`: `DELIVERY`, `EXTRACT` 탈출, `SOLDIER` 군인), `dailiesResetAt`은 서울 자정.
+각 의뢰의 `reputation`은 끝내면 오르는 평판, `standing`은 지금 평판과 레벨(`nextAt`은 최고 레벨에서
+`null`).
 탈출·군인은 판이 끝날 때 서버가 센다. 거부는 409: 납품이 아닌 칸, 이미 끝남, 창고에 모자람.
 
 ### `POST /api/hideout/stash-upgrade` (V2.1, 로그인 필요)
