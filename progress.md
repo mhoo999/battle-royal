@@ -73,6 +73,9 @@ Nothing.
 
 ## Next
 
+The wider plan — cloud hardening (P0 before the 11/01 wipe: backup retention 7 days,
+pre-wipe snapshot, restore drill), roadmap, marketing, BM options — is `docs/ROADMAP.md`.
+
 1. **Production play check (user).** Signed in on https://battleroyale.site: a trip out
    and back, a small bag worn (5 slots), the 20-slot stash, an errand of each kind (the
    정찰 mark via the gold needle, a junk delivery, a soldier at an outpost if one turns
