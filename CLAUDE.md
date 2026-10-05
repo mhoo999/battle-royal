@@ -380,6 +380,7 @@ docs/NETWORK_PROTOCOL.md  events, payloads, and the visibility filter
 docs/AWS_DEPLOYMENT.md    AWS deployment: console steps, recorded values, progress
 docs/V2_PLAN.md           V2 (extraction: hideout, island, stash) — plan, not yet built
 docs/ROADMAP.md           remaining work, cloud hardening plan, roadmap, marketing, BM options
+docs/LOAD_TEST.md         load-test bots: how to run, what is measured, results
 progress.md               what is done and what happens next
 ```
 

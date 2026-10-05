@@ -17,7 +17,7 @@ termination and deletion protection on and a `Deploy=battle-royal-prod` tag. `ma
 skeleton and the errand fold (drops every player) and switches CI to find the server by
 its tag — both safe now, but ask before pushing. **Season 1 ends 2026-11-01 00:00 KST:
 the user takes the snapshot in `docs/AWS_DEPLOYMENT.md` §12 at 10-31 23:50.** Exact next
-step: Next, item 1 (the rebuild rehearsal).
+step: Next, item 1 (server-side tick metrics), or item 2 (the rebuild rehearsal).
 
 ## Completed
 
@@ -77,11 +77,17 @@ snapshot. `infra/rehearsal` is the same stack, unprotected, for a rebuild drill.
 deletion protection on; backups stay at 1 day (the Free plan refuses more). Manual
 snapshots work on the Free plan (about 1 minute).
 
+**Load-test bots (S2, 2026-10-05).** `e2e/bots.mjs`: N signed-in bots live the whole
+loop (hideout, sortie, crates, fights, exit or death, errands, selling). Bot sign-in
+`POST /api/loadtest/login/{name}` exists only under the `loadtest` profile, refuses to run
+beside `prod`, and leaves the same OIDC session as Google. First local run: 200 bots,
+move→snapshot p99 56ms, no errors (`docs/LOAD_TEST.md`, with the measurement pitfalls).
+
 **Fixes worth remembering.****Fixes worth remembering.** A sortie whose socket never attached no longer blocks the
 account (retired atomically with the handshake, gear refunded). Stepping off an open
 crate closes the bag window. `stash_item.kind` is a VARCHAR, not an ENUM.
 
-Tests: `./gradlew test` all green (~307). Socket smoke passes against a local server.
+Tests: `./gradlew test` all green (311). Socket smoke passes against a local server.
 
 ## In Progress
 
@@ -91,7 +97,11 @@ Nothing.
 
 The wider plan is `docs/ROADMAP.md` (cloud hardening §3, the scale-out track S1–S5).
 
-1. **Rebuild rehearsal (asks first; postponed by the user on 2026-10-05).** Copy
+1. **Server-side tick metrics (C9)**, so a load run can tell a slow server from a slow
+   bot client: tick time p50/p99, players, sockets (Micrometer, or a log line per N ticks
+   first). Then measure on the production-like stack (rehearsal + `loadtest`, bots on
+   another machine) — `docs/LOAD_TEST.md` Next.
+2. **Rebuild rehearsal (asks first; postponed by the user on 2026-10-05).** Copy
    `releases/a21b5ce3106de1efc3da2765b301a6c111397bfe/app.jar` to `current/app.jar`
    (until CI does it), snapshot production as `rehearsal-source`, plan `infra/rehearsal`
    with `-var snapshot=rehearsal-source`, the user applies (15–20 min, mostly RDS), then
@@ -99,22 +109,22 @@ The wider plan is `docs/ROADMAP.md` (cloud hardening §3, the scale-out track S1
    `terraform destroy` and delete the snapshot. Watch for the Free plan refusing a second
    RDS instance — that would also mean a restore is impossible when needed. After it
    works, write "take production down / bring it back" in `infra/README.md`.
-2. **Push `main`** when the user says (deploys; see Current Task).
-3. **Season 1 wipe, 2026-11-01.** User: snapshot at 10-31 23:50 (`AWS_DEPLOYMENT.md` §12),
+3. **Push `main`** when the user says (deploys; see Current Task).
+4. **Season 1 wipe, 2026-11-01.** User: snapshot at 10-31 23:50 (`AWS_DEPLOYMENT.md` §12),
    check after midnight. Also decide season 2's length before then (`SEASON_DAYS` 28;
    about 91 days suggested).
-4. **Production play check (user)**, then tune numbers from it (prices, loot odds, soldier
+5. **Production play check (user)**, then tune numbers from it (prices, loot odds, soldier
    strength, errand and daily rewards). `BASE_URL=https://battleroyale.site node
    e2e/smoke-two-sockets.mjs` needs the user's go-ahead.
-5. **After season 1: production on demand.** Keep it up until the wipe; then, once the
+6. **After season 1: production on demand.** Keep it up until the wipe; then, once the
    rehearsal has proved a rebuild, take it down between uses and spend the credits on
    the scale-out experiments (S2 bot load test, S3–S5).
-6. Remaining hardening (ROADMAP §3): S3 backend for the Terraform state (one new bucket),
+7. Remaining hardening (ROADMAP §3): S3 backend for the Terraform state (one new bucket),
    Flyway (C5), app metrics and logs (C9, C10), maintenance notice before deploys (C11).
-7. Hideout on a real phone; jar rollback drill; `sudo reboot` check (both drop everyone).
-8. Deferred: reputation unlocks (user, 2026-10-05); player market (postponed 2026-10-04;
+8. Hideout on a real phone; jar rollback drill; `sudo reboot` check (both drop everyone).
+9. Deferred: reputation unlocks (user, 2026-10-05); player market (postponed 2026-10-04;
    fixed-price only if it returns).
-9. **Before 2027-02: paid plan or close (C15).** The Free plan closes the account when
+10. **Before 2027-02: paid plan or close (C15).** The Free plan closes the account when
    credits run out or on 2027-04-02; resources are deleted 90 days after unless upgraded.
    Credits were $137.40 on 2026-10-05 (they do not refill). Check real monthly spend in
    the Billing console (free; the Cost Explorer API costs $0.01 a call).

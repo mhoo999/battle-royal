@@ -68,6 +68,12 @@ class SignInWebTest {
     }
 
     @Test
+    void thereIsNoBotSignInOutsideTheLoadtestProfile() throws Exception {
+        mvc.perform(post("/api/loadtest/login/bot-001")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/me")).andExpect(jsonPath("$.signedIn").value(false));
+    }
+
+    @Test
     void theHideoutNeedsASignIn() throws Exception {
         mvc.perform(get("/api/hideout")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/hideout/sortie")).andExpect(status().isUnauthorized());
