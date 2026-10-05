@@ -4,3 +4,5 @@
 *.jar binary
 # Copied as-is to the Linux server; a CRLF there breaks systemd and the env file.
 /deploy/** text eol=lf
+# Rendered into user_data for a Linux server; a CRLF breaks bash and Nginx there.
+/infra/modules/** text eol=lf
