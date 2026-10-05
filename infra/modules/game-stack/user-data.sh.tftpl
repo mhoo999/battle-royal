@@ -1,0 +1,90 @@
+#!/bin/bash
+# First boot of a game server, run once by cloud-init as root. It does what
+# docs/AWS_DEPLOYMENT.md Phases 5 and 7 and §5 did by hand. A running server never
+# sees a change to this file (ignore_changes); the next server does.
+# Log: /var/log/battle-royal-bootstrap.log. No secret is ever printed.
+set -euo pipefail
+exec > >(tee -a /var/log/battle-royal-bootstrap.log) 2>&1
+echo "bootstrap start $(date -Is)"
+
+REGION=ap-northeast-2
+
+dnf install -y java-21-amazon-corretto-headless nginx mariadb105%{ if domain != "" } certbot python3-certbot-nginx%{ endif }
+
+# The app's own user: no login, owns the app files only.
+useradd --system --no-create-home --shell /sbin/nologin battleroyal || true
+install -d -o battleroyal -g battleroyal /opt/battle-royal
+install -d -m 755 /etc/battle-royal
+
+# --- Settings and secrets ------------------------------------------------------
+# What is not secret is fixed here. The secrets are read from Parameter Store at every
+# start of the service, so rotating one takes a restart and nothing else.
+cat > /etc/battle-royal/settings <<'SETTINGS'
+DB_URL=${db_url}
+DB_USERNAME=battleroyal
+SETTINGS
+
+cat > /opt/battle-royal/fetch-env.sh <<'FETCH'
+#!/bin/bash
+# Writes /etc/battle-royal/env (root only) from the settings and the secrets under
+# ${secrets_path}. Run by systemd as root before each start of battle-royal.
+set -euo pipefail
+umask 077
+{
+  cat /etc/battle-royal/settings
+  aws ssm get-parameters-by-path --region ap-northeast-2 --path "${secrets_path}" \
+    --with-decryption --query 'Parameters[].[Name,Value]' --output text |
+    while IFS=$'\t' read -r name value; do echo "$${name##*/}=$value"; done
+} > /etc/battle-royal/env.new
+mv /etc/battle-royal/env.new /etc/battle-royal/env
+FETCH
+chmod 755 /opt/battle-royal/fetch-env.sh
+
+# --- The app ---------------------------------------------------------------------
+aws s3 cp "s3://${release_bucket}/${release_key}" /opt/battle-royal/app.jar \
+  --region "$REGION" --only-show-errors
+chown battleroyal:battleroyal /opt/battle-royal/app.jar
+
+echo '${service_b64}' | base64 -d > /etc/systemd/system/battle-royal.service
+install -d /etc/systemd/system/battle-royal.service.d
+cat > /etc/systemd/system/battle-royal.service.d/secrets.conf <<'UNIT'
+[Service]
+ExecStartPre=+/opt/battle-royal/fetch-env.sh
+UNIT
+systemctl daemon-reload
+systemctl enable --now battle-royal
+
+# --- Nginx -------------------------------------------------------------------------
+echo '${nginx_b64}' | base64 -d > /etc/nginx/nginx.conf
+echo '${site_b64}' | base64 -d > /etc/nginx/conf.d/battle-royal.conf
+nginx -t
+systemctl enable --now nginx
+
+for _ in $(seq 1 90); do
+  curl -sf -o /dev/null http://127.0.0.1:8080/ && break
+  sleep 2
+done
+curl -sf -o /dev/null http://127.0.0.1:8080/ && echo "app answers on 8080" || echo "app NOT answering yet"
+
+%{ if domain != "" }
+# --- HTTPS ---------------------------------------------------------------------------
+# Let's Encrypt checks over HTTP that the name points here, so wait until the kept IP
+# is attached to this server. A failure leaves the site on HTTP, never the boot broken.
+TOKEN=$(curl -sf -X PUT http://169.254.169.254/latest/api/token \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+for _ in $(seq 1 60); do
+  ip=$(curl -sf -H "X-aws-ec2-metadata-token: $TOKEN" \
+    http://169.254.169.254/latest/meta-data/public-ipv4 || true)
+  [ "$ip" = "${public_ip}" ] && break
+  sleep 5
+done
+if certbot --nginx -n --agree-tos --no-eff-email -m "${certbot_email}" \
+     -d ${domain} -d www.${domain} --redirect; then
+  systemctl enable --now certbot-renew.timer
+  echo "certificate issued"
+else
+  echo "certbot failed: the site is on HTTP only; run it by hand (docs/AWS_DEPLOYMENT.md §5)"
+fi
+%{ endif }
+
+echo "bootstrap done $(date -Is)"

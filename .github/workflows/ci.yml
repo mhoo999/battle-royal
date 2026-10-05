@@ -80,7 +80,6 @@ jobs:
     env:
       AWS_REGION: ap-northeast-2
       BUCKET: ${{ vars.DEPLOY_BUCKET }}
-      INSTANCE: ${{ vars.INSTANCE_ID }}
 
     steps:
       - uses: actions/checkout@v5
@@ -121,10 +120,20 @@ jobs:
           jar=$(ls dist/*.jar | grep -v -- '-plain.jar$' | head -n 1)
           aws s3 cp "$jar" "s3://$BUCKET/releases/$GITHUB_SHA/app.jar" --only-show-errors
           aws s3 cp deploy/install.sh "s3://$BUCKET/releases/$GITHUB_SHA/install.sh" --only-show-errors
+          # What a rebuilt server starts with (infra/modules/game-stack). Outside releases/,
+          # which expires after 14 days.
+          aws s3 cp "$jar" "s3://$BUCKET/current/app.jar" --only-show-errors
 
       - name: Install on the server
         if: steps.changes.outputs.deploy == 'true'
         run: |
+          # The server is whichever carries Deploy=battle-royal-prod, so a rebuilt one
+          # with a new instance id needs no change here (infra/README.md).
+          INSTANCE=$(aws ec2 describe-instances \
+            --filters Name=tag:Deploy,Values=battle-royal-prod Name=instance-state-name,Values=running \
+            --query 'Reservations[].Instances[].InstanceId' --output text)
+          [ "$(echo "$INSTANCE" | wc -w)" -eq 1 ] || { echo "expected one production server, found: '$INSTANCE'"; exit 1; }
+          echo "server $INSTANCE"
           params=$(jq -n --arg b "$BUCKET" --arg c "$GITHUB_SHA" --arg r "$AWS_REGION" '{commands: [
             "aws s3 cp s3://\($b)/releases/\($c)/install.sh /tmp/install.sh --region \($r) --only-show-errors",
             "bash /tmp/install.sh \($b) \($c)"]}')

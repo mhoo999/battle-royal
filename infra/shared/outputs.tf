@@ -9,3 +9,11 @@ output "alerts_topic_arn" {
 output "release_bucket" {
   value = aws_s3_bucket.deploy.bucket
 }
+
+output "prod_eip_allocation_id" {
+  value = aws_eip.prod.id
+}
+
+output "prod_public_ip" {
+  value = aws_eip.prod.public_ip
+}

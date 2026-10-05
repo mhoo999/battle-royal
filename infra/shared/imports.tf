@@ -60,3 +60,9 @@ import {
   to = aws_sns_topic_subscription.alerts_email
   id = "arn:aws:sns:ap-northeast-2:495791792486:battle-royal-alerts:5df1d1dc-4632-4b34-aaf3-6507d2f50459"
 }
+
+# Moved here from infra/prod on 2026-10-05 so a rebuilt server keeps the address.
+import {
+  to = aws_eip.prod
+  id = "eipalloc-082c75d049e9df296"
+}

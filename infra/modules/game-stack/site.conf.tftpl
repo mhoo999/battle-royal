@@ -1,0 +1,46 @@
+# The game behind Nginx (written by the bootstrap). The app listens on 127.0.0.1:8080
+# only. With a domain, certbot then adds the HTTPS server and the redirect, as on the
+# hand-built server (deploy/nginx-battle-royal.conf is that server's file).
+
+# WebSocket upgrade: pass "Upgrade" through when the client asks, "close" otherwise.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+%{ if domain != "" ~}
+# A request by bare IP matches no name and gets a 404.
+server {
+    listen 80 default_server;
+    return 404;
+}
+
+%{ endif ~}
+server {
+%{ if domain != "" ~}
+    listen 80;
+    server_name ${domain} www.${domain};
+%{ else ~}
+    listen 80 default_server;
+    server_name _;
+%{ endif ~}
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+
+        # The app's same-origin WebSocket check needs the original host, scheme and
+        # port (docs/AWS_DEPLOYMENT.md §9).
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # A quiet player's socket can sit silent for a long time.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}

@@ -1,7 +1,11 @@
 output "public_ip" {
-  value = aws_eip.server.public_ip
+  value = module.stack.public_ip
 }
 
 output "db_endpoint" {
-  value = aws_db_instance.main.address
+  value = module.stack.db_endpoint
+}
+
+output "instance_id" {
+  value = module.stack.instance_id
 }
