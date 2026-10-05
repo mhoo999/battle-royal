@@ -753,3 +753,52 @@ SSL **Required**, Connection Method `mysql`(SSH 아님). 2026-10-03 연결 확�
   쓰는 값은 서버의 `/etc/battle-royal/env`에 있다.
 - SSM 세션은 약 20분 쓰지 않으면 끊긴다. `aws login` 자격 증명이 만료되면 다시 로그인한다.
 - `battleroyal`은 DELETE/UPDATE 권한이 있다. 실제 랭킹이 바로 바뀐다.
+
+---
+
+## 12. 시즌 와이프 전 스냅샷 (C2)
+
+시즌이 끝나는 자정(서울)에 `SeasonService`가 1분 안에 랭킹·창고·돈·의뢰를 지운다. 되돌릴
+수 없는 작업이고, Free plan은 자동 백업을 **1일**까지만 허용한다(§2). 그래서 와이프 직전에
+**수동 스냅샷**을 찍는다. 수동 스냅샷은 보존 기간과 무관하게 지울 때까지 남는다.
+
+확인(2026-10-05): Free plan에서 수동 스냅샷이 된다. 20 GiB DB에서 약 1분, DB는 멈추지 않고
+접속도 끊기지 않는다.
+
+**시즌 1: 2026-10-31 23:50 KST에** (자정 10분 전)
+
+```sh
+aws login --profile battle-royal --region ap-northeast-2
+aws rds create-db-snapshot --profile battle-royal --region ap-northeast-2 \
+  --db-instance-identifier battle-royal-db \
+  --db-snapshot-identifier pre-season-1-wipe
+aws rds wait db-snapshot-available --profile battle-royal --region ap-northeast-2 \
+  --db-snapshot-identifier pre-season-1-wipe   # 자정 전에 끝나야 한다
+```
+
+이름은 `pre-season-<끝나는 시즌 번호>-wipe`. 23:50 이후 10분 동안의 출격 결과는 스냅샷에 없다.
+어차피 와이프가 지우는 것들이라 괜찮다.
+
+**자정이 지나고 (00:05 이후)**
+
+1. https://battleroyale.site 에서 시즌 번호가 올라갔는지, 랭킹이 비었는지 본다.
+2. §11 방식으로 DB에 붙어 확인한다: `trophy`에 시즌 1 행이 있고, `stash_item`이 비었고,
+   `account`의 `money`·`haul`·`reputation`이 0인지.
+3. 이상이 있으면 **운영 DB를 덮어쓰지 않는다.** 스냅샷을 **새 인스턴스로** 복원해 필요한 행만
+   비교하고 옮긴다.
+
+```sh
+aws rds restore-db-instance-from-db-snapshot --profile battle-royal --region ap-northeast-2 \
+  --db-instance-identifier battle-royal-db-restore \
+  --db-snapshot-identifier pre-season-1-wipe \
+  --db-instance-class db.t4g.micro \
+  --vpc-security-group-ids sg-0a8511e0c3c9f0f86 --no-publicly-accessible
+# 다 쓰고 나면 반드시 지운다 (켜 둔 시간만큼 과금)
+aws rds delete-db-instance --profile battle-royal --region ap-northeast-2 \
+  --db-instance-identifier battle-royal-db-restore --skip-final-snapshot
+```
+
+복원 인스턴스는 Terraform 밖에서 잠깐만 쓰는 것이다. `infra/`에 넣지 않는다.
+
+**스냅샷 정리:** 다음 시즌 와이프가 무사히 끝나면 그 전 시즌의 스냅샷을 지운다. 스냅샷 용량만큼
+과금된다.

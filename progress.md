@@ -17,8 +17,9 @@ so 7 days waits for the paid plan (C15). The user runs `terraform apply` (the ag
 blocked by the permission classifier); the agent writes code and saved plans. Terraform
 1.16.5 at `~/.local/bin`, AWS profile `battle-royal`. Reputation skeleton and the errand
 fold are committed, **not deployed**. **Season 1 ends 2026-11-01 00:00 KST.** Exact next
-step: C2 — check that a manual RDS snapshot works on the Free plan (asks first), then
-write the pre-wipe snapshot procedure.
+step: C3 restore drill (creates a temporary DB instance; asks first). C2 is ready: the
+manual snapshot works on the Free plan (about 1 minute); **the user runs
+`docs/AWS_DEPLOYMENT.md` §12 at 2026-10-31 23:50 KST.**
 
 ## Completed
 
